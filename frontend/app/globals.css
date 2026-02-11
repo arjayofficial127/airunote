@@ -1,0 +1,503 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Accessibility: Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Accessibility: Ensure focus outlines are visible for keyboard users */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Ensure buttons and interactive elements have visible focus states */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Color contrast improvements - ensure text meets WCAG AA standards */
+/* Gray text on white background: text-gray-600 (4.5:1) meets AA for normal text */
+/* Blue buttons: bg-blue-600 text-white (4.5:1) meets AA */
+/* Green status: bg-green-100 text-green-700 (4.5:1) meets AA */
+/* Red destructive: text-red-600 on white (4.5:1) meets AA */
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  10%, 30% {
+    transform: scale(1.05);
+  }
+  20%, 40% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toggleOpen {
+  0% {
+    transform: translateX(0);
+  }
+  60% {
+    transform: translateX(14px);
+  }
+  100% {
+    transform: translateX(12px);
+  }
+}
+
+@keyframes toggleClose {
+  from {
+    transform: translateX(12px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes lineExtendLeft {
+  0% {
+    x1: 4;
+  }
+  100% {
+    x1: 0;
+  }
+}
+
+@keyframes arrowDraw {
+  0% {
+    stroke-dasharray: 0, 30;
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    stroke-dasharray: 30, 0;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes morphToBlocks {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(0.8) translateY(2px);
+    opacity: 0.7;
+  }
+  60% {
+    transform: scale(1.1) translateY(-2px);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.1) translateY(-1px);
+    opacity: 1;
+  }
+}
+
+@keyframes morphFromBlocks {
+  0% {
+    transform: scale(1.1) translateY(-1px);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(0.9) translateY(1px);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(0.95) translateY(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes blockAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0) translateY(4px);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes plusFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.ProseMirror h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25em;
+  font-weight: bold;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin: 0.25em 0;
+}
+
+.ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ProseMirror a:hover {
+  color: #1d4ed8;
+}
+
+/* Insertion Point Animation */
+@keyframes temporaryInsert {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-temporary-insert {
+  animation: temporaryInsert 180ms ease-out;
+}
+
+/* Block Icon Styles - Muted lines with psychology intuition */
+.block-icon-wrapper {
+  color: #9ca3af; /* Muted gray by default */
+  transition: color 200ms ease-out;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.block-icon {
+  transition: transform 200ms ease-out;
+  display: block;
+}
+
+.block-icon .icon-line {
+  stroke: currentColor;
+  transition: stroke-width 200ms ease-out, opacity 200ms ease-out;
+}
+
+.block-icon .icon-line-subtle {
+  opacity: 0.5;
+  transition: opacity 200ms ease-out, stroke-width 200ms ease-out;
+}
+
+.block-icon .icon-dot {
+  fill: currentColor;
+  opacity: 0.6;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+  transform-origin: center;
+}
+
+/* Hover animations - applied to parent elements */
+.group:hover .block-icon-wrapper,
+.block-icon-wrapper:hover,
+[data-block-id]:hover .block-icon-wrapper,
+button:hover .block-icon-wrapper,
+.block-item:hover .block-icon-wrapper,
+.group:hover .block-icon-wrapper {
+  color: #4b5563; /* Darker gray on hover */
+}
+
+.group:hover .block-icon,
+.block-icon-wrapper:hover .block-icon,
+[data-block-id]:hover .block-icon,
+button:hover .block-icon,
+.block-item:hover .block-icon {
+  transform: scale(1.08);
+}
+
+.group:hover .block-icon .icon-line,
+.block-icon-wrapper:hover .block-icon .icon-line,
+[data-block-id]:hover .block-icon .icon-line,
+button:hover .block-icon .icon-line,
+.block-item:hover .block-icon .icon-line {
+  stroke-width: 1.8;
+}
+
+.group:hover .block-icon .icon-line-subtle,
+.block-icon-wrapper:hover .block-icon .icon-line-subtle,
+[data-block-id]:hover .block-icon .icon-line-subtle,
+button:hover .block-icon .icon-line-subtle,
+.block-item:hover .block-icon .icon-line-subtle {
+  opacity: 0.8;
+  stroke-width: 1.3;
+}
+
+.group:hover .block-icon .icon-dot,
+.block-icon-wrapper:hover .block-icon .icon-dot,
+[data-block-id]:hover .block-icon .icon-dot,
+button:hover .block-icon .icon-dot,
+.block-item:hover .block-icon .icon-dot {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* Additional hover states for specific contexts */
+div:hover > .block-icon-wrapper,
+li:hover > .block-icon-wrapper,
+tr:hover > .block-icon-wrapper {
+  color: #4b5563;
+}
+
+div:hover > .block-icon-wrapper .block-icon,
+li:hover > .block-icon-wrapper .block-icon,
+tr:hover > .block-icon-wrapper .block-icon {
+  transform: scale(1.08);
+}
+
+/* Insertion Point Arrow Animation */
+@keyframes insertionPointNudge {
+  0%, 100% {
+    transform: translateX(0px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+/* Sidebar Panel Animations */
+/* Open: ease-out, 200ms */
+@keyframes slideInRightFade {
+  from {
+    transform: translateX(18px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Close: ease-in, 160ms (faster) */
+@keyframes slideOutRightFade {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(18px);
+    opacity: 0;
+  }
+}
+
+/* Block Highlight Animation - for newly created blocks */
+@keyframes blockHighlightNew {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+    outline: 2px solid rgba(59, 130, 246, 0.5);
+    outline-offset: 2px;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.3);
+    outline: 2px solid rgba(59, 130, 246, 0.8);
+    outline-offset: 4px;
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    outline: 2px solid rgba(59, 130, 246, 0);
+    outline-offset: 2px;
+  }
+}
+
+.block-highlight-new {
+  animation: blockHighlightNew 2s ease-out;
+  border-radius: 4px;
+}
+
+/* Jade stone animations */
+@keyframes jadeCreases {
+  0%, 100% {
+    background-position: 0% 0%, 0% 0%, 0% 0%, 0% 0%;
+  }
+  25% {
+    background-position: 20% 10%, -10% 20%, 15% -5%, -5% 15%;
+  }
+  50% {
+    background-position: 40% 20%, -20% 40%, 30% -10%, -10% 30%;
+  }
+  75% {
+    background-position: 20% 10%, -10% 20%, 15% -5%, -5% 15%;
+  }
+}
+
+@keyframes jadeGlow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.animate-jade-creases {
+  animation: jadeCreases 8s ease-in-out infinite;
+}
+
+.animate-jade-glow {
+  animation: jadeGlow 2s ease-in-out infinite;
+}
+
+/* Hide scrollbar but keep scrolling functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+

@@ -1,0 +1,211 @@
+# ================================
+# CURSOR RULES — GLOBAL CONTRACT
+# ================================
+
+ALWAYS read /_tools/CURSOR_RULES/CURSOR_RULES.md.
+
+Interpretation:
+- Cognitive, safety, and decision-making rules apply in ALL modes.
+- Execution, implementation, and code-output rules apply ONLY in MODE: CODE.
+- All applicable rules remain NON-NEGOTIABLE within their scope.
+
+If a task-specific prompt conflicts with these rules:
+- Explain the conflict clearly
+- Propose the safest compliant approach (Option A)
+- If ambiguity remains, list at most 2 minimal assumptions
+- Proceed with the most conservative, rule-compliant option
+- Do NOT invent architecture or parallel state
+
+If ambiguity exists:
+- Identify candidate files
+- State at most 2 explicit assumptions
+- Proceed with the most conservative, rule-compliant option
+
+---
+
+## INTENT GATING (MANDATORY — DEFAULT SAFE MODE)
+
+All user requests MUST be classified into exactly ONE mode:
+
+- MODE: QUESTION
+- MODE: CODE
+
+### Default Rule (Conservative)
+If the user does NOT explicitly declare a mode,
+assume **MODE: QUESTION**.
+
+---
+
+## MODE: QUESTION (THINKING / REASONING ONLY)
+
+When MODE: QUESTION is active:
+
+- DO NOT generate, modify, or suggest code
+- DO NOT propose file changes
+- Do NOT invent architecture, state, abstractions, APIs, or data contracts
+- DO NOT infer implementation intent
+- Focus ONLY on:
+  - reasoning
+  - trade-offs
+  - risks
+  - architectural guidance
+  - validation of ideas
+- It is valid and acceptable to conclude with:
+  - “Do nothing yet”
+  - “Decision deferred”
+  - “Insufficient signal to act”
+
+MODE: QUESTION prioritizes clarity over output.
+
+---
+
+## MODE: CODE (EXPLICIT ONLY)
+
+MODE: CODE is active ONLY when one of the following is true:
+
+- The user explicitly declares:
+  - `MODE: CODE`
+- OR the user uses an unambiguous code directive such as:
+  - “Fix:”
+  - “Implement:”
+  - “Refactor:”
+  - “Update file:”
+  - “Generate code:”
+
+If MODE is ambiguous:
+- STOP
+- Ask the user to declare MODE explicitly
+- Do NOT infer intent or proceed conditionally
+
+---
+
+## HARD SAFETY RULE (NON-NEGOTIABLE)
+
+Under NO circumstances may code be generated, modified,
+or suggested unless MODE: CODE is explicitly active.
+
+---
+
+## SAFETY GUARANTEES (ALL MODES)
+
+- Never change behavior or UI unless explicitly requested
+- Preserve existing patterns and `className={classes.*}` usage  
+  ⚠ Warn if styles might be removed
+- Do NOT invent parallel state or architecture
+
+---
+
+## EXECUTION DISCIPLINE (MODE: CODE ONLY)
+
+When MODE: CODE is active:
+
+- Output FULL files when editing
+- One intent per change
+- Changes must be minimal and scoped
+- Do NOT refactor unless explicitly requested
+- Do NOT remove unused code unless moved and printed
+- Maintain performance safety
+- Maintain strict typing
+
+### File Size & Composition Discipline
+- Components ≤ 300 lines
+- Hooks ≤ 500 lines
+- Services ≤ 400 lines
+- Pages ≤ 600 lines
+- Extract based on complexity, not just size
+
+---
+
+## PRE-FLIGHT CHECK (MANDATORY — MODE: CODE ONLY)
+
+Before presenting final output:
+
+- Perform the PRE-FLIGHT CHECK defined in /_tools/CURSOR_RULES/CURSOR_RULES.md
+- Re-scan for any union types:
+  - `T | undefined`
+  - `T | null | undefined`
+- Ensure all such cases are:
+  - Guarded
+  - Defaulted
+  - Or asserted with documented invariants
+- Ensure no new TypeScript errors under:
+  - `strict: true`
+  - `strictNullChecks: true`
+- Ensure no UI or behavioral regressions unless explicitly requested
+
+---
+
+## WHEN TEMPTED TO BE CLEVER
+
+Stop.
+Choose clarity.
+Choose the simplest thing that holds under change.
+
+Your job is to keep the system calm, safe, and easy to evolve.
+No excuses.
+
+---
+
+# 🔒 PHASE 1 — SECURE APP SHELL (REGRESSION LOCK)
+
+The following architectural rules are FINAL and IMMUTABLE.
+If a requested change would violate ANY rule below:
+
+→ **DO NOT APPLY THE CHANGE**  
+→ Report the file as: **MULTI-BUCKET — DEFERRED**
+
+## AUTHORITY (NON-NEGOTIABLE)
+
+- `activeOrgId` MUST come ONLY from `OrgSessionProvider`
+- Pages MUST NOT use `params.orgId` as authority
+- `params.orgId` MUST NEVER be reintroduced
+
+## PAGE RESPONSIBILITY
+
+- Pages declare intent ONLY
+- Pages MUST NOT fetch data
+- Pages MUST NOT call APIs directly
+
+## DATA FLOW (STRICT OWNERSHIP)
+
+- List APIs → `MetadataIndexProvider` ONLY
+- Detail APIs → `HydratedContentProvider` ONLY
+- App discovery → `InstalledAppsSessionProvider` ONLY
+- Auth APIs → `AuthSessionProvider` ONLY
+
+## MULTI-BUCKET RULE
+
+If a file violates MORE THAN ONE bucket:
+
+- DO NOT partially fix
+- DO NOT refactor incrementally
+- DO NOT move calls blindly
+- Mark as **MULTI-BUCKET — DEFERRED**
+- Skip modification entirely
+
+## FIX SCOPE DISCIPLINE
+
+- Fix ONLY the bucket explicitly requested
+- NEVER fix adjacent buckets opportunistically
+- NEVER expand scope beyond instruction
+
+## PROVIDER INTEGRITY
+
+- Providers MUST reset on org change or logout
+- No silent hydration
+- No background fetching
+- No persistence (memory-only)
+- Only ONE active app at a time
+
+## SAFETY CHECK BEFORE COMMIT
+
+Before finalizing changes, verify:
+
+- No new API calls added to pages
+- No reintroduction of `params.orgId`
+- No provider responsibility leaks
+
+If unsure:
+- STOP
+- REPORT
+- DO NOT GUESS

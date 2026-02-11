@@ -1,0 +1,24 @@
+{
+  "name": "atomicfuel-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AtomicFuel - SaaS monorepo with Next.js frontend and Express backend",
+  "scripts": {
+    "dev": "pnpm dev:backend & pnpm dev:frontend",
+    "dev:backend": "pnpm --filter backend-node dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm --filter backend-node build && pnpm --filter frontend build",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
+

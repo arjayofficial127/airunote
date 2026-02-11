@@ -1,0 +1,68 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "react-hooks/exhaustive-deps": "error"
+  },
+
+  "overrides": [
+    {
+      "files": [
+        "app/**/*.tsx",
+        "app/**/*.ts",
+        "components/**/*.tsx",
+        "components/**/*.ts"
+      ],
+      "excludedFiles": [
+        "**/providers/**/*",
+        "**/services/**/*",
+        "**/hooks/**/*",
+        "**/contexts/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "warn",
+          {
+            "paths": [
+              {
+                "name": "@/lib/api/posts",
+                "message": "⚠️ Direct API import discouraged. Use HydratedContentProvider for post details or MetadataIndexProvider for post lists. Type-only imports are allowed."
+              },
+              {
+                "name": "@/lib/api/collections",
+                "message": "⚠️ Direct API import discouraged. Use HydratedContentProvider for collection details or MetadataIndexProvider for collection lists. Type-only imports are allowed."
+              },
+              {
+                "name": "@/lib/api/records",
+                "message": "⚠️ Direct API import discouraged. Use HydratedContentProvider for record details or MetadataIndexProvider for record lists. Type-only imports are allowed."
+              },
+              {
+                "name": "@/lib/api/orgs",
+                "message": "⚠️ Direct API import discouraged. Use OrgSessionProvider for org data. Type-only imports are allowed."
+              },
+              {
+                "name": "@/lib/api/auth",
+                "message": "⚠️ Direct API import discouraged. Use AuthSessionProvider for auth data. Type-only imports are allowed."
+              },
+              {
+                "name": "@/lib/api/files",
+                "message": "⚠️ Direct API import discouraged. Use MetadataIndexProvider for file lists or HydratedContentProvider for file details. Type-only imports are allowed."
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "files": [
+        "app/(auth)/**/*",
+        "app/(dashboard)/admin/**/*",
+        "**/*SiteWide*",
+        "**/*site-wide*"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
+}
