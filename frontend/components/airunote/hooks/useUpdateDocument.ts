@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getDocumentCacheKey, getTreeInvalidationKeys, getFolderDocumentsCacheKey } from '../services/airunoteCache';
+import { toast } from '@/lib/toast';
 import type { UpdateDocumentRequest, AiruDocument } from '../types';
 
 export function useUpdateDocument() {
@@ -50,6 +51,7 @@ export function useUpdateDocument() {
         );
         queryClient.setQueryData(documentKey, context.previousDocument);
       }
+      toast(error instanceof Error ? error.message : 'Failed to update document', 'error');
     },
     onSuccess: (data, variables) => {
       // Invalidate queries to refetch with real data
@@ -69,6 +71,7 @@ export function useUpdateDocument() {
       invalidationKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      toast('Document updated successfully', 'success');
     },
   });
 }

@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { toast } from '@/lib/toast';
 
 export function useDeleteFolder() {
   const queryClient = useQueryClient();
@@ -54,6 +55,7 @@ export function useDeleteFolder() {
           queryClient.setQueryData(keyArray, value);
         });
       }
+      toast(error instanceof Error ? error.message : 'Failed to delete folder', 'error');
     },
     onSuccess: (data, variables) => {
       // Invalidate all tree queries to refetch
@@ -61,6 +63,7 @@ export function useDeleteFolder() {
       invalidationKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      toast('Folder deleted successfully', 'success');
     },
   });
 }

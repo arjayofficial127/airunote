@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getTreeCacheKey, getFolderDocumentsCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { toast } from '@/lib/toast';
 import type { CreateDocumentRequest, AiruDocument } from '../types';
 
 export function useCreateDocument() {
@@ -70,6 +71,7 @@ export function useCreateDocument() {
       if (context?.previousDocuments) {
         queryClient.setQueryData(documentsKey, context.previousDocuments);
       }
+      toast(error instanceof Error ? error.message : 'Failed to create document', 'error');
     },
     onSuccess: (data, request) => {
       // Invalidate queries to refetch with real data
@@ -78,6 +80,7 @@ export function useCreateDocument() {
         queryClient.invalidateQueries({ queryKey: key });
       });
       queryClient.invalidateQueries({ queryKey: getFolderDocumentsCacheKey(request.orgId, request.userId, request.folderId) });
+      toast(`Document "${data.name}" created successfully`, 'success');
     },
   });
 }

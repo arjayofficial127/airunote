@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getDocumentCacheKey, getTreeCacheKey, getFolderDocumentsCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { toast } from '@/lib/toast';
 
 export function useDeleteDocument() {
   const queryClient = useQueryClient();
@@ -62,6 +63,7 @@ export function useDeleteDocument() {
       if (context?.previousDocuments) {
         queryClient.setQueryData(documentsKey, context.previousDocuments);
       }
+      toast(error instanceof Error ? error.message : 'Failed to delete document', 'error');
     },
     onSuccess: (data, variables) => {
       // Invalidate queries to refetch
@@ -75,6 +77,7 @@ export function useDeleteDocument() {
       queryClient.invalidateQueries({
         queryKey: getFolderDocumentsCacheKey(variables.orgId, variables.userId, variables.folderId),
       });
+      toast('Document deleted successfully', 'success');
     },
   });
 }

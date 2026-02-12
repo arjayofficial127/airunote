@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getDocumentCacheKey, getTreeInvalidationKeys, getFolderDocumentsCacheKey } from '../services/airunoteCache';
+import { toast } from '@/lib/toast';
 import type { AiruDocument } from '../types';
 
 export function useMoveDocument() {
@@ -43,6 +44,10 @@ export function useMoveDocument() {
       invalidationKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      toast('Document moved successfully', 'success');
+    },
+    onError: (error) => {
+      toast(error instanceof Error ? error.message : 'Failed to move document', 'error');
     },
   });
 }

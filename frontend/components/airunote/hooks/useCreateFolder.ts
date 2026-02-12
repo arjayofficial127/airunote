@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { toast } from '@/lib/toast';
 import type { CreateFolderRequest, AiruFolder } from '../types';
 
 export function useCreateFolder() {
@@ -52,6 +53,7 @@ export function useCreateFolder() {
         const treeKey = getTreeCacheKey(request.orgId, request.userId, request.parentFolderId);
         queryClient.setQueryData(treeKey, context.previousTree);
       }
+      toast(error instanceof Error ? error.message : 'Failed to create folder', 'error');
     },
     onSuccess: (data, request) => {
       // Invalidate tree queries to refetch with real data
@@ -59,6 +61,7 @@ export function useCreateFolder() {
       invalidationKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
+      toast(`Folder "${data.humanId}" created successfully`, 'success');
     },
   });
 }
