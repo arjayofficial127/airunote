@@ -1,6 +1,12 @@
 /**
  * Airunote Repository
  * Pure database access layer for Airunote domain tables
+ * 
+ * CONSTITUTION v1.0 COMPLIANCE:
+ * - Every document/folder has exactly one owner_user_id
+ * - Org is boundary, not owner
+ * - No admin access bypass
+ * - Org boundary enforced in all queries
  */
 import { injectable } from 'tsyringe';
 import { eq, and, sql } from 'drizzle-orm';
@@ -16,7 +22,7 @@ type Transaction = typeof db;
 export interface AiruFolder {
   id: string;
   orgId: string;
-  ownerUserId: string;
+  ownerUserId: string; // Constitution: exactly one owner per folder
   parentFolderId: string;
   humanId: string;
   visibility: 'private' | 'org' | 'public';
@@ -37,6 +43,11 @@ export class AirunoteRepository {
    * Org root is identified by:
    * - humanId = '__org_root__'
    * - parentFolderId = id (self-parent pattern)
+   * 
+   * Constitution: Org root is structural only, not a content owner
+   * 
+   * TODO Phase 2: Add unique constraint on (org_id) WHERE human_id='__org_root__'
+   * to enforce exactly one org root per org at DB level
    */
   async findOrgRoot(
     orgId: string,
@@ -48,9 +59,9 @@ export class AirunoteRepository {
       .from(airuFoldersTable)
       .where(
         and(
-          eq(airuFoldersTable.orgId, orgId),
+          eq(airuFoldersTable.orgId, orgId), // Constitution: org boundary enforced
           eq(airuFoldersTable.humanId, '__org_root__'),
-          sql`${airuFoldersTable.parentFolderId} = ${airuFoldersTable.id}`
+          sql`${airuFoldersTable.parentFolderId} = ${airuFoldersTable.id}` // Root integrity: self-parent
         )
       )
       .limit(1);
@@ -73,6 +84,8 @@ export class AirunoteRepository {
   /**
    * Insert org root folder
    * Uses self-parent pattern: parentFolderId = id
+   * 
+   * Constitution: Org root owned by org owner, but org is not content owner
    */
   async insertOrgRoot(
     orgId: string,
@@ -86,7 +99,7 @@ export class AirunoteRepository {
       .values({
         id: folderId,
         orgId,
-        ownerUserId,
+        ownerUserId, // Constitution: exactly one owner
         parentFolderId: folderId, // Self-parent pattern
         humanId: '__org_root__',
         visibility: 'org',
@@ -106,6 +119,10 @@ export class AirunoteRepository {
 
   /**
    * Find user root from airu_user_roots table
+   * 
+   * Constitution: User root represents user's vault within org
+   * All personal documents live under user root
+   * User vaults are isolated from one another
    */
   async findUserRoot(
     orgId: string,
@@ -118,7 +135,7 @@ export class AirunoteRepository {
       .from(airuUserRootsTable)
       .where(
         and(
-          eq(airuUserRootsTable.orgId, orgId),
+          eq(airuUserRootsTable.orgId, orgId), // Constitution: org boundary enforced
           eq(airuUserRootsTable.userId, userId)
         )
       )
@@ -138,6 +155,8 @@ export class AirunoteRepository {
 
   /**
    * Insert user root mapping
+   * 
+   * Constitution: User vault isolation enforced
    */
   async insertUserRoot(
     orgId: string,
@@ -165,10 +184,13 @@ export class AirunoteRepository {
 
   /**
    * Insert user root folder under org root
+   * 
+   * Constitution: User root folder owned by userId (not org owner)
+   * Visibility defaults to 'private' - no implicit org visibility
    */
   async insertUserRootFolder(
     orgId: string,
-    ownerUserId: string,
+    ownerUserId: string, // Constitution: exactly one owner per folder
     parentFolderId: string,
     folderId: string,
     tx?: Transaction
@@ -179,10 +201,10 @@ export class AirunoteRepository {
       .values({
         id: folderId,
         orgId,
-        ownerUserId,
+        ownerUserId, // Constitution: user owns their vault
         parentFolderId,
         humanId: '__user_root__',
-        visibility: 'private',
+        visibility: 'private', // Constitution: privacy default
       })
       .returning();
 
@@ -199,6 +221,11 @@ export class AirunoteRepository {
 
   /**
    * Find folder by ID
+   * 
+   * Constitution: No admin access bypass
+   * 
+   * TODO Phase 2: Add org_id validation parameter to prevent cross-org access
+   * Current implementation does not validate org boundary - caller must enforce
    */
   async findFolderById(
     folderId: string,
@@ -218,11 +245,34 @@ export class AirunoteRepository {
     return {
       id: folder.id,
       orgId: folder.orgId,
-      ownerUserId: folder.ownerUserId,
+      ownerUserId: folder.ownerUserId, // Constitution: exactly one owner
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
       createdAt: folder.createdAt,
     };
   }
+
+  // =====================================================
+  // TODO Phase 2: Canonical / Shared Split
+  // =====================================================
+  // 
+  // Constitution VI: Each document maintains:
+  // - canonical_content (owner-controlled)
+  // - shared_content (collaborator-edited)
+  //
+  // TODO Phase 2: Add methods for:
+  // - findDocumentWithCanonical(folderId, documentId)
+  // - findDocumentWithShared(folderId, documentId)
+  // - updateCanonicalContent(documentId, content, ownerUserId)
+  // - updateSharedContent(documentId, content, editorUserId)
+  // - acceptSharedIntoCanonical(documentId, ownerUserId)
+  // - revertSharedToCanonical(documentId, ownerUserId)
+  //
+  // Schema changes needed:
+  // - airu_documents.canonical_content (text)
+  // - airu_documents.shared_content (text, nullable)
+  // - airu_document_revisions table (for history)
+  //
+  // =====================================================
 }

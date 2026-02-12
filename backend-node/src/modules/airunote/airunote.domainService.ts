@@ -1,6 +1,13 @@
 /**
  * Airunote Domain Service
  * Business logic for Airunote root provisioning
+ * 
+ * CONSTITUTION v1.0 COMPLIANCE:
+ * - Ownership: Every folder has exactly one owner_user_id
+ * - Org Boundary: All operations scoped to org_id
+ * - Admin Non-Access: No admin shortcut logic
+ * - Root Integrity: Self-parent pattern enforced
+ * - Privacy Default: All user vaults start private
  */
 import { injectable, inject } from 'tsyringe';
 import { randomUUID } from 'crypto';
@@ -33,6 +40,10 @@ export class AirunoteDomainService {
   /**
    * Ensure org root exists (idempotent)
    * Creates org root folder if it doesn't exist
+   * 
+   * Constitution: Org root is structural only, not a content owner
+   * Org root owned by orgOwnerUserId, but org is not content owner
+   * 
    * @param tx Optional transaction - if provided, uses it; otherwise opens own transaction
    */
   async ensureOrgRootExists(
@@ -53,6 +64,7 @@ export class AirunoteDomainService {
 
         // Insert org root with self-parent pattern
         // parentFolderId = id (self-reference)
+        // Constitution: Root integrity enforced via self-parent pattern
         const orgRoot = await this.repository.insertOrgRoot(
           orgId,
           ownerUserId,
@@ -88,6 +100,19 @@ export class AirunoteDomainService {
   /**
    * Ensure user root exists (idempotent)
    * Creates user root folder and mapping if they don't exist
+   * 
+   * Constitution:
+   * - User root folder owned by userId (not orgOwnerUserId)
+   * - User vaults are isolated from one another
+   * - Privacy default: visibility = 'private'
+   * - Org boundary: All operations scoped to orgId
+   * 
+   * On user removal: hard delete vault
+   * TODO Phase 2: Implement user vault deletion on org removal
+   * - Delete all folders under user root (cascade)
+   * - Delete all documents under user root (cascade)
+   * - Delete airu_user_roots mapping
+   * - All shared links collapse (handled by deletion)
    */
   async ensureUserRootExists(
     orgId: string,
@@ -96,6 +121,7 @@ export class AirunoteDomainService {
   ): Promise<AiruFolder> {
     return await db.transaction(async (tx) => {
       // Ensure org root exists first (within same transaction)
+      // Constitution: Org boundary enforced - org root must exist
       await this.ensureOrgRootExists(orgId, orgOwnerUserId, tx);
 
       // Check if user root already exists
@@ -116,6 +142,12 @@ export class AirunoteDomainService {
             `User root folder not found: ${existingUserRoot.rootFolderId}`
           );
         }
+        // Constitution: Verify org boundary (folder must belong to same org)
+        if (folder.orgId !== orgId) {
+          throw new Error(
+            `User root folder org mismatch: expected ${orgId}, got ${folder.orgId}`
+          );
+        }
         return folder;
       }
 
@@ -130,16 +162,18 @@ export class AirunoteDomainService {
         const folderId = randomUUID();
 
         // Insert user root folder under org root
-        // User root folder is owned by userId (not ownerUserId)
+        // Constitution: User root folder owned by userId (not orgOwnerUserId)
+        // Constitution: Privacy default - visibility = 'private'
         const userRootFolder = await this.repository.insertUserRootFolder(
           orgId,
-          userId, // User root folder owned by the user
+          userId, // Constitution: user owns their vault
           orgRoot.id, // Parent is org root
           folderId,
           tx
         );
 
         // Insert user root mapping
+        // Constitution: User vault isolation enforced
         await this.repository.insertUserRoot(orgId, userId, folderId, tx);
 
         return userRootFolder;
@@ -158,6 +192,12 @@ export class AirunoteDomainService {
               tx
             );
             if (folder) {
+              // Constitution: Verify org boundary
+              if (folder.orgId !== orgId) {
+                throw new Error(
+                  `User root folder org mismatch: expected ${orgId}, got ${folder.orgId}`
+                );
+              }
               return folder;
             }
           }

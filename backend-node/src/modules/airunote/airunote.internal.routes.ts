@@ -1,6 +1,9 @@
 /**
  * Airunote Internal Routes
  * Temporary internal-only endpoint for testing root provisioning
+ * 
+ * TODO: Remove after Phase 2 integration
+ * This route is for development/testing only
  */
 import { Router, Request, Response } from 'express';
 import { container } from '../../core/di/container';
@@ -17,6 +20,7 @@ interface ProvisionRequest {
 router.post('/provision', async (req: Request, res: Response, next) => {
   try {
     // Production safety guard
+    // Constitution: No accidental exposure of internal routes
     if (process.env.NODE_ENV === 'production') {
       return res.status(403).json({
         success: false,
@@ -52,6 +56,7 @@ router.post('/provision', async (req: Request, res: Response, next) => {
     const domainService = container.resolve(AirunoteDomainService);
 
     // Call domain service
+    // Constitution: Org boundary enforced, ownership model respected
     const rootFolder = await domainService.ensureUserRootExists(
       body.orgId,
       body.userId,
