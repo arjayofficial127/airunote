@@ -138,7 +138,9 @@ export default function DocumentViewPage() {
         <DocumentViewer
           document={document}
           onEdit={() => setIsEditMode(true)}
-          onDelete={() => setIsDeleteModalOpen(true)}
+          onDelete={async () => {
+            setIsDeleteModalOpen(true);
+          }}
           onRename={handleRename}
           isEditMode={isEditMode}
           onSave={isEditMode ? handleSave : undefined}
@@ -165,7 +167,9 @@ export default function DocumentViewPage() {
       <DocumentEditor
         document={document}
         onSave={handleSave}
-        onDelete={() => setIsDeleteModalOpen(true)}
+        onDelete={async () => {
+          setIsDeleteModalOpen(true);
+        }}
         onRename={handleRename}
         isSaving={updateDocument.isPending}
       />
