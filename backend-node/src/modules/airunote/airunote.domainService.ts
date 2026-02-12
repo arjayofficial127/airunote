@@ -12,9 +12,14 @@
 import { injectable, inject } from 'tsyringe';
 import { randomUUID } from 'crypto';
 import { hash } from 'bcryptjs';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
-import { airuDocumentsTable } from '../../infrastructure/db/drizzle/schema';
+import {
+  airuDocumentsTable,
+  airuFoldersTable,
+  airuUserRootsTable,
+  airuSharesTable,
+} from '../../infrastructure/db/drizzle/schema';
 import {
   AirunoteRepository,
   type AiruFolder,
@@ -297,6 +302,7 @@ export class AirunoteDomainService {
   /**
    * Delete folder
    * Constitution: Root folders cannot be deleted, owner-only
+   * Phase 3: Collapse all shares on deletion
    */
   async deleteFolder(
     orgId: string,
@@ -307,8 +313,38 @@ export class AirunoteDomainService {
       // Ensure user root exists
       await this.ensureUserRootExists(orgId, userId, userId);
 
-      // Delete folder (includes validation)
+      // Verify ownership
+      const folder = await this.repository.findFolderById(folderId, tx);
+      if (!folder || folder.orgId !== orgId || folder.ownerUserId !== userId) {
+        throw new Error('Folder not found or access denied');
+      }
+
+      // Find all descendant folders (for share cleanup)
+      const descendants = await this.repository.findDescendantFolders(folderId, orgId, tx);
+
+      // Collect all target IDs (folder + descendants)
+      const targetIds = [folderId, ...descendants.map((f) => f.id)];
+
+      // Delete all shares for these folders
+      for (const targetId of targetIds) {
+        await this.repository.deleteSharesForTarget('folder', targetId, orgId, tx);
+      }
+
+      // Delete folder (includes validation, cascade deletes children)
       await this.repository.deleteFolder(folderId, orgId, userId, tx);
+
+      // Log deletion
+      await this.repository.createAuditLog(
+        {
+          orgId,
+          eventType: 'folder_deleted',
+          targetType: 'folder',
+          targetId: folderId,
+          performedByUserId: userId,
+          metadata: { folderName: folder.humanId },
+        },
+        tx
+      );
     });
   }
 
@@ -479,6 +515,7 @@ export class AirunoteDomainService {
   /**
    * Delete user document
    * Constitution: Owner-only operation, hard delete
+   * Phase 3: Collapse all shares on deletion
    */
   async deleteUserDocument(
     orgId: string,
@@ -486,8 +523,30 @@ export class AirunoteDomainService {
     documentId: string
   ): Promise<void> {
     return await db.transaction(async (tx) => {
+      // Verify ownership
+      const document = await this.repository.findDocument(documentId, orgId, userId, tx);
+      if (!document) {
+        throw new Error('Document not found or access denied');
+      }
+
+      // Delete all shares for this document
+      await this.repository.deleteSharesForTarget('document', documentId, orgId, tx);
+
       // Delete document
       await this.repository.deleteDocument(documentId, orgId, userId, tx);
+
+      // Log deletion
+      await this.repository.createAuditLog(
+        {
+          orgId,
+          eventType: 'document_deleted',
+          targetType: 'document',
+          targetId: documentId,
+          performedByUserId: userId,
+          metadata: { documentName: document.name },
+        },
+        tx
+      );
     });
   }
 
@@ -876,12 +935,154 @@ export class AirunoteDomainService {
       }
     }
 
-    return {
-      targetType: share.targetType,
-      targetId: share.targetId,
-      orgId: share.orgId,
-      viewOnly: share.viewOnly,
-      shareId: share.id,
-    };
+      return {
+        targetType: share.targetType,
+        targetId: share.targetId,
+        orgId: share.orgId,
+        viewOnly: share.viewOnly,
+        shareId: share.id,
+      };
+    }
+
+  // =====================================================
+  // PHASE 3: Vault Deletion & Lifecycle
+  // =====================================================
+
+  /**
+   * Delete user vault (hard delete)
+   * Constitution: Removal = destruction of owned vault
+   * 
+   * This method performs a complete hard delete of a user's vault:
+   * - Deletes all folders under user root (cascade)
+   * - Deletes all documents under user root (cascade)
+   * - Deletes all shares where user is owner
+   * - Deletes all links where user is owner
+   * - Deletes user root mapping
+   * - Creates audit log entry
+   * 
+   * Note: Admin/owner verification should be done at the route level
+   */
+  async deleteUserVault(
+    orgId: string,
+    userId: string,
+    confirmedByUserId: string
+  ): Promise<{
+    deletedFolders: number;
+    deletedDocuments: number;
+    deletedShares: number;
+    deletedLinks: number;
+  }> {
+    return await db.transaction(async (tx) => {
+      // Find user root
+      const userRoot = await this.repository.findUserRoot(orgId, userId, tx);
+      if (!userRoot) {
+        // Vault doesn't exist, return zeros
+        return {
+          deletedFolders: 0,
+          deletedDocuments: 0,
+          deletedShares: 0,
+          deletedLinks: 0,
+        };
+      }
+
+      // Find all descendant folders
+      const descendants = await this.repository.findDescendantFolders(
+        userRoot.rootFolderId,
+        orgId,
+        tx
+      );
+      const allFolderIds = [userRoot.rootFolderId, ...descendants.map((f) => f.id)];
+
+      // Count documents in all folders
+      let deletedDocuments = 0;
+      for (const folderId of allFolderIds) {
+        const documents = await tx
+          .select()
+          .from(airuDocumentsTable)
+          .where(
+            and(
+              eq(airuDocumentsTable.folderId, folderId),
+              eq(airuDocumentsTable.ownerUserId, userId)
+            )
+          );
+        deletedDocuments += documents.length;
+      }
+
+      // Delete all shares where user is owner (folders and documents)
+      const userShares = await tx
+        .select()
+        .from(airuSharesTable)
+        .where(
+          and(
+            eq(airuSharesTable.orgId, orgId),
+            eq(airuSharesTable.createdByUserId, userId)
+          )
+        );
+
+      const deletedShares = userShares.length;
+      const deletedLinks = userShares.filter((s) => s.shareType === 'link').length;
+
+      // Delete all shares for user's folders and documents
+      for (const folderId of allFolderIds) {
+        await this.repository.deleteSharesForTarget('folder', folderId, orgId, tx);
+      }
+
+      // Delete all shares where user is owner
+      await tx
+        .delete(airuSharesTable)
+        .where(
+          and(
+            eq(airuSharesTable.orgId, orgId),
+            eq(airuSharesTable.createdByUserId, userId)
+          )
+        );
+
+      // Delete user root folder (cascade deletes all children folders and documents)
+      await tx
+        .delete(airuFoldersTable)
+        .where(
+          and(
+            eq(airuFoldersTable.id, userRoot.rootFolderId),
+            eq(airuFoldersTable.orgId, orgId),
+            eq(airuFoldersTable.ownerUserId, userId)
+          )
+        );
+
+      // Delete user root mapping
+      await tx
+        .delete(airuUserRootsTable)
+        .where(
+          and(
+            eq(airuUserRootsTable.orgId, orgId),
+            eq(airuUserRootsTable.userId, userId)
+          )
+        );
+
+      // Log deletion event
+      await this.repository.createAuditLog(
+        {
+          orgId,
+          eventType: 'vault_deleted',
+          targetType: 'vault',
+          targetId: userRoot.rootFolderId,
+          performedByUserId: confirmedByUserId,
+          metadata: {
+            deletedUserId: userId,
+            deletedFolders: allFolderIds.length,
+            deletedDocuments,
+            deletedShares,
+            deletedLinks,
+          },
+        },
+        tx
+      );
+
+      return {
+        deletedFolders: allFolderIds.length,
+        deletedDocuments,
+        deletedShares,
+        deletedLinks,
+      };
+    });
   }
 }

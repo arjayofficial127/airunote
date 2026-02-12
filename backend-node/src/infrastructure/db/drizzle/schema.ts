@@ -559,3 +559,23 @@ export const airuDocumentRevisionsTable = pgTable('airu_document_revisions', {
   documentIdx: index('airu_document_revisions_document_idx').on(table.documentId),
   createdAtIdx: index('airu_document_revisions_created_at_idx').on(table.createdAt),
 }));
+
+// Airu Audit Logs table (Phase 3)
+export const airuAuditLogsTable = pgTable('airu_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  eventType: varchar('event_type', { length: 50 }).notNull(), // 'vault_deleted', 'document_deleted', 'folder_deleted', 'share_revoked', 'link_revoked'
+  targetType: varchar('target_type', { length: 50 }), // 'folder', 'document', 'vault', 'share', 'link'
+  targetId: uuid('target_id'),
+  performedByUserId: uuid('performed_by_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  orgIdx: index('airu_audit_logs_org_idx').on(table.orgId),
+  eventTypeIdx: index('airu_audit_logs_event_type_idx').on(table.eventType),
+  createdAtIdx: index('airu_audit_logs_created_at_idx').on(table.createdAt),
+}));

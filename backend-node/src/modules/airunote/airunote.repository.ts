@@ -17,6 +17,7 @@ import {
   airuDocumentsTable,
   airuSharesTable,
   airuDocumentRevisionsTable,
+  airuAuditLogsTable,
 } from '../../infrastructure/db/drizzle/schema';
 
 // Transaction type - drizzle transactions have the same interface as db
@@ -90,6 +91,17 @@ export interface AiruRevision {
   contentType: 'canonical' | 'shared';
   content: string;
   createdByUserId: string;
+  createdAt: Date;
+}
+
+export interface AiruAuditLog {
+  id: string;
+  orgId: string;
+  eventType: string;
+  targetType: string | null;
+  targetId: string | null;
+  performedByUserId: string;
+  metadata: Record<string, unknown> | null;
   createdAt: Date;
 }
 
@@ -1609,6 +1621,124 @@ export class AirunoteRepository {
       contentType: inserted.contentType as 'canonical' | 'shared',
       content: inserted.content,
       createdByUserId: inserted.createdByUserId,
+      createdAt: inserted.createdAt,
+    };
+  }
+
+  // =====================================================
+  // PHASE 3: Lifecycle & Audit Operations
+  // =====================================================
+
+  /**
+   * Find all descendant folders recursively
+   * Constitution: Used for share cleanup on folder deletion
+   */
+  async findDescendantFolders(
+    folderId: string,
+    orgId: string,
+    tx?: Transaction
+  ): Promise<AiruFolder[]> {
+    const dbInstance = tx ?? db;
+    const descendants: AiruFolder[] = [];
+    const maxDepth = 20;
+    let depth = 0;
+
+    const collectDescendants = async (parentId: string): Promise<void> => {
+      if (depth > maxDepth) {
+        return;
+      }
+
+      const children = await dbInstance
+        .select()
+        .from(airuFoldersTable)
+        .where(
+          and(
+            eq(airuFoldersTable.parentFolderId, parentId),
+            eq(airuFoldersTable.orgId, orgId) // Constitution: org boundary
+          )
+        );
+
+      for (const child of children) {
+        const folder: AiruFolder = {
+          id: child.id,
+          orgId: child.orgId,
+          ownerUserId: child.ownerUserId,
+          parentFolderId: child.parentFolderId,
+          humanId: child.humanId,
+          visibility: child.visibility as 'private' | 'org' | 'public',
+          createdAt: child.createdAt,
+        };
+        descendants.push(folder);
+        depth++;
+        await collectDescendants(child.id);
+        depth--;
+      }
+    };
+
+    await collectDescendants(folderId);
+    return descendants;
+  }
+
+  /**
+   * Delete all shares for target
+   * Constitution: Shares collapse when resource is deleted
+   */
+  async deleteSharesForTarget(
+    targetType: 'folder' | 'document',
+    targetId: string,
+    orgId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const dbInstance = tx ?? db;
+
+    await dbInstance
+      .delete(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.targetType, targetType),
+          eq(airuSharesTable.targetId, targetId),
+          eq(airuSharesTable.orgId, orgId) // Constitution: org boundary
+        )
+      );
+  }
+
+  /**
+   * Create audit log entry
+   * Constitution: Track all destructive events
+   */
+  async createAuditLog(
+    log: {
+      orgId: string;
+      eventType: 'vault_deleted' | 'document_deleted' | 'folder_deleted' | 'share_revoked' | 'link_revoked';
+      targetType?: 'folder' | 'document' | 'vault' | 'share' | 'link';
+      targetId?: string;
+      performedByUserId: string;
+      metadata?: Record<string, unknown>;
+    },
+    tx?: Transaction
+  ): Promise<AiruAuditLog> {
+    const dbInstance = tx ?? db;
+
+    const [inserted] = await dbInstance
+      .insert(airuAuditLogsTable)
+      .values({
+        orgId: log.orgId,
+        eventType: log.eventType,
+        targetType: log.targetType || null,
+        targetId: log.targetId || null,
+        performedByUserId: log.performedByUserId,
+        metadata: log.metadata || null,
+      })
+      .returning();
+
+    return {
+      id: inserted.id,
+      orgId: inserted.orgId,
+      eventType: inserted.eventType,
+      targetType: inserted.targetType,
+      targetId: inserted.targetId,
+      performedByUserId: inserted.performedByUserId,
+      metadata: inserted.metadata as Record<string, unknown> | null,
       createdAt: inserted.createdAt,
     };
   }

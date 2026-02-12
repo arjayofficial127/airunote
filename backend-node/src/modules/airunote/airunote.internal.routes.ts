@@ -528,4 +528,77 @@ router.get('/folder/:folderId/documents', async (req: Request, res: Response, ne
   }
 });
 
+// =====================================================
+// PHASE 3: Vault Deletion Route
+// =====================================================
+
+interface DeleteVaultRequest {
+  orgId: string;
+  userId: string; // user to remove
+  confirmedByUserId: string; // admin/owner confirming
+  confirmation: string; // must be 'DELETE_VAULT_PERMANENTLY'
+}
+
+router.post('/vault/delete', async (req: Request, res: Response, next) => {
+  try {
+    if (checkProduction(res)) return;
+
+    const body = req.body as DeleteVaultRequest;
+
+    if (!body.orgId || typeof body.orgId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'orgId is required and must be a string', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    if (!body.userId || typeof body.userId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'userId is required and must be a string', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    if (!body.confirmedByUserId || typeof body.confirmedByUserId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'confirmedByUserId is required and must be a string', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    // Constitution: Explicit confirmation string required
+    if (body.confirmation !== 'DELETE_VAULT_PERMANENTLY') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Confirmation string must exactly match "DELETE_VAULT_PERMANENTLY"',
+          code: 'VALIDATION_ERROR',
+        },
+      });
+    }
+
+    // Note: Admin/owner verification should be done at route level with middleware
+    // For internal route, we'll skip this check but document it
+
+    const domainService = container.resolve(AirunoteDomainService);
+    const result = await domainService.deleteUserVault(
+      body.orgId,
+      body.userId,
+      body.confirmedByUserId
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        deletedFolders: result.deletedFolders,
+        deletedDocuments: result.deletedDocuments,
+        deletedShares: result.deletedShares,
+        deletedLinks: result.deletedLinks,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
