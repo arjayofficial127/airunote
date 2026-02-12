@@ -5,7 +5,23 @@
 import { injectable, inject } from 'tsyringe';
 import { randomUUID } from 'crypto';
 import { db } from '../../infrastructure/db/drizzle/client';
-import { AirunoteRepository, type AiruFolder, type AiruUserRoot } from './airunote.repository';
+import { AirunoteRepository, type AiruFolder } from './airunote.repository';
+
+// Transaction type - drizzle transactions have the same interface as db
+type Transaction = typeof db;
+
+/**
+ * Type guard for Postgres unique constraint violation errors
+ */
+function isUniqueConstraintError(error: unknown): error is { code: string } {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    typeof (error as { code: unknown }).code === 'string' &&
+    (error as { code: string }).code === '23505'
+  );
+}
 
 @injectable()
 export class AirunoteDomainService {
@@ -17,14 +33,16 @@ export class AirunoteDomainService {
   /**
    * Ensure org root exists (idempotent)
    * Creates org root folder if it doesn't exist
+   * @param tx Optional transaction - if provided, uses it; otherwise opens own transaction
    */
   async ensureOrgRootExists(
     orgId: string,
-    ownerUserId: string
+    ownerUserId: string,
+    tx?: Transaction
   ): Promise<AiruFolder> {
-    return await db.transaction(async (tx) => {
+    const executeInTransaction = async (transaction: Transaction) => {
       // Check if org root already exists
-      const existing = await this.repository.findOrgRoot(orgId, tx);
+      const existing = await this.repository.findOrgRoot(orgId, transaction);
       if (existing) {
         return existing;
       }
@@ -39,27 +57,32 @@ export class AirunoteDomainService {
           orgId,
           ownerUserId,
           folderId,
-          tx
+          transaction
         );
 
         return orgRoot;
       } catch (error: unknown) {
         // Handle race condition: another process may have created it
-        if (
-          error &&
-          typeof error === 'object' &&
-          'code' in error &&
-          error.code === '23505' // Unique constraint violation
-        ) {
+        if (isUniqueConstraintError(error)) {
           // Re-fetch existing root
-          const existingRoot = await this.repository.findOrgRoot(orgId, tx);
+          const existingRoot = await this.repository.findOrgRoot(
+            orgId,
+            transaction
+          );
           if (existingRoot) {
             return existingRoot;
           }
         }
         throw error;
       }
-    });
+    };
+
+    // If transaction provided, use it; otherwise open new transaction
+    if (tx) {
+      return await executeInTransaction(tx);
+    }
+
+    return await db.transaction(executeInTransaction);
   }
 
   /**
@@ -71,10 +94,10 @@ export class AirunoteDomainService {
     userId: string,
     ownerUserId: string
   ): Promise<AiruFolder> {
-    // Ensure org root exists first
-    await this.ensureOrgRootExists(orgId, ownerUserId);
-
     return await db.transaction(async (tx) => {
+      // Ensure org root exists first (within same transaction)
+      await this.ensureOrgRootExists(orgId, ownerUserId, tx);
+
       // Check if user root already exists
       const existingUserRoot = await this.repository.findUserRoot(
         orgId,
@@ -107,31 +130,22 @@ export class AirunoteDomainService {
         const folderId = randomUUID();
 
         // Insert user root folder under org root
+        // User root folder is owned by userId (not ownerUserId)
         const userRootFolder = await this.repository.insertUserRootFolder(
           orgId,
-          ownerUserId,
+          userId, // User root folder owned by the user
           orgRoot.id, // Parent is org root
           folderId,
           tx
         );
 
         // Insert user root mapping
-        await this.repository.insertUserRoot(
-          orgId,
-          userId,
-          folderId,
-          tx
-        );
+        await this.repository.insertUserRoot(orgId, userId, folderId, tx);
 
         return userRootFolder;
       } catch (error: unknown) {
         // Handle race condition: another process may have created it
-        if (
-          error &&
-          typeof error === 'object' &&
-          'code' in error &&
-          error.code === '23505' // Unique constraint violation
-        ) {
+        if (isUniqueConstraintError(error)) {
           // Re-fetch existing user root
           const existingUserRoot = await this.repository.findUserRoot(
             orgId,
