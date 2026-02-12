@@ -6,7 +6,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useAirunoteTree } from '@/components/airunote/hooks/useAirunoteTree';
@@ -28,6 +28,7 @@ import type { AiruFolder, AiruDocument } from '@/components/airunote/types';
 
 export default function FolderViewPage() {
   const params = useParams();
+  const router = useRouter();
   const folderId = params.folderId as string;
   const orgIdFromParams = params.orgId as string;
 
