@@ -92,11 +92,11 @@ export class AirunoteDomainService {
   async ensureUserRootExists(
     orgId: string,
     userId: string,
-    ownerUserId: string
+    orgOwnerUserId: string
   ): Promise<AiruFolder> {
     return await db.transaction(async (tx) => {
       // Ensure org root exists first (within same transaction)
-      await this.ensureOrgRootExists(orgId, ownerUserId, tx);
+      await this.ensureOrgRootExists(orgId, orgOwnerUserId, tx);
 
       // Check if user root already exists
       const existingUserRoot = await this.repository.findUserRoot(

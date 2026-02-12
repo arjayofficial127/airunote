@@ -11,11 +11,19 @@ const router: ReturnType<typeof Router> = Router();
 interface ProvisionRequest {
   orgId: string;
   userId: string;
-  ownerUserId: string;
+  orgOwnerUserId: string;
 }
 
 router.post('/provision', async (req: Request, res: Response, next) => {
   try {
+    // Production safety guard
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Internal route disabled in production', code: 'FORBIDDEN' },
+      });
+    }
+
     const body = req.body as ProvisionRequest;
 
     // Basic validation
@@ -33,10 +41,10 @@ router.post('/provision', async (req: Request, res: Response, next) => {
       });
     }
 
-    if (!body.ownerUserId || typeof body.ownerUserId !== 'string') {
+    if (!body.orgOwnerUserId || typeof body.orgOwnerUserId !== 'string') {
       return res.status(400).json({
         success: false,
-        error: { message: 'ownerUserId is required and must be a string', code: 'VALIDATION_ERROR' },
+        error: { message: 'orgOwnerUserId is required and must be a string', code: 'VALIDATION_ERROR' },
       });
     }
 
@@ -47,7 +55,7 @@ router.post('/provision', async (req: Request, res: Response, next) => {
     const rootFolder = await domainService.ensureUserRootExists(
       body.orgId,
       body.userId,
-      body.ownerUserId
+      body.orgOwnerUserId
     );
 
     // Return created root folder

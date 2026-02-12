@@ -3,7 +3,7 @@
  * Pure database access layer for Airunote domain tables
  */
 import { injectable } from 'tsyringe';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   airuFoldersTable,
@@ -34,7 +34,9 @@ export interface AiruUserRoot {
 export class AirunoteRepository {
   /**
    * Find org root folder by orgId
-   * Org root is identified by humanId = '__org_root__'
+   * Org root is identified by:
+   * - humanId = '__org_root__'
+   * - parentFolderId = id (self-parent pattern)
    */
   async findOrgRoot(
     orgId: string,
@@ -47,7 +49,8 @@ export class AirunoteRepository {
       .where(
         and(
           eq(airuFoldersTable.orgId, orgId),
-          eq(airuFoldersTable.humanId, '__org_root__')
+          eq(airuFoldersTable.humanId, '__org_root__'),
+          sql`${airuFoldersTable.parentFolderId} = ${airuFoldersTable.id}`
         )
       )
       .limit(1);
