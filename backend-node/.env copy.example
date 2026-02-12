@@ -1,0 +1,18 @@
+﻿# Database
+DATABASE_URL=postgresql://baseofui:baseofui@localhost:5432/baseofui
+
+# JWT Secrets (change these in production!)
+JWT_ACCESS_SECRET=changeme-access-secret-key-min-32-chars
+JWT_REFRESH_SECRET=changeme-refresh-secret-key-min-32-chars
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+
+# API
+API_PORT=4000
+NODE_ENV=development
+
+# Registration Secret (change this!)
+REGISTRATION_SECRET=changeme-registration-secret
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:3000

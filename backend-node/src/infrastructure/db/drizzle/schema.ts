@@ -416,3 +416,93 @@ export const orgFileLinksTable = pgTable('org_file_links', {
   codeIdx: index('org_file_links_code_idx').on(table.code),
   fileIdx: index('org_file_links_file_idx').on(table.fileId),
 }));
+
+// Airunote Enums
+export const airuVisibilityEnum = pgEnum('airu_visibility', ['private', 'org', 'public']);
+export const airuDocumentTypeEnum = pgEnum('airu_document_type', ['TXT', 'MD', 'RTF']);
+export const airuDocumentStateEnum = pgEnum('airu_document_state', ['active', 'archived', 'trashed']);
+export const airuShortcutTargetTypeEnum = pgEnum('airu_shortcut_target_type', ['folder', 'document']);
+
+// Airu Folders table
+export const airuFoldersTable = pgTable('airu_folders', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  ownerUserId: uuid('owner_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  parentFolderId: uuid('parent_folder_id')
+    .notNull()
+    .references(() => airuFoldersTable.id, { onDelete: 'restrict' }),
+  humanId: varchar('human_id', { length: 255 }).notNull(),
+  visibility: airuVisibilityEnum('visibility').notNull().default('private'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  orgIdx: index('airu_folders_org_idx').on(table.orgId),
+  parentFolderIdx: index('airu_folders_parent_folder_idx').on(table.parentFolderId),
+  uniqueOrgOwnerParentHuman: unique('airu_folders_org_owner_parent_human_unique').on(
+    table.orgId,
+    table.ownerUserId,
+    table.parentFolderId,
+    table.humanId
+  ),
+}));
+
+// Airu Documents table
+export const airuDocumentsTable = pgTable('airu_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  folderId: uuid('folder_id')
+    .notNull()
+    .references(() => airuFoldersTable.id, { onDelete: 'cascade' }),
+  ownerUserId: uuid('owner_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  type: airuDocumentTypeEnum('type').notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  visibility: airuVisibilityEnum('visibility').notNull().default('private'),
+  state: airuDocumentStateEnum('state').notNull().default('active'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  folderIdx: index('airu_documents_folder_idx').on(table.folderId),
+  ownerIdx: index('airu_documents_owner_idx').on(table.ownerUserId),
+  stateIdx: index('airu_documents_state_idx').on(table.state),
+  uniqueFolderName: unique('airu_documents_folder_name_unique').on(table.folderId, table.name),
+}));
+
+// Airu Shortcuts table
+export const airuShortcutsTable = pgTable('airu_shortcuts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  ownerUserId: uuid('owner_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  targetType: airuShortcutTargetTypeEnum('target_type').notNull(),
+  targetId: uuid('target_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  orgIdx: index('airu_shortcuts_org_idx').on(table.orgId),
+  ownerIdx: index('airu_shortcuts_owner_idx').on(table.ownerUserId),
+  targetIdx: index('airu_shortcuts_target_idx').on(table.targetType, table.targetId),
+}));
+
+// Airu User Roots table
+export const airuUserRootsTable = pgTable('airu_user_roots', {
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  rootFolderId: uuid('root_folder_id')
+    .notNull()
+    .references(() => airuFoldersTable.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  uniqueOrgUser: unique('airu_user_roots_org_user_unique').on(table.orgId, table.userId),
+}));
