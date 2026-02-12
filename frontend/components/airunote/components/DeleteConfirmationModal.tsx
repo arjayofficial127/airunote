@@ -41,7 +41,7 @@ export function DeleteConfirmationModal({
         <h2 className="text-xl font-bold mb-4">{title}</h2>
         <p className="text-gray-700 mb-2">{message}</p>
         <p className="text-sm font-medium text-gray-900 mb-6">
-          "{itemName}"
+          &ldquo;{itemName}&rdquo;
         </p>
         <div className="flex justify-end space-x-3">
           <button

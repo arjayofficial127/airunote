@@ -107,7 +107,7 @@ export function MoveFolderModal({
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="parentFolder" className="block text-sm font-medium text-gray-700 mb-2">
-              Move "{folder.humanId}" to:
+              Move &ldquo;{folder.humanId}&rdquo; to:
             </label>
             <select
               id="parentFolder"

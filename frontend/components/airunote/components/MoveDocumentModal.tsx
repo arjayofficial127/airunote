@@ -101,7 +101,7 @@ export function MoveDocumentModal({
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="folderId" className="block text-sm font-medium text-gray-700 mb-2">
-              Move "{document.name}" to:
+              Move &ldquo;{document.name}&rdquo; to:
             </label>
             <select
               id="folderId"
