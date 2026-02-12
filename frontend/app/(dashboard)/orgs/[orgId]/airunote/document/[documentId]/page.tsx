@@ -36,7 +36,7 @@ export default function DocumentViewPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Fetch document
-  const { data: document, isLoading, error } = useAirunoteDocument(orgId, userId, documentId);
+  const { data: document, isLoading, error } = useAirunoteDocument(orgId ?? null, userId ?? null, documentId ?? null);
   const updateDocument = useUpdateDocument();
   const deleteDocument = useDeleteDocument();
 

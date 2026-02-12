@@ -8,8 +8,8 @@ import { getTreeCacheKey } from '../services/airunoteCache';
 import type { FolderTreeResponse } from '../types';
 
 export function useAirunoteTree(
-  orgId: string | null,
-  userId: string | null,
+  orgId: string | null | undefined,
+  userId: string | null | undefined,
   parentFolderId?: string
 ) {
   return useQuery<FolderTreeResponse, Error>({
