@@ -12,7 +12,12 @@
 import { injectable, inject } from 'tsyringe';
 import { randomUUID } from 'crypto';
 import { db } from '../../infrastructure/db/drizzle/client';
-import { AirunoteRepository, type AiruFolder } from './airunote.repository';
+import {
+  AirunoteRepository,
+  type AiruFolder,
+  type AiruDocument,
+  type FolderTreeResponse,
+} from './airunote.repository';
 
 // Transaction type - drizzle transactions have the same interface as db
 type Transaction = typeof db;
@@ -204,6 +209,281 @@ export class AirunoteDomainService {
         }
         throw error;
       }
+    });
+  }
+
+  // =====================================================
+  // PHASE 1: Folder Operations
+  // =====================================================
+
+  /**
+   * Create folder in user vault
+   * Constitution: User vault isolation, privacy default enforced
+   */
+  async createFolderInUserVault(
+    orgId: string,
+    userId: string,
+    parentFolderId: string,
+    humanId: string
+  ): Promise<AiruFolder> {
+    return await db.transaction(async (tx) => {
+      // Ensure user root exists (idempotent)
+      // Note: ensureUserRootExists doesn't accept tx, but it opens its own transaction
+      // This is acceptable since we're already in a transaction context
+      await this.ensureUserRootExists(orgId, userId, userId);
+
+      // Verify parent folder belongs to user and org
+      const parent = await this.repository.findFolderById(parentFolderId, tx);
+      if (!parent) {
+        throw new Error(`Parent folder not found: ${parentFolderId}`);
+      }
+      if (parent.orgId !== orgId) {
+        throw new Error(`Parent folder org mismatch: expected ${orgId}, got ${parent.orgId}`);
+      }
+      if (parent.ownerUserId !== userId) {
+        throw new Error(`Parent folder owner mismatch: expected ${userId}, got ${parent.ownerUserId}`);
+      }
+      if (parent.humanId === '__org_root__') {
+        throw new Error('Cannot create folder under org root');
+      }
+
+      // Create folder
+      return await this.repository.createFolder(orgId, userId, parentFolderId, humanId, tx);
+    });
+  }
+
+  /**
+   * Rename folder
+   * Constitution: Root folders cannot be renamed
+   */
+  async renameFolder(
+    orgId: string,
+    userId: string,
+    folderId: string,
+    newHumanId: string
+  ): Promise<AiruFolder> {
+    return await db.transaction(async (tx) => {
+      // Ensure user root exists
+      await this.ensureUserRootExists(orgId, userId, userId);
+
+      // Update folder name
+      return await this.repository.updateFolderName(folderId, orgId, userId, newHumanId, tx);
+    });
+  }
+
+  /**
+   * Move folder
+   * Constitution: Root folders cannot be moved, cycle prevention enforced
+   */
+  async moveFolder(
+    orgId: string,
+    userId: string,
+    folderId: string,
+    newParentFolderId: string
+  ): Promise<AiruFolder> {
+    return await db.transaction(async (tx) => {
+      // Ensure user root exists
+      await this.ensureUserRootExists(orgId, userId, userId);
+
+      // Move folder (includes cycle check)
+      return await this.repository.moveFolder(folderId, orgId, userId, newParentFolderId, tx);
+    });
+  }
+
+  /**
+   * Delete folder
+   * Constitution: Root folders cannot be deleted, owner-only
+   */
+  async deleteFolder(
+    orgId: string,
+    userId: string,
+    folderId: string
+  ): Promise<void> {
+    return await db.transaction(async (tx) => {
+      // Ensure user root exists
+      await this.ensureUserRootExists(orgId, userId, userId);
+
+      // Delete folder (includes validation)
+      await this.repository.deleteFolder(folderId, orgId, userId, tx);
+    });
+  }
+
+  /**
+   * List user folder tree
+   * Constitution: Org boundary and owner isolation enforced
+   */
+  async listUserFolderTree(
+    orgId: string,
+    userId: string,
+    parentFolderId?: string
+  ): Promise<FolderTreeResponse> {
+    // Ensure user root exists
+    const userRoot = await this.ensureUserRootExists(orgId, userId, userId);
+
+    // Use provided parent or user root
+    const rootFolderId = parentFolderId || userRoot.id;
+
+    // Verify parent belongs to user and org
+    const parent = await this.repository.findFolderById(rootFolderId);
+    if (!parent) {
+      throw new Error(`Parent folder not found: ${rootFolderId}`);
+    }
+    if (parent.orgId !== orgId) {
+      throw new Error(`Parent folder org mismatch: expected ${orgId}, got ${parent.orgId}`);
+    }
+    if (parent.ownerUserId !== userId) {
+      throw new Error(`Parent folder owner mismatch: expected ${userId}, got ${parent.ownerUserId}`);
+    }
+
+    // Build tree
+    return await this.repository.findFolderTree(orgId, userId, rootFolderId);
+  }
+
+  // =====================================================
+  // PHASE 1: Document Operations
+  // =====================================================
+
+  /**
+   * Create user document
+   * Constitution: Privacy default = 'private', owner isolation enforced
+   */
+  async createUserDocument(
+    orgId: string,
+    userId: string,
+    folderId: string,
+    name: string,
+    content: string,
+    type: 'TXT' | 'MD' | 'RTF'
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Ensure user root exists
+      await this.ensureUserRootExists(orgId, userId, userId);
+
+      // Verify folder belongs to user and org
+      const folder = await this.repository.findFolderById(folderId, tx);
+      if (!folder) {
+        throw new Error(`Folder not found: ${folderId}`);
+      }
+      if (folder.orgId !== orgId) {
+        throw new Error(`Folder org mismatch: expected ${orgId}, got ${folder.orgId}`);
+      }
+      if (folder.ownerUserId !== userId) {
+        throw new Error(`Folder owner mismatch: expected ${userId}, got ${folder.ownerUserId}`);
+      }
+
+      // Create document
+      return await this.repository.createDocument(
+        folderId,
+        orgId,
+        userId,
+        name,
+        content,
+        type,
+        tx
+      );
+    });
+  }
+
+  /**
+   * Get user document
+   * Constitution: Org boundary and owner isolation enforced
+   */
+  async getUserDocument(
+    orgId: string,
+    userId: string,
+    documentId: string
+  ): Promise<AiruDocument> {
+    const document = await this.repository.findDocument(documentId, orgId, userId);
+    if (!document) {
+      throw new Error(`Document not found or access denied: ${documentId}`);
+    }
+    return document;
+  }
+
+  /**
+   * List user documents in folder
+   * Constitution: Org boundary and owner isolation enforced
+   */
+  async listUserDocuments(
+    orgId: string,
+    userId: string,
+    folderId: string
+  ): Promise<AiruDocument[]> {
+    // Verify folder belongs to user and org
+    const folder = await this.repository.findFolderById(folderId);
+    if (!folder) {
+      throw new Error(`Folder not found: ${folderId}`);
+    }
+    if (folder.orgId !== orgId) {
+      throw new Error(`Folder org mismatch: expected ${orgId}, got ${folder.orgId}`);
+    }
+    if (folder.ownerUserId !== userId) {
+      throw new Error(`Folder owner mismatch: expected ${userId}, got ${folder.ownerUserId}`);
+    }
+
+    return await this.repository.findDocumentsInFolder(folderId, orgId, userId);
+  }
+
+  /**
+   * Update user document
+   * Constitution: Owner-only operation
+   */
+  async updateUserDocument(
+    orgId: string,
+    userId: string,
+    documentId: string,
+    content: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Update document content
+      return await this.repository.updateDocumentContent(documentId, orgId, userId, content, tx);
+    });
+  }
+
+  /**
+   * Rename user document
+   * Constitution: Owner-only operation
+   */
+  async renameUserDocument(
+    orgId: string,
+    userId: string,
+    documentId: string,
+    newName: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Update document name
+      return await this.repository.updateDocumentName(documentId, orgId, userId, newName, tx);
+    });
+  }
+
+  /**
+   * Move user document
+   * Constitution: Owner-only operation, org boundary enforced
+   */
+  async moveUserDocument(
+    orgId: string,
+    userId: string,
+    documentId: string,
+    newFolderId: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Move document
+      return await this.repository.moveDocument(documentId, orgId, userId, newFolderId, tx);
+    });
+  }
+
+  /**
+   * Delete user document
+   * Constitution: Owner-only operation, hard delete
+   */
+  async deleteUserDocument(
+    orgId: string,
+    userId: string,
+    documentId: string
+  ): Promise<void> {
+    return await db.transaction(async (tx) => {
+      // Delete document
+      await this.repository.deleteDocument(documentId, orgId, userId, tx);
     });
   }
 }
