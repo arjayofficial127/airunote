@@ -1,57 +1,85 @@
 /**
- * Airunote Permission Resolution
- * 
- * CONSTITUTION v1.0: Sharing Model (Access-Only)
- * 
- * Sharing expands access, not ownership.
- * - Sharing does not duplicate content
- * - Sharing does not change ownership
- * - If owner leaves and data is deleted, all shared access dies
- * - Links resolve to resource existence — deleted resource = dead link
- * 
- * TODO Phase 2: Implement permission resolution
- * 
- * Supported Modes (to be implemented):
- * - Share to specific users
- * - Share to org-wide
- * - Share publicly
- * - Share via link (with optional password)
- * - Share by view list
- * - Share by edit list
- * 
- * Rules:
- * - Admin does NOT automatically gain read access to private files
- * - Org owner ≠ data owner
- * - Multiple admins may exist; none inherit private vault access
+ * Airunote Permissions Resolver
+ * Centralized access control for Airunote resources
+ *
+ * Constitution Compliance:
+ * - Sharing Model: Access resolution based on sharing model
+ * - Admin Non-Access: No implicit read bypass for admins
+ * - Delete Privilege: Remains owner-only even with edit share
  */
+import { injectable, inject } from 'tsyringe';
+import { AirunoteRepository } from './airunote.repository';
 
-/**
- * Permission resolver interface
- * 
- * TODO Phase 2: Implement concrete permission resolver
- */
 export interface PermissionResolver {
-  /**
-   * Check if user has read access to folder/document
-   * 
-   * Constitution: Admin does NOT automatically gain read access
-   * Constitution: Org owner ≠ data owner
-   */
-  canRead(folderId: string, userId: string, orgId: string): Promise<boolean>;
+  canRead(targetType: 'folder' | 'document', targetId: string, userId: string, orgId: string): Promise<boolean>;
+  canWrite(targetType: 'folder' | 'document', targetId: string, userId: string, orgId: string): Promise<boolean>;
+  canDelete(targetType: 'folder' | 'document', targetId: string, userId: string, orgId: string): Promise<boolean>;
+}
+
+@injectable()
+export class AirunotePermissionResolver implements PermissionResolver {
+  constructor(
+    @inject(AirunoteRepository)
+    private readonly repository: AirunoteRepository
+  ) {}
 
   /**
-   * Check if user has write access to folder/document
-   * 
-   * Constitution: Only owner can hard-delete
-   * Constitution: Editors can modify shared_content only
+   * Check if user can read target
+   * Constitution: Access resolution order: owner → user share → org share → public → link
    */
-  canWrite(folderId: string, userId: string, orgId: string): Promise<boolean>;
+  async canRead(
+    targetType: 'folder' | 'document',
+    targetId: string,
+    userId: string,
+    orgId: string
+  ): Promise<boolean> {
+    const access = await this.repository.checkUserAccess(
+      targetType,
+      targetId,
+      userId,
+      orgId
+    );
+    return access.hasAccess && access.canRead;
+  }
 
   /**
-   * Check if user has delete access to folder/document
-   * 
+   * Check if user can write to target
+   * Constitution: Write access requires edit share (not view-only)
+   */
+  async canWrite(
+    targetType: 'folder' | 'document',
+    targetId: string,
+    userId: string,
+    orgId: string
+  ): Promise<boolean> {
+    const access = await this.repository.checkUserAccess(
+      targetType,
+      targetId,
+      userId,
+      orgId
+    );
+    return access.hasAccess && access.canWrite && !access.viewOnly;
+  }
+
+  /**
+   * Check if user can delete target
    * Constitution: Delete privilege remains owner-only
-   * Constitution: Editors cannot hard-delete
+   * Even with edit share, delete is owner-only
    */
-  canDelete(folderId: string, userId: string, orgId: string): Promise<boolean>;
+  async canDelete(
+    targetType: 'folder' | 'document',
+    targetId: string,
+    userId: string,
+    orgId: string
+  ): Promise<boolean> {
+    // Constitution: Delete privilege remains owner-only
+    // Even with edit share, delete is owner-only
+    if (targetType === 'folder') {
+      const folder = await this.repository.findFolderById(targetId);
+      return folder?.ownerUserId === userId && folder?.orgId === orgId;
+    } else {
+      const document = await this.repository.findDocument(targetId, orgId, userId);
+      return document?.ownerUserId === userId;
+    }
+  }
 }

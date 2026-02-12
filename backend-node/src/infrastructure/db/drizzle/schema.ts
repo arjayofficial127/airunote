@@ -422,6 +422,8 @@ export const airuVisibilityEnum = pgEnum('airu_visibility', ['private', 'org', '
 export const airuDocumentTypeEnum = pgEnum('airu_document_type', ['TXT', 'MD', 'RTF']);
 export const airuDocumentStateEnum = pgEnum('airu_document_state', ['active', 'archived', 'trashed']);
 export const airuShortcutTargetTypeEnum = pgEnum('airu_shortcut_target_type', ['folder', 'document']);
+export const airuShareTypeEnum = pgEnum('airu_share_type', ['user', 'org', 'public', 'link']);
+export const airuContentTypeEnum = pgEnum('airu_content_type', ['canonical', 'shared']);
 
 // Airu Folders table
 export const airuFoldersTable = pgTable('airu_folders', {
@@ -460,7 +462,9 @@ export const airuDocumentsTable = pgTable('airu_documents', {
     .references(() => usersTable.id, { onDelete: 'cascade' }),
   type: airuDocumentTypeEnum('type').notNull(),
   name: varchar('name', { length: 255 }).notNull(),
-  content: text('content').notNull(),
+  content: text('content'), // Made nullable for Phase 2 (deprecated in favor of canonical_content)
+  canonicalContent: text('canonical_content').notNull().default(''),
+  sharedContent: text('shared_content'), // nullable
   visibility: airuVisibilityEnum('visibility').notNull().default('private'),
   state: airuDocumentStateEnum('state').notNull().default('active'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -505,4 +509,53 @@ export const airuUserRootsTable = pgTable('airu_user_roots', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   uniqueOrgUser: unique('airu_user_roots_org_user_unique').on(table.orgId, table.userId),
+}));
+
+// Airu Shares table (Phase 2)
+export const airuSharesTable = pgTable('airu_shares', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  targetType: airuShortcutTargetTypeEnum('target_type').notNull(), // 'folder' | 'document'
+  targetId: uuid('target_id').notNull(),
+  shareType: airuShareTypeEnum('share_type').notNull(), // 'user' | 'org' | 'public' | 'link'
+  grantedToUserId: uuid('granted_to_user_id').references(() => usersTable.id, { onDelete: 'cascade' }), // nullable
+  linkCode: varchar('link_code', { length: 50 }), // nullable
+  linkPasswordHash: varchar('link_password_hash', { length: 255 }), // nullable
+  viewOnly: boolean('view_only').notNull().default(true),
+  createdByUserId: uuid('created_by_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at'), // nullable
+}, (table) => ({
+  targetIdx: index('airu_shares_target_idx').on(table.targetType, table.targetId),
+  userIdx: index('airu_shares_user_idx').on(table.grantedToUserId),
+  linkCodeIdx: index('airu_shares_link_code_idx').on(table.linkCode),
+  uniqueShare: unique('airu_shares_unique').on(
+    table.orgId,
+    table.targetType,
+    table.targetId,
+    table.shareType,
+    table.grantedToUserId,
+    table.linkCode
+  ),
+}));
+
+// Airu Document Revisions table (Phase 2)
+export const airuDocumentRevisionsTable = pgTable('airu_document_revisions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id')
+    .notNull()
+    .references(() => airuDocumentsTable.id, { onDelete: 'cascade' }),
+  contentType: airuContentTypeEnum('content_type').notNull(), // 'canonical' | 'shared'
+  content: text('content').notNull(),
+  createdByUserId: uuid('created_by_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  documentIdx: index('airu_document_revisions_document_idx').on(table.documentId),
+  createdAtIdx: index('airu_document_revisions_created_at_idx').on(table.createdAt),
 }));

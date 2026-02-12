@@ -9,12 +9,14 @@
  * - Org boundary enforced in all queries
  */
 import { injectable } from 'tsyringe';
-import { eq, and, sql, ne, or, desc } from 'drizzle-orm';
+import { eq, and, sql, ne, or, desc, isNull, gt, lt } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   airuFoldersTable,
   airuUserRootsTable,
   airuDocumentsTable,
+  airuSharesTable,
+  airuDocumentRevisionsTable,
 } from '../../infrastructure/db/drizzle/schema';
 
 // Transaction type - drizzle transactions have the same interface as db
@@ -43,7 +45,9 @@ export interface AiruDocument {
   ownerUserId: string;
   type: 'TXT' | 'MD' | 'RTF';
   name: string;
-  content: string;
+  content: string; // Always use canonicalContent from DB, fallback to content if needed
+  canonicalContent?: string; // Phase 2: canonical content
+  sharedContent?: string | null; // Phase 2: shared content (nullable)
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
   createdAt: Date;
@@ -54,6 +58,39 @@ export interface FolderTreeResponse {
   folders: AiruFolder[];
   documents: AiruDocument[];
   children: FolderTreeResponse[];
+}
+
+export interface AiruShare {
+  id: string;
+  orgId: string;
+  targetType: 'folder' | 'document';
+  targetId: string;
+  shareType: 'user' | 'org' | 'public' | 'link';
+  grantedToUserId: string | null;
+  linkCode: string | null;
+  linkPasswordHash: string | null;
+  viewOnly: boolean;
+  createdByUserId: string;
+  createdAt: Date;
+  expiresAt: Date | null;
+}
+
+export interface AccessResult {
+  hasAccess: boolean;
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+  shareType?: 'user' | 'org' | 'public' | 'link';
+  viewOnly?: boolean;
+}
+
+export interface AiruRevision {
+  id: string;
+  documentId: string;
+  contentType: 'canonical' | 'shared';
+  content: string;
+  createdByUserId: string;
+  createdAt: Date;
 }
 
 @injectable()
@@ -610,7 +647,9 @@ export class AirunoteRepository {
         ownerUserId: doc.ownerUserId,
         type: doc.type as 'TXT' | 'MD' | 'RTF',
         name: doc.name,
-        content: doc.content,
+        content: doc.canonicalContent || doc.content || '', // Use canonicalContent, fallback to content
+        canonicalContent: doc.canonicalContent || undefined,
+        sharedContent: doc.sharedContent,
         visibility: doc.visibility as 'private' | 'org' | 'public',
         state: doc.state as 'active' | 'archived' | 'trashed',
         createdAt: doc.createdAt,
@@ -717,7 +756,8 @@ export class AirunoteRepository {
         ownerUserId, // Constitution: exactly one owner
         type,
         name,
-        content,
+        content, // Keep for backward compatibility
+        canonicalContent: content, // Phase 2: Set canonical content
         visibility: 'private', // Constitution: privacy default
         state: 'active',
       })
@@ -729,7 +769,9 @@ export class AirunoteRepository {
       ownerUserId: inserted.ownerUserId,
       type: inserted.type as 'TXT' | 'MD' | 'RTF',
       name: inserted.name,
-      content: inserted.content,
+      content: inserted.canonicalContent || inserted.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: inserted.canonicalContent || undefined,
+      sharedContent: inserted.sharedContent,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
       state: inserted.state as 'active' | 'archived' | 'trashed',
       createdAt: inserted.createdAt,
@@ -776,7 +818,9 @@ export class AirunoteRepository {
       ownerUserId: result.document.ownerUserId,
       type: result.document.type as 'TXT' | 'MD' | 'RTF',
       name: result.document.name,
-      content: result.document.content,
+      content: result.document.canonicalContent || result.document.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: result.document.canonicalContent || undefined,
+      sharedContent: result.document.sharedContent,
       visibility: result.document.visibility as 'private' | 'org' | 'public',
       state: result.document.state as 'active' | 'archived' | 'trashed',
       createdAt: result.document.createdAt,
@@ -825,7 +869,9 @@ export class AirunoteRepository {
       ownerUserId: doc.ownerUserId,
       type: doc.type as 'TXT' | 'MD' | 'RTF',
       name: doc.name,
-      content: doc.content,
+      content: doc.canonicalContent || doc.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: doc.canonicalContent || undefined,
+      sharedContent: doc.sharedContent,
       visibility: doc.visibility as 'private' | 'org' | 'public',
       state: doc.state as 'active' | 'archived' | 'trashed',
       createdAt: doc.createdAt,
@@ -872,7 +918,9 @@ export class AirunoteRepository {
       ownerUserId: updated.ownerUserId,
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
-      content: updated.content,
+      content: updated.canonicalContent || updated.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
       createdAt: updated.createdAt,
@@ -919,7 +967,9 @@ export class AirunoteRepository {
       ownerUserId: updated.ownerUserId,
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
-      content: updated.content,
+      content: updated.canonicalContent || updated.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
       createdAt: updated.createdAt,
@@ -978,7 +1028,9 @@ export class AirunoteRepository {
       ownerUserId: updated.ownerUserId,
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
-      content: updated.content,
+      content: updated.canonicalContent || updated.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
       createdAt: updated.createdAt,
@@ -1015,25 +1067,549 @@ export class AirunoteRepository {
   }
 
   // =====================================================
-  // TODO Phase 2: Canonical / Shared Split
+  // PHASE 2: Sharing Operations
   // =====================================================
-  // 
-  // Constitution VI: Each document maintains:
-  // - canonical_content (owner-controlled)
-  // - shared_content (collaborator-edited)
-  //
-  // TODO Phase 2: Add methods for:
-  // - findDocumentWithCanonical(folderId, documentId)
-  // - findDocumentWithShared(folderId, documentId)
-  // - updateCanonicalContent(documentId, content, ownerUserId)
-  // - updateSharedContent(documentId, content, editorUserId)
-  // - acceptSharedIntoCanonical(documentId, ownerUserId)
-  // - revertSharedToCanonical(documentId, ownerUserId)
-  //
-  // Schema changes needed:
-  // - airu_documents.canonical_content (text)
-  // - airu_documents.shared_content (text, nullable)
-  // - airu_document_revisions table (for history)
-  //
+
+  /**
+   * Grant share access
+   * Constitution: Sharing expands access, not ownership
+   */
+  async grantShare(
+    share: {
+      orgId: string;
+      targetType: 'folder' | 'document';
+      targetId: string;
+      shareType: 'user' | 'org' | 'public' | 'link';
+      grantedToUserId?: string;
+      linkCode?: string;
+      linkPasswordHash?: string;
+      viewOnly: boolean;
+      createdByUserId: string;
+      expiresAt?: Date;
+    },
+    tx?: Transaction
+  ): Promise<AiruShare> {
+    const dbInstance = tx ?? db;
+
+    const [inserted] = await dbInstance
+      .insert(airuSharesTable)
+      .values({
+        orgId: share.orgId,
+        targetType: share.targetType,
+        targetId: share.targetId,
+        shareType: share.shareType,
+        grantedToUserId: share.grantedToUserId || null,
+        linkCode: share.linkCode || null,
+        linkPasswordHash: share.linkPasswordHash || null,
+        viewOnly: share.viewOnly,
+        createdByUserId: share.createdByUserId,
+        expiresAt: share.expiresAt || null,
+      })
+      .returning();
+
+    return {
+      id: inserted.id,
+      orgId: inserted.orgId,
+      targetType: inserted.targetType as 'folder' | 'document',
+      targetId: inserted.targetId,
+      shareType: inserted.shareType as 'user' | 'org' | 'public' | 'link',
+      grantedToUserId: inserted.grantedToUserId,
+      linkCode: inserted.linkCode,
+      linkPasswordHash: inserted.linkPasswordHash,
+      viewOnly: inserted.viewOnly,
+      createdByUserId: inserted.createdByUserId,
+      createdAt: inserted.createdAt,
+      expiresAt: inserted.expiresAt,
+    };
+  }
+
+  /**
+   * Revoke share access
+   * Constitution: Owner-only operation
+   */
+  async revokeShare(
+    shareId: string,
+    orgId: string,
+    ownerUserId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const dbInstance = tx ?? db;
+
+    // Verify share exists and was created by owner
+    const [share] = await dbInstance
+      .select()
+      .from(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.id, shareId),
+          eq(airuSharesTable.orgId, orgId),
+          eq(airuSharesTable.createdByUserId, ownerUserId) // Constitution: owner-only
+        )
+      )
+      .limit(1);
+
+    if (!share) {
+      throw new Error(`Share not found or access denied: ${shareId}`);
+    }
+
+    await dbInstance
+      .delete(airuSharesTable)
+      .where(eq(airuSharesTable.id, shareId));
+  }
+
+  /**
+   * Find shares for target
+   * Constitution: Org boundary enforced
+   */
+  async findSharesForTarget(
+    targetType: 'folder' | 'document',
+    targetId: string,
+    orgId: string,
+    tx?: Transaction
+  ): Promise<AiruShare[]> {
+    const dbInstance = tx ?? db;
+
+    const shares = await dbInstance
+      .select()
+      .from(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.targetType, targetType),
+          eq(airuSharesTable.targetId, targetId),
+          eq(airuSharesTable.orgId, orgId), // Constitution: org boundary
+          or(
+            isNull(airuSharesTable.expiresAt),
+            gt(airuSharesTable.expiresAt, sql`now()`) // Not expired
+          )
+        )
+      )
+      .orderBy(desc(airuSharesTable.createdAt));
+
+    return shares.map((share) => ({
+      id: share.id,
+      orgId: share.orgId,
+      targetType: share.targetType as 'folder' | 'document',
+      targetId: share.targetId,
+      shareType: share.shareType as 'user' | 'org' | 'public' | 'link',
+      grantedToUserId: share.grantedToUserId,
+      linkCode: share.linkCode,
+      linkPasswordHash: share.linkPasswordHash,
+      viewOnly: share.viewOnly,
+      createdByUserId: share.createdByUserId,
+      createdAt: share.createdAt,
+      expiresAt: share.expiresAt,
+    }));
+  }
+
+  /**
+   * Check user access to target
+   * Constitution: Access resolution order: owner → user share → org share → public → link
+   */
+  async checkUserAccess(
+    targetType: 'folder' | 'document',
+    targetId: string,
+    userId: string,
+    orgId: string,
+    tx?: Transaction
+  ): Promise<AccessResult> {
+    const dbInstance = tx ?? db;
+
+    // 1. Check if user is owner
+    if (targetType === 'folder') {
+      const folder = await this.findFolderById(targetId, dbInstance);
+      if (folder && folder.orgId === orgId && folder.ownerUserId === userId) {
+        return {
+          hasAccess: true,
+          canRead: true,
+          canWrite: true,
+          canDelete: true, // Constitution: Delete privilege remains owner-only
+        };
+      }
+    } else {
+      const document = await this.findDocument(targetId, orgId, userId, dbInstance);
+      if (document) {
+        return {
+          hasAccess: true,
+          canRead: true,
+          canWrite: true,
+          canDelete: true, // Constitution: Delete privilege remains owner-only
+        };
+      }
+    }
+
+    // 2. Check explicit user share
+    const [userShare] = await dbInstance
+      .select()
+      .from(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.targetType, targetType),
+          eq(airuSharesTable.targetId, targetId),
+          eq(airuSharesTable.orgId, orgId),
+          eq(airuSharesTable.shareType, 'user'),
+          eq(airuSharesTable.grantedToUserId, userId),
+          or(
+            isNull(airuSharesTable.expiresAt),
+            gt(airuSharesTable.expiresAt, sql`now()`)
+          )
+        )
+      )
+      .limit(1);
+
+    if (userShare) {
+      return {
+        hasAccess: true,
+        canRead: true,
+        canWrite: !userShare.viewOnly,
+        canDelete: false, // Constitution: Delete privilege remains owner-only
+        shareType: 'user',
+        viewOnly: userShare.viewOnly,
+      };
+    }
+
+    // 3. Check org-wide share
+    const [orgShare] = await dbInstance
+      .select()
+      .from(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.targetType, targetType),
+          eq(airuSharesTable.targetId, targetId),
+          eq(airuSharesTable.orgId, orgId),
+          eq(airuSharesTable.shareType, 'org'),
+          or(
+            isNull(airuSharesTable.expiresAt),
+            gt(airuSharesTable.expiresAt, sql`now()`)
+          )
+        )
+      )
+      .limit(1);
+
+    if (orgShare) {
+      return {
+        hasAccess: true,
+        canRead: true,
+        canWrite: !orgShare.viewOnly,
+        canDelete: false, // Constitution: Delete privilege remains owner-only
+        shareType: 'org',
+        viewOnly: orgShare.viewOnly,
+      };
+    }
+
+    // 4. Check public share
+    const [publicShare] = await dbInstance
+      .select()
+      .from(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.targetType, targetType),
+          eq(airuSharesTable.targetId, targetId),
+          eq(airuSharesTable.orgId, orgId),
+          eq(airuSharesTable.shareType, 'public'),
+          or(
+            isNull(airuSharesTable.expiresAt),
+            gt(airuSharesTable.expiresAt, sql`now()`)
+          )
+        )
+      )
+      .limit(1);
+
+    if (publicShare) {
+      return {
+        hasAccess: true,
+        canRead: true,
+        canWrite: !publicShare.viewOnly,
+        canDelete: false, // Constitution: Delete privilege remains owner-only
+        shareType: 'public',
+        viewOnly: publicShare.viewOnly,
+      };
+    }
+
+    // 5. Check link share (requires link code validation in domain service)
+    // This is checked separately via resolveLink
+
+    // Default: no access
+    return {
+      hasAccess: false,
+      canRead: false,
+      canWrite: false,
+      canDelete: false,
+    };
+  }
+
+  /**
+   * Find share by link code
+   * Constitution: Links resolve to resource existence
+   */
+  async findShareByLinkCode(
+    linkCode: string,
+    tx?: Transaction
+  ): Promise<AiruShare | null> {
+    const dbInstance = tx ?? db;
+
+    const [share] = await dbInstance
+      .select()
+      .from(airuSharesTable)
+      .where(
+        and(
+          eq(airuSharesTable.linkCode, linkCode),
+          eq(airuSharesTable.shareType, 'link'),
+          or(
+            isNull(airuSharesTable.expiresAt),
+            gt(airuSharesTable.expiresAt, sql`now()`) // Not expired
+          )
+        )
+      )
+      .limit(1);
+
+    if (!share) {
+      return null;
+    }
+
+    return {
+      id: share.id,
+      orgId: share.orgId,
+      targetType: share.targetType as 'folder' | 'document',
+      targetId: share.targetId,
+      shareType: share.shareType as 'user' | 'org' | 'public' | 'link',
+      grantedToUserId: share.grantedToUserId,
+      linkCode: share.linkCode,
+      linkPasswordHash: share.linkPasswordHash,
+      viewOnly: share.viewOnly,
+      createdByUserId: share.createdByUserId,
+      createdAt: share.createdAt,
+      expiresAt: share.expiresAt,
+    };
+  }
+
   // =====================================================
+  // PHASE 2: Canonical / Shared Content Operations
+  // =====================================================
+
+  /**
+   * Update canonical content
+   * Constitution: Owner-only operation
+   */
+  async updateCanonicalContent(
+    documentId: string,
+    orgId: string,
+    ownerUserId: string,
+    content: string,
+    tx?: Transaction
+  ): Promise<AiruDocument> {
+    const dbInstance = tx ?? db;
+
+    // Verify document exists and belongs to org and owner
+    const document = await this.findDocument(documentId, orgId, ownerUserId, dbInstance);
+    if (!document) {
+      throw new Error(`Document not found or access denied: ${documentId}`);
+    }
+
+    const [updated] = await dbInstance
+      .update(airuDocumentsTable)
+      .set({
+        canonicalContent: content,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(airuDocumentsTable.id, documentId),
+          eq(airuDocumentsTable.ownerUserId, ownerUserId) // Constitution: owner-only
+        )
+      )
+      .returning();
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      ownerUserId: updated.ownerUserId,
+      type: updated.type as 'TXT' | 'MD' | 'RTF',
+      name: updated.name,
+      content: updated.canonicalContent || updated.content || '', // Use canonical if available
+      visibility: updated.visibility as 'private' | 'org' | 'public',
+      state: updated.state as 'active' | 'archived' | 'trashed',
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Update shared content
+   * Constitution: Editors modify shared_content only
+   */
+  async updateSharedContent(
+    documentId: string,
+    orgId: string,
+    userId: string,
+    content: string,
+    tx?: Transaction
+  ): Promise<AiruDocument> {
+    const dbInstance = tx ?? db;
+
+    // Verify user has write access (not owner - owners edit canonical)
+    const access = await this.checkUserAccess('document', documentId, userId, orgId, dbInstance);
+    if (!access.hasAccess || !access.canWrite) {
+      throw new Error(`Document not found or write access denied: ${documentId}`);
+    }
+
+    // Verify user is not owner (owners edit canonical)
+    const document = await this.findDocument(documentId, orgId, userId, dbInstance);
+    if (document) {
+      throw new Error('Owners must edit canonical content, not shared content');
+    }
+
+    const [updated] = await dbInstance
+      .update(airuDocumentsTable)
+      .set({
+        sharedContent: content,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(airuDocumentsTable.id, documentId))
+      .returning();
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      ownerUserId: updated.ownerUserId,
+      type: updated.type as 'TXT' | 'MD' | 'RTF',
+      name: updated.name,
+      content: updated.canonicalContent || updated.content || '', // Return canonical for display
+      visibility: updated.visibility as 'private' | 'org' | 'public',
+      state: updated.state as 'active' | 'archived' | 'trashed',
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Accept shared content into canonical
+   * Constitution: Owner-only operation
+   */
+  async acceptSharedIntoCanonical(
+    documentId: string,
+    orgId: string,
+    ownerUserId: string,
+    tx?: Transaction
+  ): Promise<AiruDocument> {
+    const dbInstance = tx ?? db;
+
+    // Verify document exists and belongs to org and owner
+    const [document] = await dbInstance
+      .select()
+      .from(airuDocumentsTable)
+      .where(
+        and(
+          eq(airuDocumentsTable.id, documentId),
+          eq(airuDocumentsTable.ownerUserId, ownerUserId) // Constitution: owner-only
+        )
+      )
+      .limit(1);
+
+    if (!document) {
+      throw new Error(`Document not found or access denied: ${documentId}`);
+    }
+
+    if (!document.sharedContent) {
+      throw new Error('No shared content to accept');
+    }
+
+    // Copy shared_content → canonical_content
+    const [updated] = await dbInstance
+      .update(airuDocumentsTable)
+      .set({
+        canonicalContent: document.sharedContent,
+        sharedContent: null, // Clear shared content
+        updatedAt: sql`now()`,
+      })
+      .where(eq(airuDocumentsTable.id, documentId))
+      .returning();
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      ownerUserId: updated.ownerUserId,
+      type: updated.type as 'TXT' | 'MD' | 'RTF',
+      name: updated.name,
+      content: updated.canonicalContent || updated.content || '',
+      visibility: updated.visibility as 'private' | 'org' | 'public',
+      state: updated.state as 'active' | 'archived' | 'trashed',
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Revert shared content to canonical
+   * Constitution: Owner-only operation
+   */
+  async revertSharedToCanonical(
+    documentId: string,
+    orgId: string,
+    ownerUserId: string,
+    tx?: Transaction
+  ): Promise<AiruDocument> {
+    const dbInstance = tx ?? db;
+
+    // Verify document exists and belongs to org and owner
+    const document = await this.findDocument(documentId, orgId, ownerUserId, dbInstance);
+    if (!document) {
+      throw new Error(`Document not found or access denied: ${documentId}`);
+    }
+
+    // Clear shared_content
+    const [updated] = await dbInstance
+      .update(airuDocumentsTable)
+      .set({
+        sharedContent: null,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(airuDocumentsTable.id, documentId))
+      .returning();
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      ownerUserId: updated.ownerUserId,
+      type: updated.type as 'TXT' | 'MD' | 'RTF',
+      name: updated.name,
+      content: updated.canonicalContent || updated.content || '',
+      visibility: updated.visibility as 'private' | 'org' | 'public',
+      state: updated.state as 'active' | 'archived' | 'trashed',
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Create revision snapshot
+   * Constitution: Immutable history
+   */
+  async createRevision(
+    documentId: string,
+    contentType: 'canonical' | 'shared',
+    content: string,
+    userId: string,
+    tx?: Transaction
+  ): Promise<AiruRevision> {
+    const dbInstance = tx ?? db;
+
+    const [inserted] = await dbInstance
+      .insert(airuDocumentRevisionsTable)
+      .values({
+        documentId,
+        contentType,
+        content,
+        createdByUserId: userId,
+      })
+      .returning();
+
+    return {
+      id: inserted.id,
+      documentId: inserted.documentId,
+      contentType: inserted.contentType as 'canonical' | 'shared',
+      content: inserted.content,
+      createdByUserId: inserted.createdByUserId,
+      createdAt: inserted.createdAt,
+    };
+  }
 }

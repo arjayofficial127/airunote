@@ -11,12 +11,16 @@
  */
 import { injectable, inject } from 'tsyringe';
 import { randomUUID } from 'crypto';
+import { hash } from 'bcryptjs';
+import { eq } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
+import { airuDocumentsTable } from '../../infrastructure/db/drizzle/schema';
 import {
   AirunoteRepository,
   type AiruFolder,
   type AiruDocument,
   type FolderTreeResponse,
+  type AiruShare,
 } from './airunote.repository';
 
 // Transaction type - drizzle transactions have the same interface as db
@@ -485,5 +489,399 @@ export class AirunoteDomainService {
       // Delete document
       await this.repository.deleteDocument(documentId, orgId, userId, tx);
     });
+  }
+
+  // =====================================================
+  // PHASE 2: Sharing Operations
+  // =====================================================
+
+  /**
+   * Share to user
+   * Constitution: Sharing expands access, not ownership
+   */
+  async shareToUser(
+    orgId: string,
+    ownerUserId: string,
+    targetType: 'folder' | 'document',
+    targetId: string,
+    userId: string,
+    viewOnly: boolean
+  ): Promise<AiruShare> {
+    return await db.transaction(async (tx) => {
+      // Verify target exists and belongs to owner
+      if (targetType === 'folder') {
+        const folder = await this.repository.findFolderById(targetId, tx);
+        if (!folder || folder.orgId !== orgId || folder.ownerUserId !== ownerUserId) {
+          throw new Error(`Folder not found or access denied: ${targetId}`);
+        }
+        if (folder.humanId === '__org_root__' || folder.humanId === '__user_root__') {
+          throw new Error('Cannot share root folders');
+        }
+      } else {
+        const document = await this.repository.findDocument(targetId, orgId, ownerUserId, tx);
+        if (!document) {
+          throw new Error(`Document not found or access denied: ${targetId}`);
+        }
+      }
+
+      // Grant share
+      return await this.repository.grantShare(
+        {
+          orgId,
+          targetType,
+          targetId,
+          shareType: 'user',
+          grantedToUserId: userId,
+          viewOnly,
+          createdByUserId: ownerUserId,
+        },
+        tx
+      );
+    });
+  }
+
+  /**
+   * Share to org
+   * Constitution: Sharing expands access, not ownership
+   */
+  async shareToOrg(
+    orgId: string,
+    ownerUserId: string,
+    targetType: 'folder' | 'document',
+    targetId: string,
+    viewOnly: boolean
+  ): Promise<AiruShare> {
+    return await db.transaction(async (tx) => {
+      // Verify target exists and belongs to owner
+      if (targetType === 'folder') {
+        const folder = await this.repository.findFolderById(targetId, tx);
+        if (!folder || folder.orgId !== orgId || folder.ownerUserId !== ownerUserId) {
+          throw new Error(`Folder not found or access denied: ${targetId}`);
+        }
+        if (folder.humanId === '__org_root__' || folder.humanId === '__user_root__') {
+          throw new Error('Cannot share root folders');
+        }
+      } else {
+        const document = await this.repository.findDocument(targetId, orgId, ownerUserId, tx);
+        if (!document) {
+          throw new Error(`Document not found or access denied: ${targetId}`);
+        }
+      }
+
+      // Grant share
+      return await this.repository.grantShare(
+        {
+          orgId,
+          targetType,
+          targetId,
+          shareType: 'org',
+          viewOnly,
+          createdByUserId: ownerUserId,
+        },
+        tx
+      );
+    });
+  }
+
+  /**
+   * Share publicly
+   * Constitution: Sharing expands access, not ownership
+   */
+  async sharePublic(
+    orgId: string,
+    ownerUserId: string,
+    targetType: 'folder' | 'document',
+    targetId: string
+  ): Promise<AiruShare> {
+    return await db.transaction(async (tx) => {
+      // Verify target exists and belongs to owner
+      if (targetType === 'folder') {
+        const folder = await this.repository.findFolderById(targetId, tx);
+        if (!folder || folder.orgId !== orgId || folder.ownerUserId !== ownerUserId) {
+          throw new Error(`Folder not found or access denied: ${targetId}`);
+        }
+        if (folder.humanId === '__org_root__' || folder.humanId === '__user_root__') {
+          throw new Error('Cannot share root folders');
+        }
+      } else {
+        const document = await this.repository.findDocument(targetId, orgId, ownerUserId, tx);
+        if (!document) {
+          throw new Error(`Document not found or access denied: ${targetId}`);
+        }
+      }
+
+      // Grant share
+      return await this.repository.grantShare(
+        {
+          orgId,
+          targetType,
+          targetId,
+          shareType: 'public',
+          viewOnly: true, // Public shares are view-only by default
+          createdByUserId: ownerUserId,
+        },
+        tx
+      );
+    });
+  }
+
+  /**
+   * Share via link
+   * Constitution: Links resolve to resource existence
+   */
+  async shareViaLink(
+    orgId: string,
+    ownerUserId: string,
+    targetType: 'folder' | 'document',
+    targetId: string,
+    password?: string
+  ): Promise<AiruShare> {
+    return await db.transaction(async (tx) => {
+      // Verify target exists and belongs to owner
+      if (targetType === 'folder') {
+        const folder = await this.repository.findFolderById(targetId, tx);
+        if (!folder || folder.orgId !== orgId || folder.ownerUserId !== ownerUserId) {
+          throw new Error(`Folder not found or access denied: ${targetId}`);
+        }
+        if (folder.humanId === '__org_root__' || folder.humanId === '__user_root__') {
+          throw new Error('Cannot share root folders');
+        }
+      } else {
+        const document = await this.repository.findDocument(targetId, orgId, ownerUserId, tx);
+        if (!document) {
+          throw new Error(`Document not found or access denied: ${targetId}`);
+        }
+      }
+
+      // Generate unique link code (UUID-based, shortened to first 8 chars)
+      const linkCode = randomUUID().replace(/-/g, '').substring(0, 8);
+
+      // Hash password if provided
+      let linkPasswordHash: string | undefined;
+      if (password) {
+        linkPasswordHash = await hash(password, 10);
+      }
+
+      // Grant share
+      return await this.repository.grantShare(
+        {
+          orgId,
+          targetType,
+          targetId,
+          shareType: 'link',
+          linkCode,
+          linkPasswordHash,
+          viewOnly: false, // Link shares allow editing by default
+          createdByUserId: ownerUserId,
+        },
+        tx
+      );
+    });
+  }
+
+  /**
+   * Revoke share
+   * Constitution: Owner-only operation
+   */
+  async revokeShare(
+    orgId: string,
+    ownerUserId: string,
+    shareId: string
+  ): Promise<void> {
+    return await db.transaction(async (tx) => {
+      await this.repository.revokeShare(shareId, orgId, ownerUserId, tx);
+    });
+  }
+
+  // =====================================================
+  // PHASE 2: Content Management
+  // =====================================================
+
+  /**
+   * Update document canonical content
+   * Constitution: Owner-only operation
+   */
+  async updateDocumentCanonical(
+    orgId: string,
+    ownerUserId: string,
+    documentId: string,
+    content: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Update canonical content
+      const document = await this.repository.updateCanonicalContent(
+        documentId,
+        orgId,
+        ownerUserId,
+        content,
+        tx
+      );
+
+      // Create revision snapshot
+      await this.repository.createRevision(
+        documentId,
+        'canonical',
+        content,
+        ownerUserId,
+        tx
+      );
+
+      return document;
+    });
+  }
+
+  /**
+   * Update document shared content
+   * Constitution: Editors modify shared_content only
+   */
+  async updateDocumentShared(
+    orgId: string,
+    userId: string,
+    documentId: string,
+    content: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Update shared content
+      const document = await this.repository.updateSharedContent(
+        documentId,
+        orgId,
+        userId,
+        content,
+        tx
+      );
+
+      // Create revision snapshot
+      await this.repository.createRevision(
+        documentId,
+        'shared',
+        content,
+        userId,
+        tx
+      );
+
+      return document;
+    });
+  }
+
+  /**
+   * Accept shared changes into canonical
+   * Constitution: Owner-only operation
+   */
+  async acceptSharedIntoCanonical(
+    orgId: string,
+    ownerUserId: string,
+    documentId: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Accept shared content
+      const document = await this.repository.acceptSharedIntoCanonical(
+        documentId,
+        orgId,
+        ownerUserId,
+        tx
+      );
+
+      // Create revision snapshot
+      if (document.canonicalContent) {
+        await this.repository.createRevision(
+          documentId,
+          'canonical',
+          document.canonicalContent,
+          ownerUserId,
+          tx
+        );
+      }
+
+      return document;
+    });
+  }
+
+  /**
+   * Revert shared changes to canonical
+   * Constitution: Owner-only operation
+   */
+  async revertSharedToCanonical(
+    orgId: string,
+    ownerUserId: string,
+    documentId: string
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Revert shared content
+      return await this.repository.revertSharedToCanonical(
+        documentId,
+        orgId,
+        ownerUserId,
+        tx
+      );
+    });
+  }
+
+  // =====================================================
+  // PHASE 2: Link Resolution
+  // =====================================================
+
+  /**
+   * Resolve link code to target
+   * Constitution: Links resolve to resource existence
+   */
+  async resolveLink(
+    linkCode: string,
+    password?: string
+  ): Promise<{
+    targetType: 'folder' | 'document';
+    targetId: string;
+    orgId: string;
+    viewOnly: boolean;
+    shareId: string;
+  } | null> {
+    // Find share by link code
+    const share = await this.repository.findShareByLinkCode(linkCode);
+    if (!share) {
+      return null; // 404 - link dead
+    }
+
+    // Check if expired
+    if (share.expiresAt && share.expiresAt < new Date()) {
+      return null; // 410 - expired
+    }
+
+    // Validate password if required
+    if (share.linkPasswordHash) {
+      if (!password) {
+        return null; // 403 - password required
+      }
+      const { compare } = await import('bcryptjs');
+      const isValid = await compare(password, share.linkPasswordHash);
+      if (!isValid) {
+        return null; // 403 - invalid password
+      }
+    }
+
+    // Verify target exists
+    if (share.targetType === 'folder') {
+      const folder = await this.repository.findFolderById(share.targetId);
+      if (!folder) {
+        return null; // 404 - resource deleted
+      }
+    } else {
+      // For documents, we need to check if it exists
+      // Since we don't have orgId here, we'll check via the share's orgId
+      const [document] = await db
+        .select()
+        .from(airuDocumentsTable)
+        .where(eq(airuDocumentsTable.id, share.targetId))
+        .limit(1);
+      if (!document) {
+        return null; // 404 - resource deleted
+      }
+    }
+
+    return {
+      targetType: share.targetType,
+      targetId: share.targetId,
+      orgId: share.orgId,
+      viewOnly: share.viewOnly,
+      shareId: share.id,
+    };
   }
 }
