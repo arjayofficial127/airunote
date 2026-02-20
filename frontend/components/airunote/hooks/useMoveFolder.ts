@@ -8,10 +8,14 @@ import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCa
 import { toast } from '@/lib/toast';
 import type { AiruFolder } from '../types';
 
+interface MoveFolderContext {
+  previousTrees?: Record<string, any>;
+}
+
 export function useMoveFolder() {
   const queryClient = useQueryClient();
 
-  return useMutation<AiruFolder, Error, { folderId: string; orgId: string; userId: string; newParentFolderId: string }>({
+  return useMutation<AiruFolder, Error, { folderId: string; orgId: string; userId: string; newParentFolderId: string }, MoveFolderContext>({
     mutationFn: async ({ folderId, orgId, userId, newParentFolderId }) => {
       const response = await airunoteApi.updateFolder(folderId, {
         orgId,
@@ -46,6 +50,7 @@ export function useMoveFolder() {
           queryClient.setQueryData(keyArray, value);
         });
       }
+      toast(error instanceof Error ? error.message : 'Failed to move folder', 'error');
     },
     onSuccess: (data, variables) => {
       // Invalidate all tree queries (both old and new parent)
@@ -54,9 +59,6 @@ export function useMoveFolder() {
         queryClient.invalidateQueries({ queryKey: key });
       });
       toast('Folder moved successfully', 'success');
-    },
-    onError: (error) => {
-      toast(error instanceof Error ? error.message : 'Failed to move folder', 'error');
     },
   });
 }

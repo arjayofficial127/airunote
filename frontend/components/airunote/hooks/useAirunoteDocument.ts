@@ -8,9 +8,9 @@ import { getDocumentCacheKey } from '../services/airunoteCache';
 import type { AiruDocument } from '../types';
 
 export function useAirunoteDocument(
-  orgId: string | null | undefined,
-  userId: string | null | undefined,
-  documentId: string | null | undefined
+  orgId: string | null,
+  userId: string | null,
+  documentId: string | null
 ) {
   return useQuery<AiruDocument, Error>({
     queryKey: getDocumentCacheKey(orgId || '', userId || '', documentId || ''),

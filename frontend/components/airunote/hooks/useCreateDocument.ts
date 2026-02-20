@@ -8,10 +8,15 @@ import { getTreeCacheKey, getFolderDocumentsCacheKey, getTreeInvalidationKeys } 
 import { toast } from '@/lib/toast';
 import type { CreateDocumentRequest, AiruDocument } from '../types';
 
+interface CreateDocumentContext {
+  previousTree?: { folders: any[]; documents: AiruDocument[]; children: any[] };
+  previousDocuments?: AiruDocument[];
+}
+
 export function useCreateDocument() {
   const queryClient = useQueryClient();
 
-  return useMutation<AiruDocument, Error, CreateDocumentRequest>({
+  return useMutation<AiruDocument, Error, CreateDocumentRequest, CreateDocumentContext>({
     mutationFn: async (request) => {
       const response = await airunoteApi.createDocument(request);
       if (!response.success) {

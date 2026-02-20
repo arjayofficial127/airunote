@@ -29,7 +29,7 @@ import type { AiruFolder, AiruDocument } from '@/components/airunote/types';
 export default function FolderViewPage() {
   const params = useParams();
   const router = useRouter();
-  const folderId = params.folderId as string;
+  const folderId: string | null = typeof params.folderId === 'string' ? params.folderId : null;
   const orgIdFromParams = params.orgId as string;
 
   const orgSession = useOrgSession();
@@ -51,17 +51,17 @@ export default function FolderViewPage() {
   const deleteDocument = useDeleteDocument();
 
   // Fetch tree for this specific folder
-  const { data: tree, isLoading, error } = useAirunoteTree(orgId, userId, folderId);
+  const { data: tree, isLoading, error } = useAirunoteTree(orgId ?? null, userId ?? null, folderId ?? undefined);
 
   // Also fetch root tree for sidebar navigation
-  const { data: rootTree } = useAirunoteTree(orgId, userId);
+  const { data: rootTree } = useAirunoteTree(orgId ?? null, userId ?? null);
 
   const handleCreateFolderSuccess = (folder: AiruFolder) => {
     // Modal will close automatically
     // Tree will refetch automatically via React Query invalidation
   };
 
-  if (!orgId || !userId) {
+  if (!orgId || !userId || !folderId) {
     return (
       <div className="p-8">
         <div className="text-gray-600">Loading...</div>
@@ -86,7 +86,7 @@ export default function FolderViewPage() {
     return (
       <div className="flex h-screen">
         <div className="w-64 border-r border-gray-200 bg-gray-50 p-4">
-          {rootTree ? <FolderTree tree={rootTree} currentFolderId={folderId} orgId={orgId} /> : <FolderTreeSkeleton />}
+          {rootTree ? <FolderTree tree={rootTree} currentFolderId={folderId ?? undefined} orgId={orgId} /> : <FolderTreeSkeleton />}
         </div>
         <div className="flex-1 p-8">
           <ErrorState
@@ -134,7 +134,7 @@ export default function FolderViewPage() {
             + New Folder
           </button>
         </div>
-        {rootTree && <FolderTree tree={rootTree} currentFolderId={folderId} orgId={orgId} />}
+        {rootTree && <FolderTree tree={rootTree} currentFolderId={folderId ?? undefined} orgId={orgId} />}
       </div>
 
       {/* Main Content */}

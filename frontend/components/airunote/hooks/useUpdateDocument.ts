@@ -8,10 +8,14 @@ import { getDocumentCacheKey, getTreeInvalidationKeys, getFolderDocumentsCacheKe
 import { toast } from '@/lib/toast';
 import type { UpdateDocumentRequest, AiruDocument } from '../types';
 
+interface UpdateDocumentContext {
+  previousDocument?: AiruDocument;
+}
+
 export function useUpdateDocument() {
   const queryClient = useQueryClient();
 
-  return useMutation<AiruDocument, Error, { documentId: string; request: UpdateDocumentRequest }>({
+  return useMutation<AiruDocument, Error, { documentId: string; request: UpdateDocumentRequest }, UpdateDocumentContext>({
     mutationFn: async ({ documentId, request }) => {
       const response = await airunoteApi.updateDocument(documentId, request);
       if (!response.success) {

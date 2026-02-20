@@ -37,7 +37,7 @@ export default function AirunoteHomePage() {
   const [isPasteDockOpen, setIsPasteDockOpen] = useState(false);
 
   // Fetch root folder tree
-  const { data: tree, isLoading, error } = useAirunoteTree(orgId, userId);
+  const { data: tree, isLoading, error } = useAirunoteTree(orgId ?? null, userId ?? null);
 
   // Get root folder ID from tree structure
   // The root folder ID is the parentFolderId of the first folder, or we need to provision

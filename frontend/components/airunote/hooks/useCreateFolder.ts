@@ -8,10 +8,14 @@ import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCa
 import { toast } from '@/lib/toast';
 import type { CreateFolderRequest, AiruFolder } from '../types';
 
+interface CreateFolderContext {
+  previousTree?: { folders: AiruFolder[]; documents: any[]; children: any[] };
+}
+
 export function useCreateFolder() {
   const queryClient = useQueryClient();
 
-  return useMutation<AiruFolder, Error, CreateFolderRequest>({
+  return useMutation<AiruFolder, Error, CreateFolderRequest, CreateFolderContext>({
     mutationFn: async (request) => {
       const response = await airunoteApi.createFolder(request);
       if (!response.success) {

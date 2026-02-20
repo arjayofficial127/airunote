@@ -6,11 +6,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { getDocumentCacheKey, getTreeCacheKey, getFolderDocumentsCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
 import { toast } from '@/lib/toast';
+import type { AiruDocument } from '../types';
+
+interface DeleteDocumentContext {
+  previousDocument?: AiruDocument;
+  previousTree?: { folders: any[]; documents: any[]; children: any[] };
+  previousDocuments?: AiruDocument[];
+}
 
 export function useDeleteDocument() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { documentId: string; orgId: string; userId: string; folderId: string }>({
+  return useMutation<void, Error, { documentId: string; orgId: string; userId: string; folderId: string }, DeleteDocumentContext>({
     mutationFn: async ({ documentId, orgId, userId }) => {
       const response = await airunoteApi.deleteDocument(documentId, orgId, userId);
       if (!response.success) {
@@ -30,9 +37,9 @@ export function useDeleteDocument() {
       ]);
 
       // Snapshot previous values
-      const previousDocument = queryClient.getQueryData(documentKey);
+      const previousDocument = queryClient.getQueryData<AiruDocument>(documentKey);
       const previousTree = queryClient.getQueryData<{ folders: any[]; documents: any[]; children: any[] }>(treeKey);
-      const previousDocuments = queryClient.getQueryData<any[]>(documentsKey);
+      const previousDocuments = queryClient.getQueryData<AiruDocument[]>(documentsKey);
 
       // Optimistically remove document
       if (previousTree) {

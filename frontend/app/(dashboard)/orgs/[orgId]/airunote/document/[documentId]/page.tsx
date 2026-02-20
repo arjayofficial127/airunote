@@ -22,7 +22,7 @@ import Link from 'next/link';
 export default function DocumentViewPage() {
   const params = useParams();
   const router = useRouter();
-  const documentId = params.documentId as string;
+  const documentId: string | null = typeof params.documentId === 'string' ? params.documentId : null;
   const orgIdFromParams = params.orgId as string;
 
   const orgSession = useOrgSession();
@@ -41,7 +41,7 @@ export default function DocumentViewPage() {
   const deleteDocument = useDeleteDocument();
 
   const handleSave = async (content: string) => {
-    if (!orgId || !userId || !document) return;
+    if (!orgId || !userId || !document || !documentId) return;
 
     try {
       await updateDocument.mutateAsync({
@@ -60,7 +60,7 @@ export default function DocumentViewPage() {
   };
 
   const handleDelete = async () => {
-    if (!orgId || !userId || !document) return;
+    if (!orgId || !userId || !document || !documentId) return;
 
     try {
       await deleteDocument.mutateAsync({
@@ -78,7 +78,7 @@ export default function DocumentViewPage() {
   };
 
   const handleRename = async (name: string) => {
-    if (!orgId || !userId || !document) return;
+    if (!orgId || !userId || !document || !documentId) return;
 
     try {
       await updateDocument.mutateAsync({
@@ -138,9 +138,7 @@ export default function DocumentViewPage() {
         <DocumentViewer
           document={document}
           onEdit={() => setIsEditMode(true)}
-          onDelete={async () => {
-            setIsDeleteModalOpen(true);
-          }}
+          onDelete={async () => { setIsDeleteModalOpen(true); }}
           onRename={handleRename}
           isEditMode={isEditMode}
           onSave={isEditMode ? handleSave : undefined}
@@ -167,9 +165,7 @@ export default function DocumentViewPage() {
       <DocumentEditor
         document={document}
         onSave={handleSave}
-        onDelete={async () => {
-          setIsDeleteModalOpen(true);
-        }}
+        onDelete={async () => { setIsDeleteModalOpen(true); }}
         onRename={handleRename}
         isSaving={updateDocument.isPending}
       />

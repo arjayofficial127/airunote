@@ -7,10 +7,14 @@ import { airunoteApi } from '../services/airunoteApi';
 import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
 import { toast } from '@/lib/toast';
 
+interface DeleteFolderContext {
+  previousTrees?: Record<string, any>;
+}
+
 export function useDeleteFolder() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { folderId: string; orgId: string; userId: string }>({
+  return useMutation<void, Error, { folderId: string; orgId: string; userId: string }, DeleteFolderContext>({
     mutationFn: async ({ folderId, orgId, userId }) => {
       const response = await airunoteApi.deleteFolder(folderId, orgId, userId);
       if (!response.success) {
