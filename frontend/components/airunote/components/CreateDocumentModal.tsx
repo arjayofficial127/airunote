@@ -41,11 +41,27 @@ export function CreateDocumentModal({
       return;
     }
 
+    // If folderId is not available, provision root folder first
+    let actualFolderId = folderId;
+    if (!actualFolderId || actualFolderId === 'root') {
+      try {
+        const { airunoteApi } = await import('../services/airunoteApi');
+        const provisionResponse = await airunoteApi.provision(orgId, userId, userId);
+        if (!provisionResponse.success) {
+          throw new Error('Failed to provision root folder. Please try again.');
+        }
+        actualFolderId = provisionResponse.data.rootFolder.id;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to provision root folder');
+        return;
+      }
+    }
+
     try {
       const document = await createDocument.mutateAsync({
         orgId,
         userId,
-        folderId,
+        folderId: actualFolderId,
         name: documentName.trim(),
         content: content.trim(),
         type: documentType,

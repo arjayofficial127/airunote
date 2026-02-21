@@ -39,19 +39,24 @@ export default function AirunoteHomePage() {
   // Fetch root folder tree
   const { data: tree, isLoading, error } = useAirunoteTree(orgId ?? null, userId ?? null);
 
-  // Get root folder ID from tree structure
-  // The root folder ID is the parentFolderId of the first folder, or we need to provision
-  // For now, we'll use a placeholder and let the backend handle provisioning
-  // When creating folders/documents, if root doesn't exist, backend will auto-provision
-  const rootFolderId = tree?.folders[0]?.parentFolderId || 'root';
-  
   // Store root folder ID once we have it
   const [actualRootFolderId, setActualRootFolderId] = useState<string | null>(null);
   
-  // Try to provision root if tree is empty
+  // Get root folder ID from tree structure or provision if needed
   useEffect(() => {
-    if (!isLoading && !error && tree && tree.folders.length === 0 && tree.documents.length === 0 && orgId && userId && !actualRootFolderId) {
-      // Tree is empty - try to provision
+    if (!orgId || !userId) return;
+
+    // If tree has folders, get root ID from first folder's parentFolderId
+    if (tree?.folders && tree.folders.length > 0) {
+      const rootId = tree.folders[0].parentFolderId;
+      if (rootId && rootId !== actualRootFolderId) {
+        setActualRootFolderId(rootId);
+      }
+      return;
+    }
+
+    // If tree is empty and we don't have root ID yet, provision it
+    if (!isLoading && !error && tree && tree.folders.length === 0 && tree.documents.length === 0 && !actualRootFolderId) {
       airunoteApi
         .provision(orgId, userId, userId)
         .then((response) => {
@@ -61,15 +66,12 @@ export default function AirunoteHomePage() {
         })
         .catch((err) => {
           console.error('Failed to provision root:', err);
-          // Continue anyway - backend will auto-provision on first create
         });
-    } else if (tree?.folders[0]?.parentFolderId) {
-      setActualRootFolderId(tree.folders[0].parentFolderId);
     }
   }, [isLoading, error, tree, orgId, userId, actualRootFolderId]);
   
-  // Use actual root folder ID if available, otherwise use placeholder
-  const effectiveRootFolderId = actualRootFolderId || rootFolderId;
+  // Only use actual root folder ID (never use 'root' placeholder)
+  const effectiveRootFolderId = actualRootFolderId;
 
   const handleCreateFolderSuccess = (folder: AiruFolder) => {
     // Modal will close automatically
@@ -196,7 +198,7 @@ export default function AirunoteHomePage() {
         onClose={() => setIsCreateFolderModalOpen(false)}
         orgId={orgId}
         userId={userId}
-        parentFolderId={effectiveRootFolderId}
+        parentFolderId={effectiveRootFolderId || ''} // Will be resolved on submit if needed
         onSuccess={handleCreateFolderSuccess}
       />
 
@@ -205,7 +207,7 @@ export default function AirunoteHomePage() {
         onClose={() => setIsCreateDocumentModalOpen(false)}
         orgId={orgId}
         userId={userId}
-        folderId={effectiveRootFolderId}
+        folderId={effectiveRootFolderId || ''} // Will be resolved on submit if needed
       />
 
       <PasteDock
@@ -213,7 +215,7 @@ export default function AirunoteHomePage() {
         onClose={() => setIsPasteDockOpen(false)}
         orgId={orgId}
         userId={userId}
-        defaultFolderId={effectiveRootFolderId}
+        defaultFolderId={effectiveRootFolderId || ''} // Will be resolved on submit if needed
       />
     </div>
   );

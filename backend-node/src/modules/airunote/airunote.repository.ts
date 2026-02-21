@@ -913,7 +913,7 @@ export class AirunoteRepository {
     const [updated] = await dbInstance
       .update(airuDocumentsTable)
       .set({
-        content,
+        canonicalContent: content, // Constitution: Owner updates canonicalContent
         updatedAt: sql`now()`,
       })
       .where(

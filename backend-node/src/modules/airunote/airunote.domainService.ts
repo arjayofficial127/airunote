@@ -239,12 +239,15 @@ export class AirunoteDomainService {
       // Ensure user root exists (idempotent)
       // Note: ensureUserRootExists doesn't accept tx, but it opens its own transaction
       // This is acceptable since we're already in a transaction context
-      await this.ensureUserRootExists(orgId, userId, userId);
+      const userRoot = await this.ensureUserRootExists(orgId, userId, userId);
+
+      // If parentFolderId is empty or invalid, use user root as parent
+      let actualParentFolderId = parentFolderId?.trim() || userRoot.id;
 
       // Verify parent folder belongs to user and org
-      const parent = await this.repository.findFolderById(parentFolderId, tx);
+      const parent = await this.repository.findFolderById(actualParentFolderId, tx);
       if (!parent) {
-        throw new Error(`Parent folder not found: ${parentFolderId}`);
+        throw new Error(`Parent folder not found: ${actualParentFolderId}`);
       }
       if (parent.orgId !== orgId) {
         throw new Error(`Parent folder org mismatch: expected ${orgId}, got ${parent.orgId}`);
@@ -257,7 +260,7 @@ export class AirunoteDomainService {
       }
 
       // Create folder
-      return await this.repository.createFolder(orgId, userId, parentFolderId, humanId, tx);
+      return await this.repository.createFolder(orgId, userId, actualParentFolderId, humanId, tx);
     });
   }
 

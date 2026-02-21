@@ -17,6 +17,11 @@ export function useCreateFolder() {
 
   return useMutation<AiruFolder, Error, CreateFolderRequest, CreateFolderContext>({
     mutationFn: async (request) => {
+      // Guard: Never send 'root' as parentFolderId - it must be a valid UUID
+      if (request.parentFolderId === 'root') {
+        throw new Error('Root folder ID not available. Please wait for root folder to be provisioned.');
+      }
+      
       const response = await airunoteApi.createFolder(request);
       if (!response.success) {
         throw new Error(response.error?.message || 'Failed to create folder');

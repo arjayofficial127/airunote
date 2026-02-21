@@ -39,11 +39,15 @@ export function CreateFolderModal({
       return;
     }
 
+    // Backend auto-provisions root folder and defaults to user root if parentFolderId is empty
+    // So we can pass empty string and backend will handle it
+    const actualParentFolderId = parentFolderId && parentFolderId !== 'root' ? parentFolderId : '';
+
     try {
       const folder = await createFolder.mutateAsync({
         orgId,
         userId,
-        parentFolderId,
+        parentFolderId: actualParentFolderId,
         humanId: folderName.trim(),
       });
       setFolderName('');

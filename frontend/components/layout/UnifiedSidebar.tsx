@@ -175,6 +175,7 @@ export function UnifiedSidebar({
       ];
 
       items.push(
+        { href: `/orgs/${orgId}/airunote`, label: 'Airunote', subtitle: 'Private workspace' },
         { href: `/orgs/${orgId}/posts`, label: 'Posts', subtitle: null },
         { href: `/orgs/${orgId}/collections`, label: 'Collections', subtitle: null },
         { href: `/orgs/${orgId}/members`, label: 'Members', subtitle: null },

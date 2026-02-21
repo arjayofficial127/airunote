@@ -1,0 +1,140 @@
+---
+alwaysApply: false
+description: MODE: VIBE - Rapid feature development mode with strict architectural integrity preservation
+---
+
+# MODE: VIBE
+
+## Purpose
+Allow rapid feature development ("vibe coding") while preserving strict architectural integrity.
+
+This mode MUST respect all existing architectural constraints and may not override core system boundaries.
+
+---
+
+## MODE: VIBE — PERMISSIONS
+
+When MODE: VIBE is active, you MAY:
+
+1. Create or modify UI components.
+2. Implement small CRUD endpoints.
+3. Add hooks related to a specific feature.
+4. Create isolated utility functions.
+5. Add navigation items.
+6. Implement missing backend route handlers.
+7. Add safe type guards.
+8. Add new fields to API responses (without removing existing ones).
+9. Add minimal validation logic.
+
+---
+
+## MODE: VIBE — STRICT PROTECTIONS
+
+When MODE: VIBE is active, you MUST NOT:
+
+1. Modify DI container bindings.
+2. Modify repository interfaces.
+3. Change middleware contracts.
+4. Alter authentication flow.
+5. Alter multi-tenant org boundary logic.
+6. Move files across architectural layers.
+7. Change public API response shapes.
+8. Remove existing fields from API responses.
+9. Introduce new abstraction layers.
+10. Introduce new global providers or context layers.
+11. Modify tsconfig.json, next.config.js, package.json.
+12. Modify database schema.
+13. Refactor unrelated code.
+14. Modify more than 3 files unless explicitly instructed.
+15. Introduce "temporary" TODO patches.
+16. Change dependency versions.
+17. Bypass architectural layers.
+18. Import infrastructure implementation directly into API or UI layers.
+19. Perform stylistic or formatting refactors outside the requested scope.
+
+---
+
+## ARCHITECTURAL LAYER ENFORCEMENT
+
+This system uses strict layers:
+
+```
+Frontend
+  ↓
+API Routes
+  ↓
+Application Layer
+  ↓
+Repository Interfaces
+  ↓
+Infrastructure Implementation
+  ↓
+Database
+```
+
+### Rules:
+
+- **Never skip layers.**
+- **Never call infrastructure directly from UI.**
+- **Never import repository implementation in UI.**
+- **API routes may depend on application layer, not infra.**
+- **Application layer depends only on interfaces.**
+
+---
+
+## FILE CHANGE LIMIT
+
+Under MODE: VIBE:
+
+- Limit modifications to files directly involved in the feature.
+- **Maximum 3 files changed** unless explicitly approved.
+- If more files are required, **STOP and explain why**.
+
+---
+
+## IF ARCHITECTURAL RISK IS DETECTED
+
+If a requested change risks violating architecture:
+
+1. **STOP.**
+2. **Explain the architectural risk.**
+3. **Suggest a compliant alternative.**
+4. **Do not proceed automatically.**
+
+---
+
+## REPORTING REQUIREMENT
+
+When MODE: VIBE is active, after each change:
+
+Provide:
+1. **Files modified** (list with paths)
+2. **Why each file needed modification** (brief explanation)
+3. **Confirmation that architectural boundaries were preserved** (explicit statement)
+
+---
+
+## COEXISTENCE WITH EXISTING RULES
+
+This MODE: VIBE must coexist with existing rules in [CURSOR_RULES.md](mdc:_tools/CURSOR_RULES/CURSOR_RULES.md).
+
+It does NOT override protection constraints, including:
+- NON-NEGOTIABLE LAW (SOLID, DRY, Type Safety, Null Discipline, etc.)
+- Security by Default
+- Repo Discipline
+- File Size & Composition Discipline
+- PRE-FLIGHT CHECK requirements
+- All other existing architectural principles
+
+---
+
+## ACTIVATION
+
+MODE: VIBE is activated when the user explicitly declares:
+- `MODE: VIBE`
+- Or similar unambiguous directive indicating rapid development mode
+
+If MODE is ambiguous:
+- **STOP**
+- **Ask the user to declare MODE explicitly**
+- **Do NOT infer intent or proceed conditionally**

@@ -15,6 +15,7 @@ import type { AiruDocument } from '../types';
 interface DocumentViewerProps {
   document: AiruDocument;
   onEdit: () => void;
+  onCancel?: () => void;
   onDelete: () => Promise<void>;
   onRename: (name: string) => Promise<void>;
   isEditMode?: boolean;
@@ -25,6 +26,7 @@ interface DocumentViewerProps {
 export function DocumentViewer({
   document,
   onEdit,
+  onCancel,
   onDelete,
   onRename,
   isEditMode = false,
@@ -67,13 +69,18 @@ export function DocumentViewer({
     },
   });
 
-  // Update editor content when document changes
+  // Update editor content when document changes (only if not in edit mode or content actually changed)
   useEffect(() => {
-    if (editor && document.content !== editor.getHTML()) {
+    if (editor && !isEditMode && document.content !== editor.getHTML()) {
+      // Only reset editor in view mode when document content changes
       editor.commands.setContent(document.content);
       setHasUnsavedChanges(false);
+    } else if (editor && isEditMode) {
+      // In edit mode, only update hasUnsavedChanges flag, don't reset editor content
+      const html = editor.getHTML();
+      setHasUnsavedChanges(html !== document.content);
     }
-  }, [document.content, editor]);
+  }, [document.content, editor, isEditMode]);
 
   const handleSave = async () => {
     if (!editor || !onSave || !hasUnsavedChanges) return;
@@ -145,10 +152,14 @@ export function DocumentViewer({
                 <button
                   onClick={() => {
                     if (editor) {
+                      // Reset to saved content when canceling
                       editor.commands.setContent(document.content);
                       setHasUnsavedChanges(false);
                     }
-                    onEdit(); // Exit edit mode
+                    // Exit edit mode via parent callback
+                    if (onCancel) {
+                      onCancel();
+                    }
                   }}
                   className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                 >

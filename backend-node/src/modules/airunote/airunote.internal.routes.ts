@@ -128,10 +128,11 @@ router.post('/folder', async (req: Request, res: Response, next) => {
       });
     }
 
-    if (!body.parentFolderId || typeof body.parentFolderId !== 'string') {
+    // parentFolderId is optional - backend will default to user root if empty
+    if (body.parentFolderId !== undefined && typeof body.parentFolderId !== 'string') {
       return res.status(400).json({
         success: false,
-        error: { message: 'parentFolderId is required and must be a string', code: 'VALIDATION_ERROR' },
+        error: { message: 'parentFolderId must be a string if provided', code: 'VALIDATION_ERROR' },
       });
     }
 

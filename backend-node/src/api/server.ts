@@ -16,6 +16,7 @@ import likesRoutes from './routes/likes.routes';
 import attachmentsRoutes from './routes/attachments.routes';
 import membersRoutes from './routes/members.routes';
 import healthRoutes from './routes/health.routes';
+import dashboardRoutes from './routes/dashboard.routes';
 import airunoteInternalRoutes from '../modules/airunote/airunote.internal.routes';
 
 // Register services in DI container
@@ -226,9 +227,10 @@ export function createApp(): Express {
   app.use('/api/orgs/:orgId/posts/:postId/likes', likesRoutes);
   app.use('/api/orgs/:orgId/posts/:postId/attachments', attachmentsRoutes);
   app.use('/api/orgs/:orgId/members', membersRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   // Internal routes (temporary, no auth)
-  app.use('/internal/airunote', airunoteInternalRoutes);
+  app.use('/api/internal/airunote', airunoteInternalRoutes);
 
   // Error handling (must be last)
   app.use(errorMiddleware);

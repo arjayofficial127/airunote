@@ -58,11 +58,10 @@ export function useUpdateDocument() {
       toast(error instanceof Error ? error.message : 'Failed to update document', 'error');
     },
     onSuccess: (data, variables) => {
-      // Invalidate queries to refetch with real data
+      // Update cache with server response immediately (prevents editor reset)
       const { request } = variables;
-      queryClient.invalidateQueries({
-        queryKey: getDocumentCacheKey(request.orgId, request.userId, variables.documentId),
-      });
+      const documentKey = getDocumentCacheKey(request.orgId, request.userId, variables.documentId);
+      queryClient.setQueryData(documentKey, data);
       
       // If moved, invalidate both old and new folder queries
       if (request.folderId) {
@@ -71,6 +70,7 @@ export function useUpdateDocument() {
         });
       }
       
+      // Invalidate tree queries to refresh folder listings
       const invalidationKeys = getTreeInvalidationKeys(request.orgId, request.userId);
       invalidationKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });

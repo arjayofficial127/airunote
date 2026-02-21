@@ -138,6 +138,7 @@ export default function DocumentViewPage() {
         <DocumentViewer
           document={document}
           onEdit={() => setIsEditMode(true)}
+          onCancel={() => setIsEditMode(false)}
           onDelete={async () => { setIsDeleteModalOpen(true); }}
           onRename={handleRename}
           isEditMode={isEditMode}
