@@ -7,6 +7,9 @@ import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import { useParams } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type Org } from '@/lib/api/orgs';
+import { FolderTree } from '@/components/airunote/components/FolderTree';
+import { useAirunoteTree } from '@/components/airunote/hooks/useAirunoteTree';
+import { useAuthSession } from '@/providers/AuthSessionProvider';
 
 interface NavItem {
   href: string;
@@ -64,6 +67,34 @@ export function UnifiedSidebar({
   const isOrgReady = !isOrgRoute || Boolean(org?.name);
 
   const showTestMenuBackground = !isOrgReady || (context === 'dashboard' && isSuperAdmin === false);
+
+  // Sidebar mode switcher (only for Airunote routes in org context)
+  const isAirunoteRoute = pathname?.includes('/airunote') ?? false;
+  const showModeSwitcher = context === 'org' && isOrgReady && isAirunoteRoute;
+  
+  type SidebarMode = 'folders' | 'org';
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>('folders');
+
+  // Get auth session for userId (needed for folder tree)
+  const authSession = useAuthSession();
+  const userId = authSession.user?.id ?? null;
+
+  // Extract current folder ID from pathname if on folder/document page
+  const getCurrentFolderId = (): string | undefined => {
+    if (!pathname) return undefined;
+    const folderMatch = pathname.match(/\/airunote\/folder\/([^/]+)/);
+    if (folderMatch) return folderMatch[1];
+    // For document pages, we don't have folderId in path, so return undefined
+    return undefined;
+  };
+
+  const currentFolderId = getCurrentFolderId();
+
+  // Fetch folder tree when in folders mode
+  const { data: folderTree } = useAirunoteTree(
+    showModeSwitcher && sidebarMode === 'folders' ? (orgId ?? null) : null,
+    showModeSwitcher && sidebarMode === 'folders' ? userId : null
+  );
 
   // Water overlay state machine (two layers)
   // - mask: responsible for retracting/hiding, can retract even while content is still rising
@@ -313,8 +344,42 @@ export function UnifiedSidebar({
 
           {isOrgReady && (
           <nav className="flex-1 overflow-y-auto min-h-0 pt-2">
+          {/* Mode Switcher - only show on Airunote routes */}
+          {showModeSwitcher && (
+            <div className="px-4 py-2 border-b border-gray-200 flex items-center gap-2">
+              <button
+                onClick={() => setSidebarMode('folders')}
+                className={`flex-1 flex items-center justify-center p-2 rounded-md transition-colors ${
+                  sidebarMode === 'folders'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Folder Tree View"
+                aria-label="Switch to folder tree view"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setSidebarMode('org')}
+                className={`flex-1 flex items-center justify-center p-2 rounded-md transition-colors ${
+                  sidebarMode === 'org'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Organization Menu"
+                aria-label="Switch to organization menu"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           {/* Show menu items progressively - non-app items immediately, apps when ready */}
-          {isPermissionsLoading && context === 'org' ? (
+          {isPermissionsLoading && context === 'org' && (!showModeSwitcher || sidebarMode === 'org') ? (
             <div className="space-y-1">
               {/* Full skeleton only while permissions are loading */}
               <div className="h-12 bg-gray-200 rounded animate-pulse mx-2 mb-1" />
@@ -332,7 +397,19 @@ export function UnifiedSidebar({
             </div>
           ) : (
             <>
-              {navItems.map((item) => {
+              {/* Folder Tree View - only show when in folders mode */}
+              {showModeSwitcher && sidebarMode === 'folders' && folderTree && orgId ? (
+                <div className="px-2 py-2">
+                  <FolderTree tree={folderTree} currentFolderId={currentFolderId} orgId={orgId} />
+                </div>
+              ) : showModeSwitcher && sidebarMode === 'folders' ? (
+                <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                  Loading folder tree...
+                </div>
+              ) : null}
+
+              {/* Org Menu Items - only show when in org mode or not in Airunote route */}
+              {(!showModeSwitcher || sidebarMode === 'org') && navItems.map((item) => {
                   const hasChildren = item.children && item.children.length > 0;
                   const isExpanded = hasChildren;
                   const itemIsActive = isActive(item.href) || (hasChildren && item.children?.some(child => isActive(child.href)));

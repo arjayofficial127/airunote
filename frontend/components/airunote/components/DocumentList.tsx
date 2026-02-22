@@ -7,10 +7,10 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { AiruDocument } from '../types';
+import type { AiruDocument, AiruDocumentMetadata } from '../types';
 
 interface DocumentListProps {
-  documents: AiruDocument[];
+  documents: (AiruDocument | AiruDocumentMetadata)[];
   orgId: string;
 }
 

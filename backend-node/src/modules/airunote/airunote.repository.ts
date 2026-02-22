@@ -9,7 +9,7 @@
  * - Org boundary enforced in all queries
  */
 import { injectable } from 'tsyringe';
-import { eq, and, sql, ne, or, desc, isNull, gt, lt } from 'drizzle-orm';
+import { eq, and, sql, ne, or, desc, isNull, gt, lt, inArray } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   airuFoldersTable,
@@ -103,6 +103,24 @@ export interface AiruAuditLog {
   performedByUserId: string;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
+}
+
+export interface AiruDocumentMetadata {
+  id: string;
+  folderId: string;
+  ownerUserId: string;
+  type: 'TXT' | 'MD' | 'RTF';
+  name: string;
+  visibility: 'private' | 'org' | 'public';
+  state: 'active' | 'archived' | 'trashed';
+  createdAt: Date;
+  updatedAt: Date;
+  size?: number; // Optional: content size in bytes if available
+}
+
+export interface FullMetadataResponse {
+  folders: AiruFolder[];
+  documents: AiruDocumentMetadata[];
 }
 
 @injectable()
@@ -1700,6 +1718,112 @@ export class AirunoteRepository {
           eq(airuSharesTable.orgId, orgId) // Constitution: org boundary
         )
       );
+  }
+
+  /**
+   * Get full metadata for all folders and documents owned by user in org
+   * Returns flat arrays (no nesting, no content)
+   * Constitution: Org boundary and owner isolation enforced
+   */
+  async getFullMetadata(
+    orgId: string,
+    ownerUserId: string,
+    tx?: Transaction
+  ): Promise<FullMetadataResponse> {
+    const dbInstance = tx ?? db;
+
+    // Single query for all folders owned by user in org
+    const folders = await dbInstance
+      .select()
+      .from(airuFoldersTable)
+      .where(
+        and(
+          eq(airuFoldersTable.orgId, orgId), // Constitution: org boundary
+          eq(airuFoldersTable.ownerUserId, ownerUserId) // Constitution: owner isolation
+        )
+      )
+      .orderBy(desc(airuFoldersTable.createdAt));
+
+    const mappedFolders: AiruFolder[] = folders.map((folder) => ({
+      id: folder.id,
+      orgId: folder.orgId,
+      ownerUserId: folder.ownerUserId,
+      parentFolderId: folder.parentFolderId,
+      humanId: folder.humanId,
+      visibility: folder.visibility as 'private' | 'org' | 'public',
+      createdAt: folder.createdAt,
+    }));
+
+    // Single query for all documents owned by user in org (metadata only, no content)
+    // Join with folders to filter by orgId (documents don't have orgId directly)
+    // First, get all folder IDs for this org and user
+    const userFolderIds = await dbInstance
+      .select({ id: airuFoldersTable.id })
+      .from(airuFoldersTable)
+      .where(
+        and(
+          eq(airuFoldersTable.orgId, orgId),
+          eq(airuFoldersTable.ownerUserId, ownerUserId)
+        )
+      );
+
+    const folderIdList = userFolderIds.map((f) => f.id);
+
+    // If no folders, return empty documents array
+    if (folderIdList.length === 0) {
+      return {
+        folders: mappedFolders,
+        documents: [],
+      };
+    }
+
+    // Query documents in those folders
+    const documents = await dbInstance
+      .select({
+        id: airuDocumentsTable.id,
+        folderId: airuDocumentsTable.folderId,
+        ownerUserId: airuDocumentsTable.ownerUserId,
+        type: airuDocumentsTable.type,
+        name: airuDocumentsTable.name,
+        visibility: airuDocumentsTable.visibility,
+        state: airuDocumentsTable.state,
+        createdAt: airuDocumentsTable.createdAt,
+        updatedAt: airuDocumentsTable.updatedAt,
+        // Calculate content size from canonicalContent or content (if available)
+        size: sql<number | null>`
+          COALESCE(
+            LENGTH(${airuDocumentsTable.canonicalContent}),
+            LENGTH(${airuDocumentsTable.content}),
+            NULL
+          )
+        `,
+      })
+      .from(airuDocumentsTable)
+      .where(
+        and(
+          inArray(airuDocumentsTable.folderId, folderIdList),
+          eq(airuDocumentsTable.ownerUserId, ownerUserId) // Constitution: owner isolation
+        )
+      )
+      .orderBy(desc(airuDocumentsTable.updatedAt));
+
+    const mappedDocuments: AiruDocumentMetadata[] = documents.map((doc) => ({
+      id: doc.id,
+      folderId: doc.folderId,
+      ownerUserId: doc.ownerUserId,
+      type: doc.type as 'TXT' | 'MD' | 'RTF',
+      name: doc.name,
+      visibility: doc.visibility as 'private' | 'org' | 'public',
+      state: doc.state as 'active' | 'archived' | 'trashed',
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+      size: doc.size ?? undefined,
+    }));
+
+    return {
+      folders: mappedFolders,
+      documents: mappedDocuments,
+    };
   }
 
   /**

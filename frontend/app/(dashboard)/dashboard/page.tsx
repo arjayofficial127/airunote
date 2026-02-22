@@ -42,8 +42,8 @@ export default function DashboardPage() {
         // No orgs - go to orgs page to create one
         router.push('/orgs');
       } else if (orgs.length === 1) {
-        // One org - go directly to its dashboard
-        router.push(`/orgs/${orgs[0].id}/dashboard`);
+        // One org - go directly to Airunote
+        router.push(`/orgs/${orgs[0].id}/airunote`);
       } else {
         // Multiple orgs - show org selection page
         router.push('/orgs');
@@ -200,7 +200,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
-        <div className="text-gray-600 mb-2">Redirecting to dashboard...</div>
+        <div className="text-gray-600 mb-2">Redirecting...</div>
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>

@@ -18,7 +18,7 @@ export default function LoginPage() {
   // Redirect if already logged in (same logic as landing page)
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      // Redirect to dashboard, which will intelligently route based on org count and super admin status
+      // Redirect to dashboard, which will intelligently route to Airunote based on org count and super admin status
       router.push('/dashboard');
     }
   }, [isAuthenticated, authLoading, router]);
@@ -38,7 +38,7 @@ export default function LoginPage() {
     try {
       await authApi.login(data);
       
-      // Redirect to dashboard (which will intelligently route based on org count and super admin status)
+      // Redirect to dashboard (which will intelligently route to Airunote based on org count and super admin status)
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed');
@@ -71,7 +71,7 @@ export default function LoginPage() {
         <AmbientBackground />
         <div className="relative flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="text-gray-600 mb-2">Redirecting to dashboard...</div>
+            <div className="text-gray-600 mb-2">Redirecting...</div>
             <div className="flex justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
             </div>

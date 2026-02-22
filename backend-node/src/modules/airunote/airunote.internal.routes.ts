@@ -286,6 +286,39 @@ router.get('/tree', async (req: Request, res: Response, next) => {
   }
 });
 
+router.get('/full-metadata', async (req: Request, res: Response, next) => {
+  try {
+    if (checkProduction(res)) return;
+
+    const orgId = req.query.orgId as string;
+    const userId = req.query.userId as string;
+
+    if (!orgId || typeof orgId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'orgId is required and must be a string', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    if (!userId || typeof userId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'userId is required and must be a string', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const domainService = container.resolve(AirunoteDomainService);
+    const metadata = await domainService.getFullMetadata(orgId, userId);
+
+    res.status(200).json({
+      success: true,
+      data: metadata,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // =====================================================
 // PHASE 1: Document Routes
 // =====================================================

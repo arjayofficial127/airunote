@@ -13,6 +13,7 @@ import type {
   CreateDocumentRequest,
   UpdateDocumentRequest,
   AirunoteApiResponse,
+  FullMetadataResponse,
 } from '../types';
 
 /**
@@ -84,6 +85,19 @@ export const airunoteApi = {
       params.parentFolderId = parentFolderId;
     }
     const response = await apiClient.get('/internal/airunote/tree', { params });
+    return response.data;
+  },
+
+  /**
+   * Get full metadata (all folders and documents metadata, no content)
+   */
+  getFullMetadata: async (
+    orgId: string,
+    userId: string
+  ): Promise<AirunoteApiResponse<FullMetadataResponse>> => {
+    const response = await apiClient.get('/internal/airunote/full-metadata', {
+      params: { orgId, userId },
+    });
     return response.data;
   },
 

@@ -46,6 +46,18 @@ export function getFolderDocumentsCacheKey(
 }
 
 /**
+ * Generate cache key for full metadata
+ * @param orgId - Organization ID
+ * @param userId - User ID
+ */
+export function getFullMetadataCacheKey(
+  orgId: string,
+  userId: string
+): string[] {
+  return ['airunote', 'full-metadata', orgId, userId];
+}
+
+/**
  * Invalidate all tree caches for an org/user
  * Returns query keys to invalidate
  */

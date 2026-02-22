@@ -9,13 +9,13 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
-import { useAirunoteTree } from '@/components/airunote/hooks/useAirunoteTree';
-import { FolderTree } from '@/components/airunote/components/FolderTree';
+import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
+import { useLoadMetadata } from '@/components/airunote/hooks/useLoadMetadata';
 import { DocumentList } from '@/components/airunote/components/DocumentList';
 import { CreateFolderModal } from '@/components/airunote/components/CreateFolderModal';
 import { CreateDocumentModal } from '@/components/airunote/components/CreateDocumentModal';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
-import { FolderTreeSkeleton, DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
+import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { airunoteApi } from '@/components/airunote/services/airunoteApi';
@@ -32,46 +32,62 @@ export default function AirunoteHomePage() {
   const orgId = orgSession.activeOrgId;
   const userId = authSession.user?.id;
 
+  // Load metadata on mount
+  useLoadMetadata();
+
+  // Get store state
+  const {
+    foldersById,
+    getFolderById,
+    getFoldersByParent,
+    getDocumentsByFolder,
+    isLoading,
+    error,
+  } = useAirunoteStore();
+
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
   const [isPasteDockOpen, setIsPasteDockOpen] = useState(false);
 
-  // Fetch root folder tree
-  const { data: tree, isLoading, error } = useAirunoteTree(orgId ?? null, userId ?? null);
+  // Find user root folder (self-parent pattern)
+  const allFolders = Array.from(foldersById.values()) as AiruFolder[];
+  const userRoot = allFolders.find(
+    (f) => f.humanId === '__user_root__' && f.parentFolderId === f.id
+  );
 
-  // Store root folder ID once we have it
-  const [actualRootFolderId, setActualRootFolderId] = useState<string | null>(null);
-  
-  // Get root folder ID from tree structure or provision if needed
+  // Get root folder ID
+  const effectiveRootFolderId = userRoot?.id || null;
+
+  // Get root-level folders (children of user root)
+  const rootFolders: AiruFolder[] = userRoot
+    ? getFoldersByParent(userRoot.id)
+    : [];
+
+  // Get root-level documents (documents in user root)
+  const rootDocuments = userRoot
+    ? getDocumentsByFolder(userRoot.id)
+    : [];
+
+  // Provision root if needed
   useEffect(() => {
     if (!orgId || !userId) return;
+    if (userRoot) return; // Already have root
+    if (isLoading) return; // Still loading
 
-    // If tree has folders, get root ID from first folder's parentFolderId
-    if (tree?.folders && tree.folders.length > 0) {
-      const rootId = tree.folders[0].parentFolderId;
-      if (rootId && rootId !== actualRootFolderId) {
-        setActualRootFolderId(rootId);
-      }
-      return;
-    }
-
-    // If tree is empty and we don't have root ID yet, provision it
-    if (!isLoading && !error && tree && tree.folders.length === 0 && tree.documents.length === 0 && !actualRootFolderId) {
-      airunoteApi
-        .provision(orgId, userId, userId)
-        .then((response) => {
-          if (response.success) {
-            setActualRootFolderId(response.data.rootFolder.id);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to provision root:', err);
-        });
-    }
-  }, [isLoading, error, tree, orgId, userId, actualRootFolderId]);
-  
-  // Only use actual root folder ID (never use 'root' placeholder)
-  const effectiveRootFolderId = actualRootFolderId;
+    // No root found, provision it
+    airunoteApi
+      .provision(orgId, userId, userId)
+      .then((response) => {
+        if (response.success) {
+          // Add root folder to store
+          const store = useAirunoteStore.getState();
+          store.addFolder(response.data.rootFolder);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to provision root:', err);
+      });
+  }, [orgId, userId, userRoot, isLoading]);
 
   const handleCreateFolderSuccess = (folder: AiruFolder) => {
     // Modal will close automatically
@@ -88,62 +104,35 @@ export default function AirunoteHomePage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen">
-        <div className="w-64 border-r border-gray-200 bg-gray-50 p-4">
-          <FolderTreeSkeleton />
-        </div>
-        <div className="flex-1 p-8">
-          <DocumentListSkeleton />
-        </div>
+      <div className="p-8">
+        <DocumentListSkeleton />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen">
-        <div className="w-64 border-r border-gray-200 bg-gray-50 p-4">
-          <FolderTreeSkeleton />
-        </div>
-        <div className="flex-1 p-8">
-          <ErrorState
-            title="Failed to load folder tree"
-            message={error.message || 'An error occurred while loading your folders and documents.'}
-            onRetry={() => window.location.reload()}
-            backUrl={`/orgs/${orgIdFromParams}/dashboard`}
-            backLabel="Back to Dashboard"
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (!tree) {
-    return (
       <div className="p-8">
-        <div className="text-gray-600">No data available</div>
+        <ErrorState
+          title="Failed to load metadata"
+          message={error.message || 'An error occurred while loading your folders and documents.'}
+          onRetry={() => {
+            const store = useAirunoteStore.getState();
+            store.setLoading(true);
+            store.setError(null);
+            store.clear();
+            // Trigger reload via useLoadMetadata
+            window.location.reload();
+          }}
+          backUrl={`/orgs/${orgIdFromParams}/dashboard`}
+          backLabel="Back to Dashboard"
+        />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar - Folder Tree */}
-      <div className="w-64 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Folders</h2>
-          <button
-            onClick={() => setIsCreateFolderModalOpen(true)}
-            className="w-full px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            + New Folder
-          </button>
-        </div>
-        <FolderTree tree={tree} orgId={orgId} />
-      </div>
-
-      {/* Main Content - Documents */}
-      <div className="flex-1 p-8 overflow-y-auto">
+    <div className="p-8 overflow-y-auto">
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Airunote</h1>
@@ -166,9 +155,40 @@ export default function AirunoteHomePage() {
           <p className="text-gray-600">Your private workspace</p>
         </div>
 
+        {/* Root-level folders */}
+        {rootFolders.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Folders</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rootFolders.map((folder) => (
+                <div
+                  key={folder.id}
+                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                >
+                  <a
+                    href={`/orgs/${orgIdFromParams}/airunote/folder/${folder.id}`}
+                    className="block"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">📁</span>
+                      <div>
+                        <h3 className="font-medium text-gray-900">{folder.humanId}</h3>
+                        <p className="text-sm text-gray-500">
+                          {new Date(folder.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Root-level documents */}
         <div>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Documents</h2>
-          {tree.documents.length === 0 ? (
+          {rootDocuments.length === 0 ? (
             <EmptyState
               title="No documents yet"
               description="Create your first document to get started. You can create text files, markdown documents, or rich text files."
@@ -187,10 +207,9 @@ export default function AirunoteHomePage() {
               }
             />
           ) : (
-            <DocumentList documents={tree.documents} orgId={orgId} />
+            <DocumentList documents={rootDocuments} orgId={orgId} />
           )}
         </div>
-      </div>
 
       {/* Modals */}
       <CreateFolderModal

@@ -36,6 +36,7 @@ export function DocumentViewer({
   const [isEditingName, setIsEditingName] = useState(false);
   const [documentName, setDocumentName] = useState(document.name);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const originalContentRef = useRef<string>(document.content);
 
   const editor = useEditor({
     extensions: [
@@ -59,7 +60,7 @@ export function DocumentViewer({
     onUpdate: ({ editor }) => {
       if (isEditMode) {
         const html = editor.getHTML();
-        setHasUnsavedChanges(html !== document.content);
+        setHasUnsavedChanges(html !== originalContentRef.current);
       }
     },
     editorProps: {
@@ -68,6 +69,13 @@ export function DocumentViewer({
       },
     },
   });
+
+  // Update original content ref when document changes
+  useEffect(() => {
+    if (document.content !== originalContentRef.current) {
+      originalContentRef.current = document.content;
+    }
+  }, [document.content]);
 
   // Update editor content when document changes (only if not in edit mode or content actually changed)
   useEffect(() => {
@@ -78,7 +86,7 @@ export function DocumentViewer({
     } else if (editor && isEditMode) {
       // In edit mode, only update hasUnsavedChanges flag, don't reset editor content
       const html = editor.getHTML();
-      setHasUnsavedChanges(html !== document.content);
+      setHasUnsavedChanges(html !== originalContentRef.current);
     }
   }, [document.content, editor, isEditMode]);
 

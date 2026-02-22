@@ -10,15 +10,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useAirunoteTree } from '@/components/airunote/hooks/useAirunoteTree';
-import { FolderTree } from '@/components/airunote/components/FolderTree';
 import { DocumentList } from '@/components/airunote/components/DocumentList';
+import { FolderBreadcrumb } from '@/components/airunote/components/FolderBreadcrumb';
+import { buildFolderPath } from '@/components/airunote/utils/folderPath';
 import { CreateFolderModal } from '@/components/airunote/components/CreateFolderModal';
 import { CreateDocumentModal } from '@/components/airunote/components/CreateDocumentModal';
 import { MoveFolderModal } from '@/components/airunote/components/MoveFolderModal';
 import { MoveDocumentModal } from '@/components/airunote/components/MoveDocumentModal';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
 import { DeleteConfirmationModal } from '@/components/airunote/components/DeleteConfirmationModal';
-import { FolderTreeSkeleton, DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
+import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useDeleteFolder } from '@/components/airunote/hooks/useDeleteFolder';
@@ -53,8 +54,11 @@ export default function FolderViewPage() {
   // Fetch tree for this specific folder
   const { data: tree, isLoading, error } = useAirunoteTree(orgId ?? null, userId ?? null, folderId ?? undefined);
 
-  // Also fetch root tree for sidebar navigation
+  // Also fetch root tree for breadcrumb path building
   const { data: rootTree } = useAirunoteTree(orgId ?? null, userId ?? null);
+
+  // Build folder path for breadcrumb
+  const folderPath = rootTree && folderId ? buildFolderPath(rootTree, folderId) : [];
 
   const handleCreateFolderSuccess = (folder: AiruFolder) => {
     // Modal will close automatically
@@ -71,32 +75,22 @@ export default function FolderViewPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen">
-        <div className="w-64 border-r border-gray-200 bg-gray-50 p-4">
-          <FolderTreeSkeleton />
-        </div>
-        <div className="flex-1 p-8">
-          <DocumentListSkeleton />
-        </div>
+      <div className="p-8">
+        <DocumentListSkeleton />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen">
-        <div className="w-64 border-r border-gray-200 bg-gray-50 p-4">
-          {rootTree ? <FolderTree tree={rootTree} currentFolderId={folderId ?? undefined} orgId={orgId} /> : <FolderTreeSkeleton />}
-        </div>
-        <div className="flex-1 p-8">
-          <ErrorState
-            title="Failed to load folder"
-            message={error.message || 'An error occurred while loading this folder.'}
-            onRetry={() => window.location.reload()}
-            backUrl={`/orgs/${orgIdFromParams}/airunote`}
-            backLabel="Back to Home"
-          />
-        </div>
+      <div className="p-8">
+        <ErrorState
+          title="Failed to load folder"
+          message={error.message || 'An error occurred while loading this folder.'}
+          onRetry={() => window.location.reload()}
+          backUrl={`/orgs/${orgIdFromParams}/airunote`}
+          backLabel="Back to Home"
+        />
       </div>
     );
   }
@@ -115,47 +109,31 @@ export default function FolderViewPage() {
     );
   }
 
-  // Build breadcrumb (simplified - would need folder path from backend)
-  const breadcrumb = [
-    { name: 'Home', path: `/orgs/${orgIdFromParams}/airunote` },
-    { name: 'Folder', path: `#` },
-  ];
-
   return (
-    <div className="flex h-screen">
-      {/* Sidebar - Folder Tree */}
-      <div className="w-64 border-r border-gray-200 bg-gray-50 p-4 overflow-y-auto">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Folders</h2>
-          <button
-            onClick={() => setIsCreateFolderModalOpen(true)}
-            className="w-full px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            + New Folder
-          </button>
-        </div>
-        {rootTree && <FolderTree tree={rootTree} currentFolderId={folderId ?? undefined} orgId={orgId} />}
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-8 overflow-y-auto">
+    <div className="p-8 overflow-y-auto">
         {/* Breadcrumb */}
-        <nav className="mb-6">
-          <ol className="flex items-center space-x-2 text-sm text-gray-600">
-            {breadcrumb.map((item, index) => (
-              <li key={index} className="flex items-center">
-                {index > 0 && <span className="mx-2">/</span>}
-                {index === breadcrumb.length - 1 ? (
-                  <span className="text-gray-900 font-medium">{item.name}</span>
-                ) : (
-                  <Link href={item.path} className="hover:text-blue-600">
-                    {item.name}
+        {rootTree ? (
+          folderPath.length > 0 ? (
+            <FolderBreadcrumb path={folderPath} orgId={orgId} />
+          ) : (
+            <nav className="mb-6">
+              <ol className="flex items-center space-x-2 text-sm text-gray-600">
+                <li>
+                  <Link
+                    href={`/orgs/${orgIdFromParams}/airunote`}
+                    className="hover:text-blue-600"
+                  >
+                    Home
                   </Link>
-                )}
-              </li>
-            ))}
-          </ol>
-        </nav>
+                </li>
+                <li>
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span className="text-gray-900 font-medium">Folder</span>
+                </li>
+              </ol>
+            </nav>
+          )
+        ) : null}
 
         {/* Header */}
         <div className="mb-6">
@@ -306,7 +284,6 @@ export default function FolderViewPage() {
           )}
           </div>
         </div>
-      </div>
 
       {/* Modals */}
       <CreateFolderModal

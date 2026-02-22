@@ -28,6 +28,24 @@ export interface AiruDocument {
   updatedAt: Date;
 }
 
+export interface AiruDocumentMetadata {
+  id: string;
+  folderId: string;
+  ownerUserId: string;
+  type: 'TXT' | 'MD' | 'RTF';
+  name: string;
+  visibility: 'private' | 'org' | 'public';
+  state: 'active' | 'archived' | 'trashed';
+  createdAt: Date;
+  updatedAt: Date;
+  size?: number; // Optional: content size in bytes if available
+}
+
+export interface FullMetadataResponse {
+  folders: AiruFolder[];
+  documents: AiruDocumentMetadata[];
+}
+
 export interface FolderTreeResponse {
   folders: AiruFolder[];
   documents: AiruDocument[];

@@ -31,11 +31,15 @@ export function DocumentEditor({
   const [isEditingName, setIsEditingName] = useState(false);
   const [documentName, setDocumentName] = useState(document.name);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const originalContentRef = useRef<string>(document.content);
 
-  // Update content when document changes
+  // Update content when document changes (only if it's a different document)
   useEffect(() => {
-    setContent(document.content);
-    setHasUnsavedChanges(false);
+    if (document.content !== originalContentRef.current) {
+      setContent(document.content);
+      originalContentRef.current = document.content;
+      setHasUnsavedChanges(false);
+    }
   }, [document.content]);
 
   // Update name when document changes
@@ -44,8 +48,9 @@ export function DocumentEditor({
   }, [document.name]);
 
   const handleContentChange = (value: string | undefined) => {
-    setContent(value || '');
-    setHasUnsavedChanges(value !== document.content);
+    const newContent = value || '';
+    setContent(newContent);
+    setHasUnsavedChanges(newContent !== originalContentRef.current);
   };
 
   const handleSave = async () => {

@@ -262,9 +262,9 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
             }, 100);
           }
         } else if (pathname === '/orgs' || pathname === '/dashboard') {
-          // If on org selector or dashboard, navigate to org dashboard
+          // If on org selector or dashboard, navigate to Airunote
           isSyncingRouteRef.current = true;
-          router.push(`/orgs/${orgId}/dashboard`);
+          router.push(`/orgs/${orgId}/airunote`);
           // Reset flag after navigation
           setTimeout(() => {
             isSyncingRouteRef.current = false;
@@ -394,9 +394,9 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       }
     } else if (activeOrgId && !isOrgRoute && pathname !== '/orgs') {
       // activeOrgId exists BUT route orgId is missing (and we're not on org selector)
-      // Redirect to /orgs/{activeOrgId}/dashboard
+      // Redirect to /orgs/{activeOrgId}/airunote
       isSyncingRouteRef.current = true;
-      router.push(`/orgs/${activeOrgId}/dashboard`);
+      router.push(`/orgs/${activeOrgId}/airunote`);
       setTimeout(() => {
         isSyncingRouteRef.current = false;
       }, 100);

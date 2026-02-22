@@ -26,6 +26,7 @@ import {
   type AiruDocument,
   type FolderTreeResponse,
   type AiruShare,
+  type AiruDocumentMetadata,
 } from './airunote.repository';
 
 // Transaction type - drizzle transactions have the same interface as db
@@ -881,6 +882,24 @@ export class AirunoteDomainService {
   // =====================================================
   // PHASE 2: Link Resolution
   // =====================================================
+
+  /**
+   * Get full metadata for all folders and documents owned by user in org
+   * Returns flat arrays (no nesting, no content)
+   * Constitution: Org boundary and owner isolation enforced
+   */
+  async getFullMetadata(
+    orgId: string,
+    userId: string
+  ): Promise<{ folders: AiruFolder[]; documents: AiruDocumentMetadata[] }> {
+    // Verify user is authenticated
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Get full metadata from repository
+    return await this.repository.getFullMetadata(orgId, userId);
+  }
 
   /**
    * Resolve link code to target
