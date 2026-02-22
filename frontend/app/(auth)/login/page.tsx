@@ -15,13 +15,22 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Redirect if already logged in (same logic as landing page)
+  // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      // Redirect to dashboard, which will intelligently route to Airunote based on org count and super admin status
       router.push('/dashboard');
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Autofocus email input
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      const emailInput = document.getElementById('email') as HTMLInputElement;
+      if (emailInput) {
+        emailInput.focus();
+      }
+    }
+  }, [authLoading, isAuthenticated]);
 
   const {
     register,
@@ -37,8 +46,6 @@ export default function LoginPage() {
 
     try {
       await authApi.login(data);
-      
-      // Redirect to dashboard (which will intelligently route to Airunote based on org count and super admin status)
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed');
@@ -47,16 +54,28 @@ export default function LoginPage() {
     }
   };
 
+  // Handle Enter key submission
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading) {
+      handleSubmit(onSubmit)();
+    }
+  };
+
   // Show loading while checking auth status
   if (authLoading) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-gray-50 text-gray-900">
-        <AmbientBackground />
+      <div className="relative min-h-screen overflow-hidden bg-white text-gray-900">
+        <AmbientBackground 
+          gridSize={64} 
+          lightCount={0} 
+          enableGrain={false}
+          gradientOpacity={0.08}
+        />
         <div className="relative flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="text-gray-600 mb-2">Checking authentication...</div>
             <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           </div>
         </div>
@@ -67,13 +86,18 @@ export default function LoginPage() {
   // Don't show login form if already authenticated (will redirect)
   if (isAuthenticated) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-gray-50 text-gray-900">
-        <AmbientBackground />
+      <div className="relative min-h-screen overflow-hidden bg-white text-gray-900">
+        <AmbientBackground 
+          gridSize={64} 
+          lightCount={0} 
+          enableGrain={false}
+          gradientOpacity={0.08}
+        />
         <div className="relative flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="text-gray-600 mb-2">Redirecting...</div>
             <div className="flex justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           </div>
         </div>
@@ -82,110 +106,180 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gray-50 text-gray-900">
-      {/* Ambient background with golden nuggets, noise, grid, and gradient */}
-      <AmbientBackground />
+    <div className="relative min-h-screen overflow-hidden bg-white text-gray-900">
+      {/* Ambient background - same as landing page */}
+      <AmbientBackground 
+        gridSize={64} 
+        lightCount={0} 
+        enableGrain={false}
+        gradientOpacity={0.08}
+      />
 
-      <div className="relative flex items-center justify-center min-h-screen px-4">
-        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg" style={{ opacity: 0.88 }}>
-          <div>
-            <h2 className="text-3xl font-bold text-center text-gray-900">Sign in</h2>
-          </div>
+      {/* Header */}
+      <header className="relative z-10 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-base font-semibold tracking-tight text-gray-900">airunote</span>
+          </Link>
+          <Link
+            href="/"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            Back
+          </Link>
+        </div>
+      </header>
 
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                {error}
+      {/* Main Content */}
+      <main className="relative">
+        <div className="mx-auto max-w-7xl px-6 py-16 sm:py-24 lg:py-32">
+          {/* Split Layout: Desktop (≥1024px) */}
+          <div className="mx-auto max-w-6xl">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              {/* Left Side: Tagline (Desktop only) */}
+              <div className="hidden lg:block">
+                <div className="relative">
+                  {/* Soft radial gradient behind text */}
+                  <div 
+                    className="absolute inset-0 -z-10"
+                    style={{
+                      background: 'radial-gradient(60% 50% at 50% 50%, rgba(59, 130, 246, 0.08), transparent 70%)',
+                    }}
+                  />
+                  <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+                    Write clearly.
+                    <br />
+                    <span className="text-blue-600">Organize deeply.</span>
+                  </h1>
+                  <p className="mt-6 text-lg leading-8 text-gray-600">
+                    A calm, structured workspace for your ideas.
+                  </p>
+                </div>
               </div>
-            )}
 
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  {...register('email')}
-                  type="email"
-                  id="email"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                )}
-              </div>
+              {/* Right Side: Login Form */}
+              <div className="w-full max-w-md mx-auto lg:mx-0">
+                <div className="relative">
+                  {/* Soft radial gradient behind form */}
+                  <div 
+                    className="absolute inset-0 -z-10"
+                    style={{
+                      background: 'radial-gradient(60% 50% at 50% 50%, rgba(59, 130, 246, 0.06), transparent 70%)',
+                    }}
+                  />
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <input
-                  {...register('password')}
-                  type="password"
-                  id="password"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-                )}
+                  {/* Mobile: Show tagline above form */}
+                  <div className="lg:hidden mb-8 text-center">
+                    <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
+                      Welcome back.
+                    </h1>
+                    <p className="mt-4 text-base text-gray-600">
+                      Sign in to continue your workspace.
+                    </p>
+                  </div>
+
+                  {/* Desktop: Show welcome message */}
+                  <div className="hidden lg:block mb-8">
+                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+                      Welcome back.
+                    </h2>
+                    <p className="mt-2 text-base text-gray-600">
+                      Sign in to continue your workspace.
+                    </p>
+                  </div>
+
+                  <form 
+                    className="space-y-6" 
+                    onSubmit={handleSubmit(onSubmit)}
+                    onKeyDown={handleKeyDown}
+                  >
+                    {/* Error Message */}
+                    {error && (
+                      <div className="text-sm text-red-600 text-center">
+                        {error}
+                      </div>
+                    )}
+
+                    {/* Email Input */}
+                    <div>
+                      <label htmlFor="email" className="sr-only">
+                        Email
+                      </label>
+                      <input
+                        {...register('email')}
+                        type="email"
+                        id="email"
+                        autoComplete="email"
+                        placeholder="Email"
+                        className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl bg-white/80 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150 placeholder:text-gray-400"
+                      />
+                      {errors.email && (
+                        <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
+                      )}
+                    </div>
+
+                    {/* Password Input */}
+                    <div>
+                      <label htmlFor="password" className="sr-only">
+                        Password
+                      </label>
+                      <input
+                        {...register('password')}
+                        type="password"
+                        id="password"
+                        autoComplete="current-password"
+                        placeholder="Password"
+                        className="w-full px-4 py-3 text-base border border-gray-300 rounded-xl bg-white/80 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-150 placeholder:text-gray-400"
+                      />
+                      {errors.password && (
+                        <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
+                      )}
+                    </div>
+
+                    {/* Sign In Button */}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full rounded-lg bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Signing in...' : 'Sign In'}
+                    </button>
+                  </form>
+
+                  {/* Maintenance Notice */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <div className="text-center">
+                      <strong className="block mb-1.5 text-sm font-semibold text-gray-700">
+                        System Maintenance Notice
+                      </strong>
+                      <p className="text-sm text-gray-500 leading-relaxed">
+                        Account registration is temporarily unavailable. Please try again later.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Footer Links - Temporarily Hidden */}
+                  {/* <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm">
+                    <Link
+                      href="/forgot-password"
+                      className="text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                    <span className="hidden sm:inline text-gray-300">•</span>
+                    <Link
+                      href="/register"
+                      className="text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                      Create account
+                    </Link>
+                  </div> */}
+                </div>
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="relative w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-[0_0_15px_rgba(20,184,166,0.4),0_0_30px_rgba(20,184,166,0.25),inset_0_0_15px_rgba(255,255,255,0.1)] text-sm font-semibold text-white overflow-hidden group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 transition-colors"
-              style={{
-                background: 'linear-gradient(to bottom right, rgba(13, 148, 136, 0.88), rgba(20, 184, 166, 0.88), rgba(34, 211, 238, 0.88))',
-              }}
-            >
-              {/* Animated creases/veins overlay - stone texture with dark veins */}
-              <div 
-                className="absolute inset-0 opacity-30 animate-jade-creases"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(45deg, transparent 30%, rgba(0, 0, 0, 0.15) 30%, rgba(0, 0, 0, 0.15) 35%, transparent 35%),
-                    linear-gradient(-45deg, transparent 30%, rgba(0, 0, 0, 0.12) 30%, rgba(0, 0, 0, 0.12) 35%, transparent 35%),
-                    linear-gradient(60deg, transparent 40%, rgba(0, 0, 0, 0.18) 40%, rgba(0, 0, 0, 0.18) 45%, transparent 45%),
-                    linear-gradient(-60deg, transparent 40%, rgba(0, 0, 0, 0.14) 40%, rgba(0, 0, 0, 0.14) 45%, transparent 45%),
-                    linear-gradient(15deg, transparent 50%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.1) 52%, transparent 52%)
-                  `,
-                  backgroundSize: '200% 200%, 150% 150%, 180% 180%, 160% 160%, 120% 120%',
-                }}
-              />
-              {/* Gold veins/accents - animated */}
-              <div 
-                className="absolute inset-0 opacity-40 animate-jade-creases"
-                style={{
-                  backgroundImage: `
-                    linear-gradient(30deg, transparent 25%, rgba(212, 175, 55, 0.6) 25%, rgba(212, 175, 55, 0.6) 28%, transparent 28%),
-                    linear-gradient(-30deg, transparent 35%, rgba(184, 134, 11, 0.5) 35%, rgba(184, 134, 11, 0.5) 38%, transparent 38%),
-                    linear-gradient(75deg, transparent 45%, rgba(234, 179, 8, 0.4) 45%, rgba(234, 179, 8, 0.4) 47%, transparent 47%)
-                  `,
-                  backgroundSize: '180% 180%, 160% 160%, 140% 140%',
-                  mixBlendMode: 'overlay',
-                }}
-              />
-              {/* Gold shimmer highlight - top edge */}
-              <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-yellow-400/30 via-amber-300/20 to-transparent opacity-60" />
-              {/* Gold corner accents */}
-              <div className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-full opacity-70 blur-[2px]" />
-              <div className="absolute bottom-0.5 left-0.5 w-1 h-1 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-full opacity-60 blur-[2px]" />
-              {/* Animated glow pulse */}
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-jade-glow bg-[radial-gradient(circle_at_center,rgba(20,184,166,0.4)_0%,transparent_70%)]"
-              />
-              {/* Additional inner glow for depth */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-50" />
-              {/* Text with slight glow */}
-              <span className="relative z-10 drop-shadow-[0_0_6px_rgba(0,0,0,0.3)]">
-                {loading ? 'Signing in...' : 'Sign in'}
-              </span>
-            </button>
-          </form>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
-

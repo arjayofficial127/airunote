@@ -379,31 +379,71 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   },
 
   getFilteredFolders: (parentFolderId) => {
-    const { getFoldersByParent, searchQuery } = get();
-    const folders = getFoldersByParent(parentFolderId);
+    const { getFoldersByParent, searchQuery, foldersById } = get();
     
     if (!searchQuery.trim()) {
-      return folders;
+      return getFoldersByParent(parentFolderId);
     }
     
     const query = searchQuery.toLowerCase().trim();
-    return folders.filter((folder) =>
-      folder.humanId.toLowerCase().includes(query)
-    );
+    
+    // Deep search: recursively find all folders that match, starting from parentFolderId
+    const collectMatchingFolders = (startFolderId: string | null): AiruFolder[] => {
+      const matchingFolders: AiruFolder[] = [];
+      
+      // Get direct children
+      const directFolders = getFoldersByParent(startFolderId);
+      
+      // Check each direct folder
+      directFolders.forEach((folder) => {
+        // If folder name matches, include it
+        if (folder.humanId.toLowerCase().includes(query)) {
+          matchingFolders.push(folder);
+        }
+        
+        // Recursively search in subfolders (regardless of match)
+        const subMatches = collectMatchingFolders(folder.id);
+        matchingFolders.push(...subMatches);
+      });
+      
+      return matchingFolders;
+    };
+    
+    return collectMatchingFolders(parentFolderId);
   },
 
   getFilteredDocuments: (folderId) => {
-    const { getDocumentsByFolder, searchQuery } = get();
-    const documents = getDocumentsByFolder(folderId);
+    const { getDocumentsByFolder, getFoldersByParent, searchQuery } = get();
     
     if (!searchQuery.trim()) {
-      return documents;
+      return getDocumentsByFolder(folderId);
     }
     
     const query = searchQuery.toLowerCase().trim();
-    return documents.filter((doc) =>
-      doc.name.toLowerCase().includes(query)
-    );
+    
+    // Deep search: recursively find all documents that match, starting from folderId
+    const collectMatchingDocuments = (startFolderId: string | null): AiruDocumentMetadata[] => {
+      const matchingDocuments: AiruDocumentMetadata[] = [];
+      
+      // Get direct documents in this folder
+      const directDocuments = startFolderId ? getDocumentsByFolder(startFolderId) : [];
+      directDocuments.forEach((doc) => {
+        if (doc.name.toLowerCase().includes(query)) {
+          matchingDocuments.push(doc);
+        }
+      });
+      
+      // Recursively search in all subfolders
+      const subFolders = getFoldersByParent(startFolderId);
+      subFolders.forEach((folder) => {
+        const subMatches = collectMatchingDocuments(folder.id);
+        matchingDocuments.push(...subMatches);
+      });
+      
+      return matchingDocuments;
+    };
+    
+    return collectMatchingDocuments(folderId);
   },
 
   isDocumentContentLoaded: (documentId) => {
