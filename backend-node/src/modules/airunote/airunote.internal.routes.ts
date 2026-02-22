@@ -33,14 +33,7 @@ interface ProvisionRequest {
 
 router.post('/provision', async (req: Request, res: Response, next) => {
   try {
-    // Production safety guard
-    // Constitution: No accidental exposure of internal routes
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({
-        success: false,
-        error: { message: 'Internal route disabled in production', code: 'FORBIDDEN' },
-      });
-    }
+    // Note: Production guard removed - this endpoint is needed in production
 
     const body = req.body as ProvisionRequest;
 
@@ -288,7 +281,7 @@ router.get('/tree', async (req: Request, res: Response, next) => {
 
 router.get('/full-metadata', async (req: Request, res: Response, next) => {
   try {
-    if (checkProduction(res)) return;
+    // Note: Production guard removed - this endpoint is needed in production
 
     const orgId = req.query.orgId as string;
     const userId = req.query.userId as string;
