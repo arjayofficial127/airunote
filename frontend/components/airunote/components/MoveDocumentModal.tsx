@@ -7,8 +7,10 @@
 
 import { useState } from 'react';
 import { useMoveDocument } from '../hooks/useMoveDocument';
-import { useAirunoteTree } from '../hooks/useAirunoteTree';
+import { useAirunoteStore } from '../stores/airunoteStore';
+import { useAuthSession } from '@/providers/AuthSessionProvider';
 import type { AiruDocument } from '../types';
+import type { FolderTreeResponse } from '../types';
 
 interface MoveDocumentModalProps {
   isOpen: boolean;
@@ -30,7 +32,16 @@ export function MoveDocumentModal({
   const [selectedFolderId, setSelectedFolderId] = useState<string>(document.folderId);
   const [error, setError] = useState<string | null>(null);
   const moveDocument = useMoveDocument();
-  const { data: tree } = useAirunoteTree(orgId, userId);
+  const authSession = useAuthSession();
+  const { buildTree, foldersById } = useAirunoteStore();
+
+  // Build tree from store
+  const allFolders = Array.from(foldersById.values());
+  const userRoot = allFolders.find(
+    (f) => f.humanId === '__user_root__' && f.ownerUserId === userId
+  );
+  const rootFolderId = userRoot?.id || null;
+  const tree: FolderTreeResponse | null = rootFolderId ? buildTree(rootFolderId) : null;
 
   // Build folder options
   const buildFolderOptions = (node: typeof tree, level: number = 0): Array<{ id: string; name: string; level: number }> => {
@@ -61,8 +72,9 @@ export function MoveDocumentModal({
     e.preventDefault();
     setError(null);
 
+    // If 'root' is selected, use the user root folder ID
     const newFolderId = selectedFolderId === 'root' 
-      ? (tree?.folders[0]?.parentFolderId || 'root')
+      ? (userRoot?.id || selectedFolderId)
       : selectedFolderId;
 
     if (newFolderId === document.folderId) {

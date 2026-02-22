@@ -1,7 +1,20 @@
 /**
- * Hook to load full metadata into store on mount
- * Automatically clears and reloads when orgId or userId changes
+ * AirunoteDataProvider
+ * 
+ * SINGLE source of truth for Airunote metadata loading.
+ * 
+ * Responsibilities:
+ * - Load ALL folders and documents metadata ONCE when entering Airunote
+ * - Clear and reload when orgId/userId changes
+ * - Provide loading state to children
+ * 
+ * Rules:
+ * - Loads metadata ONCE per org/user session
+ * - Clears store when org/user changes
+ * - NO API calls after initial load (all navigation uses store)
  */
+
+'use client';
 
 import { useEffect, useRef } from 'react';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
@@ -9,7 +22,11 @@ import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import { airunoteApi } from '../services/airunoteApi';
 
-export function useLoadMetadata() {
+interface AirunoteDataProviderProps {
+  children: React.ReactNode;
+}
+
+export function AirunoteDataProvider({ children }: AirunoteDataProviderProps) {
   const orgSession = useOrgSession();
   const authSession = useAuthSession();
   const { 
@@ -31,7 +48,7 @@ export function useLoadMetadata() {
     userId: null,
   });
 
-  // Track if we've already initiated a load in this session (prevents duplicate calls on route changes)
+  // Track if we've already initiated a load in this session
   const loadInitiatedRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -58,19 +75,18 @@ export function useLoadMetadata() {
       loadInitiatedRef.current = false;
     }
 
-    // Only load if not already loading and (never loaded OR context changed)
+    // Only load if not already loading
     if (isLoading) {
       return;
     }
 
-    // Check if we already have data in the store (more reliable than just lastFetched)
-    // Use foldersById.size to verify we actually have data, not just a timestamp
+    // Check if we already have data in the store
     const hasData = foldersById.size > 0 && lastFetched !== null;
 
     // Only fetch if:
-    // 1. Context changed (orgId/userId changed) - we already cleared above, so we need to reload
+    // 1. Context changed (orgId/userId changed) - we already cleared above
     // 2. We don't have data in the store (no folders loaded yet)
-    // 3. We haven't already initiated a load in this session (prevents duplicate calls on route changes)
+    // 3. We haven't already initiated a load in this session
     if ((contextChanged || !hasData) && !loadInitiatedRef.current) {
       // Mark as initiated to prevent duplicate calls
       loadInitiatedRef.current = true;
@@ -97,6 +113,6 @@ export function useLoadMetadata() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, userId, setMetadata, setLoading, setError, isLoading, lastFetched, clear]);
-  // Note: foldersById is intentionally excluded from deps to avoid unnecessary re-runs
-  // We check it inline to verify data exists, but don't want to re-run when Map reference changes
+
+  return <>{children}</>;
 }

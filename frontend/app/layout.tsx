@@ -14,7 +14,7 @@ import { HydratedContentProvider } from '@/providers/HydratedContentProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'AtomicFuel',
+  title: 'airunote',
   description: 'Multi-organization backend foundation',
 };
 

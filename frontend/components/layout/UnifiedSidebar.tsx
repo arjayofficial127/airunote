@@ -8,7 +8,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type Org } from '@/lib/api/orgs';
 import { FolderTree } from '@/components/airunote/components/FolderTree';
-import { useAirunoteTree } from '@/components/airunote/hooks/useAirunoteTree';
+import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 
 interface NavItem {
@@ -79,6 +79,9 @@ export function UnifiedSidebar({
   const authSession = useAuthSession();
   const userId = authSession.user?.id ?? null;
 
+  // Get data from store (metadata loaded by AirunoteDataProvider)
+  const { buildTree, getFolderById, foldersById, isLoading: isStoreLoading } = useAirunoteStore();
+
   // Extract current folder ID from pathname if on folder/document page
   const getCurrentFolderId = (): string | undefined => {
     if (!pathname) return undefined;
@@ -90,11 +93,18 @@ export function UnifiedSidebar({
 
   const currentFolderId = getCurrentFolderId();
 
-  // Fetch folder tree when in folders mode
-  const { data: folderTree } = useAirunoteTree(
-    showModeSwitcher && sidebarMode === 'folders' ? (orgId ?? null) : null,
-    showModeSwitcher && sidebarMode === 'folders' ? userId : null
+  // Build folder tree from store when in folders mode
+  // Find user root folder to build tree from
+  const allFolders = Array.from(foldersById.values());
+  const userRoot = allFolders.find(
+    (f) => f.humanId === '__user_root__' && f.ownerUserId === userId
   );
+  const rootFolderId = userRoot?.id || null;
+  
+  // Build tree from store (only when we have data and in folders mode)
+  const folderTree = showModeSwitcher && sidebarMode === 'folders' && rootFolderId && !isStoreLoading
+    ? buildTree(rootFolderId)
+    : null;
 
   // Water overlay state machine (two layers)
   // - mask: responsible for retracting/hiding, can retract even while content is still rising
@@ -276,71 +286,7 @@ export function UnifiedSidebar({
         )}
 
         <div className="relative z-10 flex flex-col h-full">
-          {/* Menu header with close button - shown on all screen sizes */}
-          {onClose && (
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-              <span className="text-sm font-semibold text-gray-900">Menu</span>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
-                aria-label="Close sidebar"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
         
-        {/* Header section - Super Admin or Org context with toggle button */}
-          {isOrgReady && ((context === 'dashboard' && isSuperAdmin) || context === 'org') ? (
-          <div 
-            className={`px-4 py-3 border-b border-gray-200 flex-shrink-0 min-h-[4.5rem] ${
-              isOpen ? 'cursor-default bg-gray-100' : 'cursor-pointer hover:bg-gray-50'
-            }`}
-            onClick={!isOpen && onToggle ? onToggle : undefined}
-          >
-            {/* Content that shows when sidebar is open - no separate animation, moves with sidebar */}
-            {isOpen && (
-              <div>
-                {context === 'dashboard' && isSuperAdmin ? (
-                  <>
-                    <div className="text-base font-medium text-gray-900">
-                      The Architect-King
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">Super Admin</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-base font-medium text-gray-900">
-                      {org?.name || 'Organization'}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">{role || 'Admin'}</div>
-                    {/* Loading state for org details */}
-                    {isPermissionsLoading && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span className="text-xs text-gray-600">Org details loading</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-            
-            {/* Left arrow that shows when sidebar is closed - no separate animation */}
-            {!isOpen && onToggle && (
-              <div className="flex items-center justify-center h-full min-h-[3rem]">
-                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </div>
-            )}
-          </div>
-          ) : null}
 
           {isOrgReady && (
           <nav className="flex-1 overflow-y-auto min-h-0 pt-2">
@@ -375,6 +321,16 @@ export function UnifiedSidebar({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
+            </div>
+          )}
+
+          {/* Org Name and User Type - shown below mode switcher when in org mode */}
+          {showModeSwitcher && sidebarMode === 'org' && (
+            <div className="px-4 py-3 border-b border-gray-200">
+              <div className="text-base font-medium text-gray-900">
+                {org?.name || 'Organization'}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">{role || 'Admin'}</div>
             </div>
           )}
 
@@ -553,7 +509,7 @@ export function UnifiedSidebar({
           {isOrgReady && (
             <footer className="py-3 px-4 flex-shrink-0">
               <div className="text-xs text-gray-500 text-center">
-                <p>© 2020–2025 AOTECH / AtomicFuel.</p>
+                <p>© 2020–2025 AOTECH / airunote.</p>
                 <p>All rights reserved.</p>
               </div>
             </footer>

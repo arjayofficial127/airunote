@@ -1,21 +1,18 @@
 /**
- * Hook for creating a folder with optimistic updates
+ * Hook for creating a folder
+ * Updates Zustand store directly - no React Query needed
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
-import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
 import type { CreateFolderRequest, AiruFolder } from '../types';
 
-interface CreateFolderContext {
-  previousTree?: { folders: AiruFolder[]; documents: any[]; children: any[] };
-}
-
 export function useCreateFolder() {
-  const queryClient = useQueryClient();
+  const store = useAirunoteStore.getState();
 
-  return useMutation<AiruFolder, Error, CreateFolderRequest, CreateFolderContext>({
+  return useMutation<AiruFolder, Error, CreateFolderRequest>({
     mutationFn: async (request) => {
       // Guard: Never send 'root' as parentFolderId - it must be a valid UUID
       if (request.parentFolderId === 'root') {
@@ -28,48 +25,12 @@ export function useCreateFolder() {
       }
       return response.data.folder;
     },
-    onMutate: async (request) => {
-      // Cancel outgoing refetches
-      const treeKey = getTreeCacheKey(request.orgId, request.userId, request.parentFolderId);
-      await queryClient.cancelQueries({ queryKey: treeKey });
-
-      // Snapshot previous value
-      const previousTree = queryClient.getQueryData<{ folders: AiruFolder[]; documents: any[]; children: any[] }>(treeKey);
-
-      // Optimistically update
-      if (previousTree) {
-        const optimisticFolder: AiruFolder = {
-          id: 'temp-' + Date.now(), // Temporary ID
-          orgId: request.orgId,
-          ownerUserId: request.userId,
-          parentFolderId: request.parentFolderId,
-          humanId: request.humanId,
-          visibility: 'private',
-          createdAt: new Date(),
-        };
-
-        queryClient.setQueryData(treeKey, {
-          ...previousTree,
-          folders: [...previousTree.folders, optimisticFolder],
-        });
-      }
-
-      return { previousTree };
-    },
-    onError: (error, request, context) => {
-      // Rollback on error
-      if (context?.previousTree) {
-        const treeKey = getTreeCacheKey(request.orgId, request.userId, request.parentFolderId);
-        queryClient.setQueryData(treeKey, context.previousTree);
-      }
+    onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to create folder', 'error');
     },
-    onSuccess: (data, request) => {
-      // Invalidate tree queries to refetch with real data
-      const invalidationKeys = getTreeInvalidationKeys(request.orgId, request.userId);
-      invalidationKeys.forEach((key) => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
+    onSuccess: (data) => {
+      // Update store with new folder
+      store.addFolder(data);
       toast(`Folder "${data.humanId}" created successfully`, 'success');
     },
   });

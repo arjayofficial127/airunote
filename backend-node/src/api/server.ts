@@ -196,7 +196,7 @@ export function createApp(): Express {
   // Root route
   app.get('/', (_req, res) => {
     res.json({
-      name: 'AtomicFuel API',
+      name: 'airunote API',
       type: 'Backend Engine',
       version: '0.9',
       status: 'running',

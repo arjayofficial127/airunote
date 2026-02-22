@@ -1,10 +1,10 @@
-# AtomicFuel Backend Engine
+# airunote Backend Engine
 
 A minimal, multi-org, extensible backend engine. Generic, fork-ready, and product-agnostic.
 
 ## Overview
 
-AtomicFuel provides:
+airunote provides:
 
 - **Multi-organization** support
 - **Authentication & authorization** (JWT, cookies, role-based access)
@@ -108,8 +108,8 @@ npm run test:coverage
 Build and run with Docker:
 
 ```bash
-docker build -t atomicfuel-backend .
-docker run -p 4000:4000 --env-file .env atomicfuel-backend
+docker build -t airunote-backend .
+docker run -p 4000:4000 --env-file .env airunote-backend
 ```
 
 Or deploy to any Node.js host with the provided Dockerfile.

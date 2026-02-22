@@ -248,7 +248,7 @@ export default function OrgDashboardPage() {
                 >
                   Stats
                 </button>
-                {/* Apps tab hidden - AtomicFuel BASE mode */}
+                {/* Apps tab hidden - airunote BASE mode */}
                 <button
                   onClick={() => setActiveTab('actions')}
                   className={`flex-1 px-2 py-2 text-xs font-medium rounded-md transition-colors ${
@@ -272,7 +272,7 @@ export default function OrgDashboardPage() {
               </div>
             </div>
 
-            {/* Stats Grid - Pages and Site Nav hidden - AtomicFuel BASE mode */}
+            {/* Stats Grid - Pages and Site Nav hidden - airunote BASE mode */}
             <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 ${
               activeTab === 'stats' || activeTab === 'all' ? 'block' : 'hidden sm:block'
             }`}>
@@ -418,7 +418,7 @@ export default function OrgDashboardPage() {
                 </div>
               </div>
 
-              {/* Recent Base Pages hidden - AtomicFuel BASE mode */}
+              {/* Recent Base Pages hidden - airunote BASE mode */}
 
               {/* Recent Posts */}
               <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 ${

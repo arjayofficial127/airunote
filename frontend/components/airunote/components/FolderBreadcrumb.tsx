@@ -77,7 +77,7 @@ export function FolderBreadcrumb({ path, orgId }: FolderBreadcrumbProps) {
                   {item.folder.humanId}
                 </span>
               ) : hasSiblings ? (
-                <div className="relative" ref={(el) => (dropdownRefs.current[index] = el)}>
+                <div className="relative" ref={(el) => { dropdownRefs.current[index] = el; }}>
                   <button
                     onClick={(e) => handleBreadcrumbClick(index, e)}
                     className="flex items-center hover:text-blue-600 transition-colors"

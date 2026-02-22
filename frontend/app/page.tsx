@@ -1,10 +1,10 @@
-import { AtomicFuelLandingPage } from '@/components/landing/AtomicFuelLandingPage';
+import { AirunoteLandingPage } from '@/components/landing/AirunoteLandingPage';
 
 /**
  * Root page - Server Component
  * 
- * Renders AtomicFuel landing page.
+ * Renders airunote landing page.
  */
 export default function Home() {
-  return <AtomicFuelLandingPage />;
+  return <AirunoteLandingPage />;
 }

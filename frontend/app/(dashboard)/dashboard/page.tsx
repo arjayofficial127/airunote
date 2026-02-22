@@ -110,7 +110,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Builder stats hidden - AtomicFuel BASE mode */}
+                  {/* Builder stats hidden - airunote BASE mode */}
                 </div>
 
                 {/* Quick Actions & Recent Organizations */}
@@ -119,7 +119,7 @@ export default function DashboardPage() {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
                     <div className="space-y-3">
-                      {/* Builder quick actions hidden - AtomicFuel BASE mode */}
+                      {/* Builder quick actions hidden - airunote BASE mode */}
 
                       <Link
                         href="/orgs"

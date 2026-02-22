@@ -8,8 +8,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCreateDocument } from '../hooks/useCreateDocument';
-import { useAirunoteTree } from '../hooks/useAirunoteTree';
+import { useAirunoteStore } from '../stores/airunoteStore';
+import { useAuthSession } from '@/providers/AuthSessionProvider';
 import type { AiruDocument } from '../types';
+import type { FolderTreeResponse } from '../types';
 
 interface PasteDockProps {
   isOpen: boolean;
@@ -34,7 +36,16 @@ export function PasteDock({
   const [error, setError] = useState<string | null>(null);
 
   const createDocument = useCreateDocument();
-  const { data: tree } = useAirunoteTree(orgId, userId);
+  const authSession = useAuthSession();
+  const { buildTree, foldersById } = useAirunoteStore();
+
+  // Build tree from store
+  const allFolders = Array.from(foldersById.values());
+  const userRoot = allFolders.find(
+    (f) => f.humanId === '__user_root__' && f.ownerUserId === userId
+  );
+  const rootFolderId = userRoot?.id || null;
+  const tree: FolderTreeResponse | null = rootFolderId ? buildTree(rootFolderId) : null;
 
   // Auto-detect type from pasted content
   useEffect(() => {
@@ -107,7 +118,7 @@ export function PasteDock({
 
     // Get actual root folder ID if needed
     const folderId = selectedFolderId === 'root' 
-      ? (tree?.folders[0]?.parentFolderId || 'root')
+      ? (userRoot?.id || selectedFolderId)
       : selectedFolderId;
 
     try {

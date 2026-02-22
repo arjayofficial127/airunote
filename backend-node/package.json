@@ -1,7 +1,7 @@
 {
   "name": "backend-node",
   "version": "1.0.0",
-  "description": "AtomicFuel backend engine",
+  "description": "airunote backend engine",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -1,6 +1,6 @@
-# AtomicFuel Frontend
+# airunote Frontend
 
-Next.js 14 App Router frontend for AtomicFuel - a minimal, multi-organization workspace engine with posts, collections, and offline-first capabilities.
+Next.js 14 App Router frontend for airunote - a minimal, multi-organization workspace engine with posts, collections, and offline-first capabilities.
 
 ## Setup 
 

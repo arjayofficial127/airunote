@@ -5,7 +5,7 @@
  * Org-scoped, app-scoped, user-device owned.
  */
 
-const DB_NAME = 'atomicfuel_offline_v1';
+const DB_NAME = 'airunote_offline_v1';
 const DB_VERSION = 1;
 
 const STORE_NAMES = ['drafts', 'offlineContent', 'metadataCache', 'snapshots'] as const;

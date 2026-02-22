@@ -87,15 +87,16 @@ export function buildFolderPath(
 
   // Build path upward from current to root
   while (folder) {
-    pathFolders.unshift(folder); // Add to beginning
+    const currentFolder: AiruFolder = folder; // Capture for type narrowing
+    pathFolders.unshift(currentFolder); // Add to beginning
 
     // Find parent folder
-    if (folder.parentFolderId === folder.id) {
+    if (currentFolder.parentFolderId === currentFolder.id) {
       // Self-parent means root, stop here
       break;
     }
 
-    const parent = allFolders.find((f) => f.id === folder.parentFolderId);
+    const parent = allFolders.find((f) => f.id === currentFolder.parentFolderId);
     if (!parent) {
       // Parent not found, stop
       break;

@@ -19,7 +19,7 @@ export default function ConditionalFooter() {
     <footer className="mt-auto border-t border-gray-200 bg-white py-4">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="text-center text-sm text-gray-500">
-          <p>© 2020–2025 AOTECH / AtomicFuel.</p>
+          <p>© 2020–2025 AOTECH / airunote.</p>
           <p>All rights reserved.</p>
         </div>
       </div>

@@ -18,6 +18,7 @@ import { SessionAppStoreProvider } from '@/contexts/SessionAppStoreContext';
 import { SessionBoundary } from '@/components/system/SessionBoundary';
 import { OnlineIndicator } from '@/components/system/OnlineIndicator';
 import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
+import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 
 export default function DashboardLayout({
   children,
@@ -116,6 +117,7 @@ export default function DashboardLayout({
   const roles = orgSession.roles;
   const isAdmin = roles.some((r: string) => r.toLowerCase() === 'admin');
   const isMember = roles.length > 0;
+  const { isSuperAdmin } = useSuperAdmin();
   
   // SessionBoundary handles loading/error states - no need for isOrgDataLoading
 
@@ -226,11 +228,11 @@ export default function DashboardLayout({
           <nav className="bg-white border-b border-gray-200 flex-shrink-0 fixed top-0 left-0 right-0 z-30">
             <div className="w-full px-3 sm:px-4 lg:px-8">
               <div className="flex items-center justify-between h-14 sm:h-16">
-                {/* Left: AtomicFuel + Hamburger */}
+                {/* Left: airunote + Hamburger */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* AtomicFuel */}
+                  {/* airunote */}
                   <Link href="/dashboard" className="text-lg sm:text-xl font-bold text-gray-900 hover:text-gray-700 transition">
-                    AtomicFuel
+                    airunote
                   </Link>
                   {/* Online Indicator */}
                   <OnlineIndicator />
@@ -311,31 +313,47 @@ export default function DashboardLayout({
                       </button>
 
                       {showUserDropdown && (
-                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                          <button
-                            onClick={() => {
-                              setIsProfileModalOpen(true);
-                              setShowUserDropdown(false);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            Edit Profile
-                          </button>
-                          <button
-                            onClick={() => {
-                              handleLogout();
-                              setShowUserDropdown(false);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                            Logout
-                          </button>
+                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                          {/* User Info Section */}
+                          <div className="px-4 py-3 border-b border-gray-200">
+                            <div className="text-sm font-semibold text-gray-900">{user.name || 'User'}</div>
+                            <div className="text-xs text-gray-600 mt-0.5">{user.email}</div>
+                            {org && (
+                              <>
+                                <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">{org.name}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">
+                                  {isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Member'}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {/* Actions */}
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                setIsProfileModalOpen(true);
+                                setShowUserDropdown(false);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              Edit Profile
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleLogout();
+                                setShowUserDropdown(false);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                              </svg>
+                              Logout
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

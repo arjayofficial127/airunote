@@ -15,6 +15,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             gcTime: 5 * 60 * 1000, // 5 minutes default
             retry: 1,
             refetchOnWindowFocus: false, // Don't refetch on window focus
+            refetchOnMount: false, // Don't refetch on component mount (prevents refetches on Next.js route changes)
           },
         },
       })

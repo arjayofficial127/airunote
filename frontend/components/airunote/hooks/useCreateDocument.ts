@@ -1,22 +1,18 @@
 /**
- * Hook for creating a document with optimistic updates
+ * Hook for creating a document
+ * Updates Zustand store directly - no React Query needed
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
-import { getTreeCacheKey, getFolderDocumentsCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
-import type { CreateDocumentRequest, AiruDocument } from '../types';
-
-interface CreateDocumentContext {
-  previousTree?: { folders: any[]; documents: AiruDocument[]; children: any[] };
-  previousDocuments?: AiruDocument[];
-}
+import type { CreateDocumentRequest, AiruDocument, AiruDocumentMetadata } from '../types';
 
 export function useCreateDocument() {
-  const queryClient = useQueryClient();
+  const store = useAirunoteStore.getState();
 
-  return useMutation<AiruDocument, Error, CreateDocumentRequest, CreateDocumentContext>({
+  return useMutation<AiruDocument, Error, CreateDocumentRequest>({
     mutationFn: async (request) => {
       const response = await airunoteApi.createDocument(request);
       if (!response.success) {
@@ -24,67 +20,27 @@ export function useCreateDocument() {
       }
       return response.data.document;
     },
-    onMutate: async (request) => {
-      // Cancel outgoing refetches
-      const treeKey = getTreeCacheKey(request.orgId, request.userId, request.folderId);
-      const documentsKey = getFolderDocumentsCacheKey(request.orgId, request.userId, request.folderId);
-      
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: treeKey }),
-        queryClient.cancelQueries({ queryKey: documentsKey }),
-      ]);
-
-      // Snapshot previous values
-      const previousTree = queryClient.getQueryData<{ folders: any[]; documents: AiruDocument[]; children: any[] }>(treeKey);
-      const previousDocuments = queryClient.getQueryData<AiruDocument[]>(documentsKey);
-
-      // Optimistically update
-      const optimisticDocument: AiruDocument = {
-        id: 'temp-' + Date.now(), // Temporary ID
-        folderId: request.folderId,
-        ownerUserId: request.userId,
-        type: request.type,
-        name: request.name,
-        content: request.content,
-        visibility: 'private',
-        state: 'active',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      if (previousTree) {
-        queryClient.setQueryData(treeKey, {
-          ...previousTree,
-          documents: [...previousTree.documents, optimisticDocument],
-        });
-      }
-
-      if (previousDocuments) {
-        queryClient.setQueryData(documentsKey, [...previousDocuments, optimisticDocument]);
-      }
-
-      return { previousTree, previousDocuments };
-    },
-    onError: (error, request, context) => {
-      // Rollback on error
-      const treeKey = getTreeCacheKey(request.orgId, request.userId, request.folderId);
-      const documentsKey = getFolderDocumentsCacheKey(request.orgId, request.userId, request.folderId);
-      
-      if (context?.previousTree) {
-        queryClient.setQueryData(treeKey, context.previousTree);
-      }
-      if (context?.previousDocuments) {
-        queryClient.setQueryData(documentsKey, context.previousDocuments);
-      }
+    onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to create document', 'error');
     },
-    onSuccess: (data, request) => {
-      // Invalidate queries to refetch with real data
-      const invalidationKeys = getTreeInvalidationKeys(request.orgId, request.userId);
-      invalidationKeys.forEach((key) => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
-      queryClient.invalidateQueries({ queryKey: getFolderDocumentsCacheKey(request.orgId, request.userId, request.folderId) });
+    onSuccess: (data) => {
+      // Update store with new document metadata
+      const documentMetadata: AiruDocumentMetadata = {
+        id: data.id,
+        folderId: data.folderId,
+        ownerUserId: data.ownerUserId,
+        type: data.type,
+        name: data.name,
+        visibility: data.visibility,
+        state: data.state,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      };
+      store.addDocument(documentMetadata);
+      
+      // Also store full document content in content store
+      store.setDocumentContent(data);
+      
       toast(`Document "${data.name}" created successfully`, 'success');
     },
   });

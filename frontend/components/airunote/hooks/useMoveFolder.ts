@@ -1,21 +1,18 @@
 /**
  * Hook for moving a folder
+ * Updates Zustand store directly - no React Query needed
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
-import { getTreeCacheKey, getTreeInvalidationKeys } from '../services/airunoteCache';
+import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
 import type { AiruFolder } from '../types';
 
-interface MoveFolderContext {
-  previousTrees?: Record<string, any>;
-}
-
 export function useMoveFolder() {
-  const queryClient = useQueryClient();
+  const store = useAirunoteStore.getState();
 
-  return useMutation<AiruFolder, Error, { folderId: string; orgId: string; userId: string; newParentFolderId: string }, MoveFolderContext>({
+  return useMutation<AiruFolder, Error, { folderId: string; orgId: string; userId: string; newParentFolderId: string }>({
     mutationFn: async ({ folderId, orgId, userId, newParentFolderId }) => {
       const response = await airunoteApi.updateFolder(folderId, {
         orgId,
@@ -27,37 +24,12 @@ export function useMoveFolder() {
       }
       return response.data.folder;
     },
-    onMutate: async ({ folderId, orgId, userId, newParentFolderId }) => {
-      // Cancel outgoing refetches
-      const invalidationKeys = getTreeInvalidationKeys(orgId, userId);
-      await Promise.all(
-        invalidationKeys.map((key) => queryClient.cancelQueries({ queryKey: key }))
-      );
-
-      // Snapshot previous values
-      const previousTrees: Record<string, any> = {};
-      invalidationKeys.forEach((key) => {
-        previousTrees[key.join('-')] = queryClient.getQueryData(key);
-      });
-
-      return { previousTrees };
-    },
-    onError: (error, variables, context) => {
-      // Rollback on error
-      if (context?.previousTrees) {
-        Object.entries(context.previousTrees).forEach(([key, value]) => {
-          const keyArray = key.split('-');
-          queryClient.setQueryData(keyArray, value);
-        });
-      }
+    onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to move folder', 'error');
     },
-    onSuccess: (data, variables) => {
-      // Invalidate all tree queries (both old and new parent)
-      const invalidationKeys = getTreeInvalidationKeys(variables.orgId, variables.userId);
-      invalidationKeys.forEach((key) => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
+    onSuccess: (data) => {
+      // Update store with moved folder
+      store.updateFolder(data);
       toast('Folder moved successfully', 'success');
     },
   });

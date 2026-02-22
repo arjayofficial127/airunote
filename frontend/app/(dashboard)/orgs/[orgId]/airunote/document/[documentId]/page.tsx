@@ -236,6 +236,17 @@ export default function DocumentViewPage() {
   }
 
   // RTF documents: viewer-first (read-only by default)
+  if (!document) {
+    return (
+      <ErrorState
+        title="Document not found"
+        message="This document may have been deleted or you may not have permission to access it."
+        backUrl={`/orgs/${orgIdFromParams}/airunote`}
+        backLabel="Back to Home"
+      />
+    );
+  }
+
   if (document.type === 'RTF') {
     return (
       <div className="h-screen flex flex-col">

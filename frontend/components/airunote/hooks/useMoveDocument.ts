@@ -1,15 +1,16 @@
 /**
  * Hook for moving a document
+ * Updates Zustand store directly - no React Query needed
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
-import { getDocumentCacheKey, getTreeInvalidationKeys, getFolderDocumentsCacheKey } from '../services/airunoteCache';
+import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
-import type { AiruDocument } from '../types';
+import type { AiruDocument, AiruDocumentMetadata } from '../types';
 
 export function useMoveDocument() {
-  const queryClient = useQueryClient();
+  const store = useAirunoteStore.getState();
 
   return useMutation<
     AiruDocument,
@@ -27,27 +28,25 @@ export function useMoveDocument() {
       }
       return response.data.document;
     },
-    onSuccess: (data, variables) => {
-      // Invalidate queries for both old and new folders
-      queryClient.invalidateQueries({
-        queryKey: getFolderDocumentsCacheKey(variables.orgId, variables.userId, variables.oldFolderId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getFolderDocumentsCacheKey(variables.orgId, variables.userId, variables.newFolderId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: getDocumentCacheKey(variables.orgId, variables.userId, variables.documentId),
-      });
-
-      // Invalidate all tree queries
-      const invalidationKeys = getTreeInvalidationKeys(variables.orgId, variables.userId);
-      invalidationKeys.forEach((key) => {
-        queryClient.invalidateQueries({ queryKey: key });
-      });
-      toast('Document moved successfully', 'success');
-    },
     onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to move document', 'error');
+    },
+    onSuccess: (data) => {
+      // Update store with moved document
+      const documentMetadata: AiruDocumentMetadata = {
+        id: data.id,
+        folderId: data.folderId,
+        ownerUserId: data.ownerUserId,
+        type: data.type,
+        name: data.name,
+        visibility: data.visibility,
+        state: data.state,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      };
+      store.updateDocumentMetadata(documentMetadata);
+      store.setDocumentContent(data);
+      toast('Document moved successfully', 'success');
     },
   });
 }

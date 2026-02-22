@@ -1,8 +1,8 @@
 {
-  "name": "atomicfuel-monorepo",
+  "name": "airunote-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "AtomicFuel - SaaS monorepo with Next.js frontend and Express backend",
+  "description": "airunote - SaaS monorepo with Next.js frontend and Express backend",
   "scripts": {
     "dev": "pnpm dev:backend & pnpm dev:frontend",
     "dev:backend": "pnpm --filter backend-node dev",

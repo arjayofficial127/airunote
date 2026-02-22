@@ -22,6 +22,9 @@ interface MetadataStoreState {
   error: Error | null;
   lastFetched: Date | null;
 
+  // Search state
+  searchQuery: string;
+
   // Actions
   setMetadata: (folders: AiruFolder[], documents: AiruDocumentMetadata[]) => void;
   addFolder: (folder: AiruFolder) => void;
@@ -32,6 +35,7 @@ interface MetadataStoreState {
   removeDocument: (documentId: string) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
+  setSearchQuery: (query: string) => void;
   clear: () => void;
 }
 
@@ -58,8 +62,18 @@ interface AirunoteStore extends MetadataStoreState, ContentStoreState {
   getDocumentContentById: (documentId: string) => AiruDocument | undefined;
   getFoldersByParent: (parentFolderId: string | null) => AiruFolder[];
   getDocumentsByFolder: (folderId: string) => AiruDocumentMetadata[];
+  getFolderItemCount: (folderId: string, recursive?: boolean) => number;
+  getFolderCounts: (folderId: string) => {
+    directFolders: number;
+    directFiles: number;
+    subFolders: number;
+    subFiles: number;
+  };
+  getFilteredFolders: (parentFolderId: string | null) => AiruFolder[];
+  getFilteredDocuments: (folderId: string) => AiruDocumentMetadata[];
   isDocumentContentLoaded: (documentId: string) => boolean;
   isDocumentLoading: (documentId: string) => boolean;
+  buildTree: (rootFolderId: string | null) => import('../types').FolderTreeResponse;
 }
 
 export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
@@ -72,6 +86,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   isLoading: false,
   error: null,
   lastFetched: null,
+  searchQuery: '',
 
   // =====================================================
   // Layer 2: Content Store Initial State
@@ -222,6 +237,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
 
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
+  setSearchQuery: (query) => set({ searchQuery: query }),
   clear: () => {
     set({
       foldersById: new Map(),
@@ -232,6 +248,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
       isLoading: false,
       error: null,
       lastFetched: null,
+      searchQuery: '',
     });
   },
 
@@ -297,11 +314,156 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
     return documents;
   },
 
+  getFolderItemCount: (folderId, recursive = false) => {
+    const { getFoldersByParent, getDocumentsByFolder } = get();
+    
+    // Count direct items
+    const directFolders = getFoldersByParent(folderId);
+    const directDocuments = getDocumentsByFolder(folderId);
+    let count = directFolders.length + directDocuments.length;
+    
+    // If recursive, count all descendants
+    if (recursive) {
+      const countRecursive = (parentId: string): number => {
+        const folders = getFoldersByParent(parentId);
+        const documents = getDocumentsByFolder(parentId);
+        let subCount = folders.length + documents.length;
+        
+        // Recursively count children
+        folders.forEach((folder) => {
+          subCount += countRecursive(folder.id);
+        });
+        
+        return subCount;
+      };
+      
+      count = countRecursive(folderId);
+    }
+    
+    return count;
+  },
+
+  getFolderCounts: (folderId) => {
+    const { getFoldersByParent, getDocumentsByFolder } = get();
+    
+    // Direct counts
+    const directFolders = getFoldersByParent(folderId);
+    const directFiles = getDocumentsByFolder(folderId);
+    
+    // Recursive counts (sub folders and files)
+    const countRecursive = (parentId: string): { folders: number; files: number } => {
+      const folders = getFoldersByParent(parentId);
+      const files = getDocumentsByFolder(parentId);
+      
+      let subFolders = folders.length;
+      let subFiles = files.length;
+      
+      // Recursively count children
+      folders.forEach((folder) => {
+        const childCounts = countRecursive(folder.id);
+        subFolders += childCounts.folders;
+        subFiles += childCounts.files;
+      });
+      
+      return { folders: subFolders, files: subFiles };
+    };
+    
+    const subCounts = countRecursive(folderId);
+    
+    return {
+      directFolders: directFolders.length,
+      directFiles: directFiles.length,
+      subFolders: subCounts.folders - directFolders.length, // Exclude direct folders
+      subFiles: subCounts.files - directFiles.length, // Exclude direct files
+    };
+  },
+
+  getFilteredFolders: (parentFolderId) => {
+    const { getFoldersByParent, searchQuery } = get();
+    const folders = getFoldersByParent(parentFolderId);
+    
+    if (!searchQuery.trim()) {
+      return folders;
+    }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return folders.filter((folder) =>
+      folder.humanId.toLowerCase().includes(query)
+    );
+  },
+
+  getFilteredDocuments: (folderId) => {
+    const { getDocumentsByFolder, searchQuery } = get();
+    const documents = getDocumentsByFolder(folderId);
+    
+    if (!searchQuery.trim()) {
+      return documents;
+    }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return documents.filter((doc) =>
+      doc.name.toLowerCase().includes(query)
+    );
+  },
+
   isDocumentContentLoaded: (documentId) => {
     return get().documentContentById.has(documentId);
   },
 
   isDocumentLoading: (documentId) => {
     return get().loadingDocumentIds.has(documentId);
+  },
+
+  buildTree: (rootFolderId) => {
+    const { getFoldersByParent, getDocumentsByFolder } = get();
+    
+    // Import type here to avoid circular dependency
+    type FolderTreeResponse = {
+      folders: AiruFolder[];
+      documents: AiruDocument[];
+      children: FolderTreeResponse[];
+    };
+
+    const buildTreeRecursive = (parentId: string | null): FolderTreeResponse => {
+      // Get folders with this parent
+      const folders = getFoldersByParent(parentId);
+      
+      // Get documents in this folder (parentId is the folderId for documents)
+      const documents = parentId ? getDocumentsByFolder(parentId) : [];
+      
+      // Convert document metadata to full document format (without content for tree)
+      const treeDocuments = documents.map((doc) => ({
+        id: doc.id,
+        folderId: doc.folderId,
+        ownerUserId: doc.ownerUserId,
+        type: doc.type,
+        name: doc.name,
+        content: '', // Tree doesn't need content
+        visibility: doc.visibility,
+        state: doc.state,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+      }));
+
+      // Recursively build children for each folder
+      const children = folders.map((folder) => buildTreeRecursive(folder.id));
+
+      return {
+        folders,
+        documents: treeDocuments,
+        children,
+      };
+    };
+
+    // If no rootFolderId, return empty tree
+    if (!rootFolderId) {
+      return {
+        folders: [],
+        documents: [],
+        children: [],
+      };
+    }
+
+    return buildTreeRecursive(rootFolderId);
   },
 }));
