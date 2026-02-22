@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import { FolderCountBadge } from './FolderCountBadge';
+import { getFolderTypeIcon } from '../utils/folderTypeIcon';
 import type { AiruFolder, FolderTreeResponse } from '../types';
 
 interface FolderTreeProps {
@@ -91,7 +92,7 @@ export function FolderTree({ tree, currentFolderId, orgId }: FolderTreeProps) {
             }`}
           >
             <div className="flex items-center flex-1 min-w-0">
-              <span className="mr-2">📁</span>
+              <span className="mr-2">{getFolderTypeIcon(folder.type)}</span>
               <span className="truncate">{folder.humanId}</span>
             </div>
             <FolderCountBadge

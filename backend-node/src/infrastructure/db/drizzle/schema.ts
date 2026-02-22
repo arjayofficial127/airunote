@@ -424,6 +424,7 @@ export const airuDocumentStateEnum = pgEnum('airu_document_state', ['active', 'a
 export const airuShortcutTargetTypeEnum = pgEnum('airu_shortcut_target_type', ['folder', 'document']);
 export const airuShareTypeEnum = pgEnum('airu_share_type', ['user', 'org', 'public', 'link']);
 export const airuContentTypeEnum = pgEnum('airu_content_type', ['canonical', 'shared']);
+export const airuFolderTypeEnum = pgEnum('airu_folder_type', ['box', 'book', 'board']);
 
 // Airu Folders table
 export const airuFoldersTable = pgTable('airu_folders', {
@@ -439,6 +440,8 @@ export const airuFoldersTable = pgTable('airu_folders', {
     .references(() => airuFoldersTable.id, { onDelete: 'restrict' }),
   humanId: varchar('human_id', { length: 255 }).notNull(),
   visibility: airuVisibilityEnum('visibility').notNull().default('private'),
+  type: airuFolderTypeEnum('type').notNull().default('box'),
+  metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   orgIdx: index('airu_folders_org_idx').on(table.orgId),

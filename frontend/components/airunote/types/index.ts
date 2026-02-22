@@ -10,6 +10,8 @@ export interface AiruFolder {
   parentFolderId: string;
   humanId: string;
   visibility: 'private' | 'org' | 'public';
+  type: 'box' | 'book' | 'board';
+  metadata?: Record<string, unknown> | null;
   createdAt: Date;
 }
 
@@ -68,6 +70,8 @@ export interface CreateFolderRequest {
   userId: string;
   parentFolderId: string;
   humanId: string;
+  type?: 'box' | 'book' | 'board';
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface UpdateFolderRequest {
@@ -75,6 +79,8 @@ export interface UpdateFolderRequest {
   userId: string;
   humanId?: string;
   parentFolderId?: string;
+  type?: 'box' | 'book' | 'board';
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface CreateDocumentRequest {

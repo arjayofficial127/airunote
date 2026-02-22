@@ -1,63 +1,77 @@
 /**
- * CreateFolderModal Component
- * Modal for creating a new folder
+ * EditFolderModal Component
+ * Modal for editing folder name and type
  */
 
 'use client';
 
-import { useState } from 'react';
-import { useCreateFolder } from '../hooks/useCreateFolder';
+import { useState, useEffect } from 'react';
+import { useUpdateFolder } from '../hooks/useUpdateFolder';
 import type { AiruFolder } from '../types';
 
-interface CreateFolderModalProps {
+interface EditFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
+  folder: AiruFolder | null;
   orgId: string;
   userId: string;
-  parentFolderId: string;
   onSuccess?: (folder: AiruFolder) => void;
 }
 
-export function CreateFolderModal({
+export function EditFolderModal({
   isOpen,
   onClose,
+  folder,
   orgId,
   userId,
-  parentFolderId,
   onSuccess,
-}: CreateFolderModalProps) {
+}: EditFolderModalProps) {
   const [folderName, setFolderName] = useState('');
   const [folderType, setFolderType] = useState<'box' | 'book' | 'board'>('box');
   const [error, setError] = useState<string | null>(null);
-  const createFolder = useCreateFolder();
+  const updateFolder = useUpdateFolder();
+
+  // Initialize form when folder changes
+  useEffect(() => {
+    if (folder) {
+      setFolderName(folder.humanId);
+      setFolderType(folder.type || 'box');
+      setError(null);
+    }
+  }, [folder]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!folder) {
+      setError('No folder selected');
+      return;
+    }
 
     if (!folderName.trim()) {
       setError('Folder name is required');
       return;
     }
 
-    // Backend auto-provisions root folder and defaults to user root if parentFolderId is empty
-    // So we can pass empty string and backend will handle it
-    const actualParentFolderId = parentFolderId && parentFolderId !== 'root' ? parentFolderId : '';
+    // Don't update if nothing changed
+    if (folderName.trim() === folder.humanId && folderType === (folder.type || 'box')) {
+      onClose();
+      return;
+    }
 
     try {
-      const folder = await createFolder.mutateAsync({
+      const updatedFolder = await updateFolder.mutateAsync({
+        folderId: folder.id,
         orgId,
         userId,
-        parentFolderId: actualParentFolderId,
-        humanId: folderName.trim(),
-        type: folderType,
+        humanId: folderName.trim() !== folder.humanId ? folderName.trim() : undefined,
+        type: folderType !== (folder.type || 'box') ? folderType : undefined,
       });
-      setFolderName('');
-      setFolderType('box');
-      onSuccess?.(folder);
+      onSuccess?.(updatedFolder);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create folder');
+      setError(err instanceof Error ? err.message : 'Failed to update folder');
     }
   };
 
@@ -68,12 +82,12 @@ export function CreateFolderModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !folder) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-xl font-bold mb-4">Create New Folder</h2>
+        <h2 className="text-xl font-bold mb-4">Edit Folder</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
@@ -89,7 +103,6 @@ export function CreateFolderModal({
               placeholder="Enter folder name"
               autoFocus
             />
-            {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
           </div>
 
           <div className="mb-4">
@@ -111,21 +124,23 @@ export function CreateFolderModal({
             </p>
           </div>
 
+          {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+
           <div className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={handleClose}
               className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-              disabled={createFolder.isPending}
+              disabled={updateFolder.isPending}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={createFolder.isPending || !folderName.trim()}
+              disabled={updateFolder.isPending || !folderName.trim()}
             >
-              {createFolder.isPending ? 'Creating...' : 'Create'}
+              {updateFolder.isPending ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>

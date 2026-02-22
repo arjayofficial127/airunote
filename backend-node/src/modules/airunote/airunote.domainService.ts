@@ -234,7 +234,9 @@ export class AirunoteDomainService {
     orgId: string,
     userId: string,
     parentFolderId: string,
-    humanId: string
+    humanId: string,
+    type: 'box' | 'book' | 'board' = 'box',
+    metadata: Record<string, unknown> | null = null
   ): Promise<AiruFolder> {
     return await db.transaction(async (tx) => {
       // Ensure user root exists (idempotent)
@@ -260,8 +262,13 @@ export class AirunoteDomainService {
         throw new Error('Cannot create folder under org root');
       }
 
+      // Validate type
+      if (!['box', 'book', 'board'].includes(type)) {
+        throw new Error(`Invalid folder type: ${type}. Must be 'box', 'book', or 'board'`);
+      }
+
       // Create folder
-      return await this.repository.createFolder(orgId, userId, actualParentFolderId, humanId, tx);
+      return await this.repository.createFolder(orgId, userId, actualParentFolderId, humanId, type, metadata, tx);
     });
   }
 
@@ -281,6 +288,34 @@ export class AirunoteDomainService {
 
       // Update folder name
       return await this.repository.updateFolderName(folderId, orgId, userId, newHumanId, tx);
+    });
+  }
+
+  /**
+   * Update folder properties (name, type, metadata)
+   * Constitution: Root folders cannot be renamed
+   */
+  async updateFolder(
+    orgId: string,
+    userId: string,
+    folderId: string,
+    updates: {
+      humanId?: string;
+      type?: 'box' | 'book' | 'board';
+      metadata?: Record<string, unknown> | null;
+    }
+  ): Promise<AiruFolder> {
+    return await db.transaction(async (tx) => {
+      // Ensure user root exists
+      await this.ensureUserRootExists(orgId, userId, userId);
+
+      // Validate type if provided
+      if (updates.type && !['box', 'book', 'board'].includes(updates.type)) {
+        throw new Error(`Invalid folder type: ${updates.type}. Must be 'box', 'book', or 'board'`);
+      }
+
+      // Update folder
+      return await this.repository.updateFolder(folderId, orgId, userId, updates, tx);
     });
   }
 

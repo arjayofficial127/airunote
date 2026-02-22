@@ -102,14 +102,19 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
     const documentsById = new Map<string, AiruDocumentMetadata>();
     const childrenByParentId = new Map<string | null, string[]>();
 
-    // Index folders
+    // Index folders - normalize type to ensure it's always present
     folders.forEach((folder) => {
-      foldersById.set(folder.id, folder);
-      const parentId = folder.parentFolderId === folder.id ? null : folder.parentFolderId;
+      // Ensure type defaults to 'box' if missing
+      const normalizedFolder: AiruFolder = {
+        ...folder,
+        type: folder.type || 'box',
+      };
+      foldersById.set(normalizedFolder.id, normalizedFolder);
+      const parentId = normalizedFolder.parentFolderId === normalizedFolder.id ? null : normalizedFolder.parentFolderId;
       if (!childrenByParentId.has(parentId)) {
         childrenByParentId.set(parentId, []);
       }
-      childrenByParentId.get(parentId)!.push(folder.id);
+      childrenByParentId.get(parentId)!.push(normalizedFolder.id);
     });
 
     // Index documents
@@ -132,12 +137,17 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
     const newFoldersById = new Map(foldersById);
     const newChildrenByParentId = new Map(childrenByParentId);
 
-    newFoldersById.set(folder.id, folder);
-    const parentId = folder.parentFolderId === folder.id ? null : folder.parentFolderId;
+    // Normalize folder - ensure type defaults to 'box' if missing
+    const normalizedFolder: AiruFolder = {
+      ...folder,
+      type: folder.type || 'box',
+    };
+    newFoldersById.set(normalizedFolder.id, normalizedFolder);
+    const parentId = normalizedFolder.parentFolderId === normalizedFolder.id ? null : normalizedFolder.parentFolderId;
     if (!newChildrenByParentId.has(parentId)) {
       newChildrenByParentId.set(parentId, []);
     }
-    newChildrenByParentId.get(parentId)!.push(folder.id);
+    newChildrenByParentId.get(parentId)!.push(normalizedFolder.id);
 
     set({
       foldersById: newFoldersById,
@@ -153,12 +163,17 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
     const newFoldersById = new Map(foldersById);
     const newChildrenByParentId = new Map(childrenByParentId);
 
+    // Normalize folder - ensure type defaults to 'box' if missing
+    const normalizedFolder: AiruFolder = {
+      ...folder,
+      type: folder.type || 'box',
+    };
     // Update folder
-    newFoldersById.set(folder.id, folder);
+    newFoldersById.set(normalizedFolder.id, normalizedFolder);
 
     // If parent changed, update children indices
     const oldParentId = oldFolder.parentFolderId === oldFolder.id ? null : oldFolder.parentFolderId;
-    const newParentId = folder.parentFolderId === folder.id ? null : folder.parentFolderId;
+    const newParentId = normalizedFolder.parentFolderId === normalizedFolder.id ? null : normalizedFolder.parentFolderId;
 
     if (oldParentId !== newParentId) {
       // Remove from old parent

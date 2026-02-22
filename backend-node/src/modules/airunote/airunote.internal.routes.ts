@@ -99,6 +99,8 @@ interface CreateFolderRequest {
   userId: string;
   parentFolderId: string;
   humanId: string;
+  type?: 'box' | 'book' | 'board';
+  metadata?: Record<string, unknown> | null;
 }
 
 router.post('/folder', async (req: Request, res: Response, next) => {
@@ -136,12 +138,22 @@ router.post('/folder', async (req: Request, res: Response, next) => {
       });
     }
 
+    // Validate type if provided
+    if (body.type && !['box', 'book', 'board'].includes(body.type)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid folder type. Must be "box", "book", or "board"', code: 'VALIDATION_ERROR' },
+      });
+    }
+
     const domainService = container.resolve(AirunoteDomainService);
     const folder = await domainService.createFolderInUserVault(
       body.orgId,
       body.userId,
       body.parentFolderId,
-      body.humanId
+      body.humanId,
+      body.type || 'box',
+      body.metadata || null
     );
 
     res.status(200).json({
@@ -158,6 +170,8 @@ interface UpdateFolderRequest {
   userId: string;
   humanId?: string;
   parentFolderId?: string;
+  type?: 'box' | 'book' | 'board';
+  metadata?: Record<string, unknown> | null;
 }
 
 router.put('/folder/:id', async (req: Request, res: Response, next) => {
@@ -181,18 +195,29 @@ router.put('/folder/:id', async (req: Request, res: Response, next) => {
       });
     }
 
-    const domainService = container.resolve(AirunoteDomainService);
-    let folder;
-
-    if (body.humanId && body.parentFolderId) {
+    // Validate type if provided
+    if (body.type && !['box', 'book', 'board'].includes(body.type)) {
       return res.status(400).json({
         success: false,
-        error: { message: 'Cannot rename and move folder in same request', code: 'VALIDATION_ERROR' },
+        error: { message: 'Invalid folder type. Must be "box", "book", or "board"', code: 'VALIDATION_ERROR' },
       });
     }
 
-    if (body.humanId) {
-      folder = await domainService.renameFolder(body.orgId, body.userId, folderId, body.humanId);
+    const domainService = container.resolve(AirunoteDomainService);
+    let folder;
+
+    // If updating name, type, or metadata, use updateFolder
+    if (body.humanId || body.type !== undefined || body.metadata !== undefined) {
+      const updates: {
+        humanId?: string;
+        type?: 'box' | 'book' | 'board';
+        metadata?: Record<string, unknown> | null;
+      } = {};
+      if (body.humanId) updates.humanId = body.humanId;
+      if (body.type !== undefined) updates.type = body.type;
+      if (body.metadata !== undefined) updates.metadata = body.metadata;
+
+      folder = await domainService.updateFolder(body.orgId, body.userId, folderId, updates);
     } else if (body.parentFolderId) {
       folder = await domainService.moveFolder(body.orgId, body.userId, folderId, body.parentFolderId);
     } else {

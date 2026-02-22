@@ -14,6 +14,8 @@ import { FolderTreeView } from './FolderTreeView';
 import { FolderCountBadge } from './FolderCountBadge';
 import { DocumentList } from './DocumentList';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { EditFolderModal } from './EditFolderModal';
+import { getFolderTypeIcon } from '../utils/folderTypeIcon';
 import type { AiruFolder, AiruDocument, AiruDocumentMetadata } from '../types';
 
 interface FolderViewLayoutProps {
@@ -48,6 +50,7 @@ export function FolderViewLayout({
   const params = useParams();
   const orgIdFromParams = params.orgId as string;
   const [viewMode, setViewMode] = useState<'grid' | 'tree'>('grid');
+  const [editingFolder, setEditingFolder] = useState<AiruFolder | null>(null);
 
   const {
     getFilteredFolders,
@@ -194,7 +197,7 @@ export function FolderViewLayout({
                       className="flex flex-col h-full cursor-pointer"
                     >
                       <div className="flex items-center space-x-3 flex-1 min-w-0 mb-3">
-                        <span className="text-2xl">📁</span>
+                        <span className="text-2xl">{getFolderTypeIcon(folder.type)}</span>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-medium text-gray-900 truncate">{folder.humanId}</h3>
                           <p className="text-sm text-gray-500">
@@ -214,6 +217,17 @@ export function FolderViewLayout({
                     </Link>
                     {(onMoveFolder || onDeleteFolder) && (
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex space-x-1 transition-opacity duration-150">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingFolder(folder);
+                          }}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-150"
+                          title="Edit folder"
+                        >
+                          Edit
+                        </button>
                         {onMoveFolder && (
                           <button
                             onClick={(e) => {
@@ -288,6 +302,16 @@ export function FolderViewLayout({
           />
         )}
       </div>
+
+      {/* Edit Folder Modal */}
+      <EditFolderModal
+        isOpen={editingFolder !== null}
+        onClose={() => setEditingFolder(null)}
+        folder={editingFolder}
+        orgId={orgId}
+        userId={userId}
+        onSuccess={() => setEditingFolder(null)}
+      />
     </div>
   );
 }

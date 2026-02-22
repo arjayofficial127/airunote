@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import { FolderCountBadge } from './FolderCountBadge';
+import { getFolderTypeIcon } from '../utils/folderTypeIcon';
 import type { AiruFolder, AiruDocumentMetadata } from '../types';
 
 interface FolderTreeViewProps {
@@ -89,7 +90,7 @@ export function FolderTreeView({
             style={{ paddingLeft: `${level * 20}px` }}
           >
             <div className="flex items-center flex-1 min-w-0">
-              <span className="mr-2 text-lg">📁</span>
+              <span className="mr-2 text-lg">{getFolderTypeIcon(folder.type)}</span>
               <span className="truncate font-medium">{folder.humanId}</span>
             </div>
             <FolderCountBadge

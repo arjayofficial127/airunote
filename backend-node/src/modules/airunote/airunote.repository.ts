@@ -30,6 +30,8 @@ export interface AiruFolder {
   parentFolderId: string;
   humanId: string;
   visibility: 'private' | 'org' | 'public';
+  type: 'box' | 'book' | 'board';
+  metadata: Record<string, unknown> | null;
   createdAt: Date;
 }
 
@@ -164,6 +166,8 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
+      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      metadata: folder.metadata as Record<string, unknown> | null,
       createdAt: folder.createdAt,
     };
   }
@@ -190,6 +194,8 @@ export class AirunoteRepository {
         parentFolderId: folderId, // Self-parent pattern
         humanId: '__org_root__',
         visibility: 'org',
+        type: 'box', // Default type for org root
+        metadata: null,
       })
       .returning();
 
@@ -200,6 +206,8 @@ export class AirunoteRepository {
       parentFolderId: inserted.parentFolderId,
       humanId: inserted.humanId,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
+      type: (inserted.type as 'box' | 'book' | 'board') || 'box',
+      metadata: inserted.metadata as Record<string, unknown> | null,
       createdAt: inserted.createdAt,
     };
   }
@@ -292,6 +300,8 @@ export class AirunoteRepository {
         parentFolderId,
         humanId: '__user_root__',
         visibility: 'private', // Constitution: privacy default
+        type: 'box', // Default type for user root
+        metadata: null,
       })
       .returning();
 
@@ -302,6 +312,8 @@ export class AirunoteRepository {
       parentFolderId: inserted.parentFolderId,
       humanId: inserted.humanId,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
+      type: (inserted.type as 'box' | 'book' | 'board') || 'box',
+      metadata: inserted.metadata as Record<string, unknown> | null,
       createdAt: inserted.createdAt,
     };
   }
@@ -336,6 +348,8 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
+      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      metadata: folder.metadata as Record<string, unknown> | null,
       createdAt: folder.createdAt,
     };
   }
@@ -376,6 +390,8 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
+      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      metadata: folder.metadata as Record<string, unknown> | null,
       createdAt: folder.createdAt,
     }));
   }
@@ -389,6 +405,8 @@ export class AirunoteRepository {
     ownerUserId: string,
     parentFolderId: string,
     humanId: string,
+    type: 'box' | 'book' | 'board' = 'box',
+    metadata: Record<string, unknown> | null = null,
     tx?: Transaction
   ): Promise<AiruFolder> {
     const dbInstance = tx ?? db;
@@ -421,6 +439,8 @@ export class AirunoteRepository {
         parentFolderId,
         humanId,
         visibility: 'private', // Constitution: privacy default
+        type,
+        metadata,
       })
       .returning();
 
@@ -431,6 +451,8 @@ export class AirunoteRepository {
       parentFolderId: inserted.parentFolderId,
       humanId: inserted.humanId,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
+      type: (inserted.type as 'box' | 'book' | 'board') || 'box',
+      metadata: inserted.metadata as Record<string, unknown> | null,
       createdAt: inserted.createdAt,
     };
   }
@@ -444,6 +466,24 @@ export class AirunoteRepository {
     orgId: string,
     ownerUserId: string,
     newHumanId: string,
+    tx?: Transaction
+  ): Promise<AiruFolder> {
+    return this.updateFolder(folderId, orgId, ownerUserId, { humanId: newHumanId }, tx);
+  }
+
+  /**
+   * Update folder properties (name, type, metadata)
+   * Constitution: Root folders cannot be renamed
+   */
+  async updateFolder(
+    folderId: string,
+    orgId: string,
+    ownerUserId: string,
+    updates: {
+      humanId?: string;
+      type?: 'box' | 'book' | 'board';
+      metadata?: Record<string, unknown> | null;
+    },
     tx?: Transaction
   ): Promise<AiruFolder> {
     const dbInstance = tx ?? db;
@@ -460,19 +500,42 @@ export class AirunoteRepository {
       throw new Error(`Folder owner mismatch: expected ${ownerUserId}, got ${folder.ownerUserId}`);
     }
 
-    // Verify folder is not root
-    if (folder.humanId === '__org_root__' || folder.humanId === '__user_root__') {
-      throw new Error('Cannot rename root folder');
+    // Verify folder is not root (if renaming)
+    if (updates.humanId) {
+      if (folder.humanId === '__org_root__' || folder.humanId === '__user_root__') {
+        throw new Error('Cannot rename root folder');
+      }
+
+      // Verify new humanId is not reserved
+      if (updates.humanId === '__org_root__' || updates.humanId === '__user_root__') {
+        throw new Error(`Reserved humanId: ${updates.humanId}`);
+      }
     }
 
-    // Verify new humanId is not reserved
-    if (newHumanId === '__org_root__' || newHumanId === '__user_root__') {
-      throw new Error(`Reserved humanId: ${newHumanId}`);
+    // Validate type if provided
+    if (updates.type && !['box', 'book', 'board'].includes(updates.type)) {
+      throw new Error(`Invalid folder type: ${updates.type}. Must be 'box', 'book', or 'board'`);
+    }
+
+    // Build update object
+    const updateValues: {
+      humanId?: string;
+      type?: 'box' | 'book' | 'board';
+      metadata?: Record<string, unknown> | null;
+    } = {};
+    if (updates.humanId !== undefined) {
+      updateValues.humanId = updates.humanId;
+    }
+    if (updates.type !== undefined) {
+      updateValues.type = updates.type;
+    }
+    if (updates.metadata !== undefined) {
+      updateValues.metadata = updates.metadata;
     }
 
     const [updated] = await dbInstance
       .update(airuFoldersTable)
-      .set({ humanId: newHumanId })
+      .set(updateValues)
       .where(
         and(
           eq(airuFoldersTable.id, folderId),
@@ -489,6 +552,8 @@ export class AirunoteRepository {
       parentFolderId: updated.parentFolderId,
       humanId: updated.humanId,
       visibility: updated.visibility as 'private' | 'org' | 'public',
+      type: (updated.type as 'box' | 'book' | 'board') || 'box',
+      metadata: updated.metadata as Record<string, unknown> | null,
       createdAt: updated.createdAt,
     };
   }
@@ -563,6 +628,8 @@ export class AirunoteRepository {
       parentFolderId: updated.parentFolderId,
       humanId: updated.humanId,
       visibility: updated.visibility as 'private' | 'org' | 'public',
+      type: (updated.type as 'box' | 'book' | 'board') || 'box',
+      metadata: updated.metadata as Record<string, unknown> | null,
       createdAt: updated.createdAt,
     };
   }
@@ -1684,6 +1751,8 @@ export class AirunoteRepository {
           parentFolderId: child.parentFolderId,
           humanId: child.humanId,
           visibility: child.visibility as 'private' | 'org' | 'public',
+          type: (child.type as 'box' | 'book' | 'board') || 'box',
+          metadata: child.metadata as Record<string, unknown> | null,
           createdAt: child.createdAt,
         };
         descendants.push(folder);
@@ -1751,6 +1820,8 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
+      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      metadata: folder.metadata as Record<string, unknown> | null,
       createdAt: folder.createdAt,
     }));
 
