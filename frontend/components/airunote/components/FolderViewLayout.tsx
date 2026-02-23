@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAirunoteStore } from '../stores/airunoteStore';
@@ -20,6 +20,7 @@ import { EditFolderModal } from './EditFolderModal';
 import { getFolderTypeIcon } from '../utils/folderTypeIcon';
 import { useFolderLens } from '../hooks/useFolderLens';
 import { useLens } from '../hooks/useLens';
+import { useUpdateFolder } from '../hooks/useUpdateFolder';
 import type { AiruFolder, AiruDocument, AiruDocumentMetadata } from '../types';
 
 interface FolderViewLayoutProps {
@@ -55,12 +56,58 @@ export function FolderViewLayout({
   const orgIdFromParams = params.orgId as string;
   const [viewMode, setViewMode] = useState<'grid' | 'tree'>('grid');
   const [editingFolder, setEditingFolder] = useState<AiruFolder | null>(null);
+  const [isEditingFolderName, setIsEditingFolderName] = useState(false);
+  const [editingFolderName, setEditingFolderName] = useState('');
+  const updateFolder = useUpdateFolder();
 
   const {
     getFilteredFolders,
     getFilteredDocuments,
     getFolderCounts,
+    foldersById,
   } = useAirunoteStore();
+  
+  // Get current folder for inline editing
+  const currentFolder = folderId ? foldersById.get(folderId) as AiruFolder | undefined : null;
+  const isRootFolder = !currentFolder || currentFolder.humanId === '__user_root__' || currentFolder.humanId === '__org_root__' || folderName === 'Home';
+  
+  // Initialize editing folder name
+  useEffect(() => {
+    if (currentFolder && !isRootFolder) {
+      setEditingFolderName(currentFolder.humanId);
+    }
+  }, [currentFolder, isRootFolder]);
+  
+  // Handle inline folder name save
+  const handleSaveFolderName = async () => {
+    if (!currentFolder || isRootFolder || !editingFolderName.trim()) return;
+    
+    if (editingFolderName.trim() === currentFolder.humanId) {
+      setIsEditingFolderName(false);
+      return;
+    }
+    
+    try {
+      await updateFolder.mutateAsync({
+        folderId: currentFolder.id,
+        orgId,
+        userId,
+        humanId: editingFolderName.trim(),
+      });
+      setIsEditingFolderName(false);
+    } catch (err) {
+      // Error is handled by the hook (toast notification)
+      setEditingFolderName(currentFolder.humanId); // Revert on error
+    }
+  };
+  
+  // Handle inline folder name cancel
+  const handleCancelFolderName = () => {
+    if (currentFolder) {
+      setEditingFolderName(currentFolder.humanId);
+    }
+    setIsEditingFolderName(false);
+  };
 
   // Fetch lens for folder (Phase 1+)
   // Phase 5: For desktop lenses, we need to fetch via GET /lenses/:id
@@ -126,8 +173,55 @@ export function FolderViewLayout({
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{folderName}</h1>
+          <div className="flex-1">
+            {isEditingFolderName && !isRootFolder && currentFolder ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editingFolderName}
+                  onChange={(e) => setEditingFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSaveFolderName();
+                    } else if (e.key === 'Escape') {
+                      handleCancelFolderName();
+                    }
+                  }}
+                  onBlur={handleSaveFolderName}
+                  autoFocus
+                  className="text-3xl font-bold text-gray-900 border-b-2 border-blue-500 focus:outline-none bg-transparent"
+                />
+                <button
+                  onClick={handleSaveFolderName}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  title="Save"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={handleCancelFolderName}
+                  className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                  title="Cancel"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 group">
+                <h1 className="text-3xl font-bold text-gray-900">{folderName}</h1>
+                {!isRootFolder && currentFolder && (
+                  <button
+                    onClick={() => setIsEditingFolderName(true)}
+                    className="opacity-0 group-hover:opacity-100 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-all duration-150"
+                    title="Edit folder name"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            )}
             <p className="text-sm text-gray-600 mt-1">{countText}</p>
           </div>
           <div className="flex items-center space-x-2">

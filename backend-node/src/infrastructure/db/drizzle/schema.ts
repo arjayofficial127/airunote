@@ -15,6 +15,7 @@ import {
   index,
   bigint,
   jsonb,
+  numeric,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -604,4 +605,24 @@ export const airuLensesTable = pgTable('airu_lenses', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => ({
   folderIdIdx: index('airu_lenses_folder_id_idx').on(table.folderId),
+}));
+
+// Airu Lens Items table (Projection Engine)
+// Supports board, canvas, and book lens types
+export const airuLensItemsTable = pgTable('airu_lens_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  lensId: uuid('lens_id').notNull().references(() => airuLensesTable.id, { onDelete: 'cascade' }),
+  entityId: uuid('entity_id').notNull(),
+  entityType: varchar('entity_type', { length: 20 }).notNull(), // 'document' | 'folder'
+  columnId: varchar('column_id', { length: 100 }),
+  order: numeric('order'),
+  x: numeric('x'),
+  y: numeric('y'),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  lensIdIdx: index('idx_lens_items_lens_id').on(table.lensId),
+  lensEntityIdx: index('idx_lens_items_lens_entity').on(table.lensId, table.entityType, table.entityId),
+  lensColumnIdx: index('idx_lens_items_lens_column').on(table.lensId, table.columnId),
 }));

@@ -137,6 +137,8 @@ export default function AirunoteHomePage() {
         onCreateFolder={() => setIsCreateFolderModalOpen(true)}
         onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
         onPasteDock={() => setIsPasteDockOpen(true)}
+        onMoveFolder={() => {}} // Enable edit button in Home
+        onDeleteFolder={() => {}} // Enable edit button in Home
       />
 
       {/* Desktop Lens & Saved View Creation Buttons */}

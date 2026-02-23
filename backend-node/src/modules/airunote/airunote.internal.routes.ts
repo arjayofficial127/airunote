@@ -10,6 +10,7 @@
 import { Router, Request, Response } from 'express';
 import { container } from '../../core/di/container';
 import { AirunoteDomainService } from './airunote.domainService';
+import { type AiruLensType } from './airunote.repository';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -149,11 +150,11 @@ router.post('/folder', async (req: Request, res: Response, next) => {
       });
     }
 
-    // Validate type if provided
-    if (body.type && !['box', 'book', 'board'].includes(body.type)) {
+    // Validate type if provided - extended folder types
+    if (body.type && !VALID_FOLDER_TYPES.includes(body.type)) {
       return res.status(400).json({
         success: false,
-        error: { message: 'Invalid folder type. Must be "box", "book", or "board"', code: 'VALIDATION_ERROR' },
+        error: { message: `Invalid folder type. Must be one of: ${VALID_FOLDER_TYPES.join(', ')}`, code: 'VALIDATION_ERROR' },
       });
     }
 
@@ -717,17 +718,18 @@ router.post('/folders/:id/lenses', async (req: Request, res: Response, next) => 
     }
 
     // Validate type
-    if (!['box', 'board', 'canvas', 'book'].includes(body.type)) {
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    if (!validTypes.includes(body.type as AiruLensType)) {
       return res.status(400).json({
         success: false,
-        error: { message: 'Invalid lens type. Must be one of: box, board, canvas, book', code: 'VALIDATION_ERROR' },
+        error: { message: `Invalid lens type. Must be one of: ${validTypes.join(', ')}`, code: 'VALIDATION_ERROR' },
       });
     }
 
     const domainService = container.resolve(AirunoteDomainService);
     const lens = await domainService.createFolderLens(folderId, orgId, userId, {
       name: body.name,
-      type: body.type as 'box' | 'board' | 'canvas' | 'book',
+      type: body.type as AiruLensType,
       metadata: body.metadata,
       query: body.query,
     });
@@ -772,17 +774,18 @@ router.patch('/folders/:id/lenses/:lensId', async (req: Request, res: Response, 
     }
 
     // Validate type if provided
-    if (body.type && !['box', 'board', 'canvas', 'book'].includes(body.type)) {
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    if (body.type && !validTypes.includes(body.type as AiruLensType)) {
       return res.status(400).json({
         success: false,
-        error: { message: 'Invalid lens type. Must be one of: box, board, canvas, book', code: 'VALIDATION_ERROR' },
+        error: { message: `Invalid lens type. Must be one of: ${validTypes.join(', ')}`, code: 'VALIDATION_ERROR' },
       });
     }
 
     const domainService = container.resolve(AirunoteDomainService);
     const lens = await domainService.updateFolderLens(folderId, lensId, orgId, userId, {
       name: body.name,
-      type: body.type as 'box' | 'board' | 'canvas' | 'book' | undefined,
+      type: body.type as AiruLensType | undefined,
       metadata: body.metadata,
       query: body.query,
     });

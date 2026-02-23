@@ -29,6 +29,7 @@ import {
   type AiruShare,
   type AiruDocumentMetadata,
   type AiruLens,
+  type AiruLensType,
   type LensQuery,
 } from './airunote.repository';
 
@@ -317,9 +318,14 @@ export class AirunoteDomainService {
       // Ensure user root exists
       await this.ensureUserRootExists(orgId, userId, userId);
 
-      // Validate type if provided
-      if (updates.type && !['box', 'book', 'board'].includes(updates.type)) {
-        throw new Error(`Invalid folder type: ${updates.type}. Must be 'box', 'book', or 'board'`);
+      // Validate type if provided - extended folder types
+      const validTypes: AiruFolderType[] = [
+        'box', 'board', 'book', 'canvas', 'collection', 
+        'contacts', 'ledger', 'journal', 'manual', 
+        'notebook', 'pipeline', 'project', 'wiki'
+      ];
+      if (updates.type && !validTypes.includes(updates.type as AiruFolderType)) {
+        throw new Error(`Invalid folder type: ${updates.type}. Must be one of: ${validTypes.join(', ')}`);
       }
 
       // Update folder
@@ -1328,7 +1334,7 @@ export class AirunoteDomainService {
     userId: string,
     data: {
       name: string;
-      type: 'box' | 'board' | 'canvas' | 'book';
+      type: AiruLensType;
       metadata?: Record<string, unknown>;
       query?: Record<string, unknown> | null;
     }
@@ -1348,8 +1354,9 @@ export class AirunoteDomainService {
     }
 
     // Validate type
-    if (!['box', 'board', 'canvas', 'book'].includes(data.type)) {
-      throw new Error(`Invalid lens type: ${data.type}. Must be one of: box, board, canvas, book`);
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    if (!validTypes.includes(data.type)) {
+      throw new Error(`Invalid lens type: ${data.type}. Must be one of: ${validTypes.join(', ')}`);
     }
 
     return await this.repository.createLens({
@@ -1430,7 +1437,7 @@ export class AirunoteDomainService {
     userId: string,
     partialData: {
       name?: string;
-      type?: 'box' | 'board' | 'canvas' | 'book';
+      type?: AiruLensType;
       metadata?: Record<string, unknown>;
       query?: Record<string, unknown> | null;
     }
@@ -1457,8 +1464,9 @@ export class AirunoteDomainService {
     }
 
     // Validate type if provided
-    if (partialData.type && !['box', 'board', 'canvas', 'book'].includes(partialData.type)) {
-      throw new Error(`Invalid lens type: ${partialData.type}. Must be one of: box, board, canvas, book`);
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    if (partialData.type && !validTypes.includes(partialData.type)) {
+      throw new Error(`Invalid lens type: ${partialData.type}. Must be one of: ${validTypes.join(', ')}`);
     }
 
     return await this.repository.updateLens(lensId, partialData);
@@ -1603,7 +1611,7 @@ export class AirunoteDomainService {
     }
 
     // Update card position in metadata.views.board.cardPositions
-    const metadata = lens.metadata || {};
+    const metadata = (lens.metadata as Record<string, unknown>) || {};
     const views = (metadata.views as Record<string, unknown>) || {};
     const board = (views.board as Record<string, unknown>) || {};
     const cardPositions = (board.cardPositions as Record<string, { laneId: string; fractionalOrder: number }>) || {};

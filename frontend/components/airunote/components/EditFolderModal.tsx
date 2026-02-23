@@ -1,6 +1,7 @@
 /**
  * EditFolderModal Component
  * Modal for editing folder name and type with premium radio-style type selector
+ * Layout: Box above, then 3x4 grid (1 column on mobile)
  */
 
 'use client';
@@ -19,12 +20,13 @@ interface EditFolderModalProps {
   onSuccess?: (folder: AiruFolder) => void;
 }
 
-const FOLDER_TYPES: Array<{
+const BOX_TYPE = { value: 'box' as AiruFolderType, label: 'Box', description: 'General workspace' };
+
+const OTHER_FOLDER_TYPES: Array<{
   value: AiruFolderType;
   label: string;
   description: string;
 }> = [
-  { value: 'box', label: 'Box', description: 'General workspace' },
   { value: 'book', label: 'Book', description: 'Structured writing' },
   { value: 'board', label: 'Board', description: 'Stage-based workflow' },
   { value: 'project', label: 'Project', description: 'Execution space' },
@@ -127,22 +129,53 @@ export function EditFolderModal({
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Type
-            </label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Sets the default document style for this folder.
-              <br />
-              You can create any document type later.
-            </p>
+            {/* 3-column Grid (1 column on mobile) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {/* Type label + helper text - spans 2 columns, no radio button */}
+              <div className="md:col-span-2 p-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Type
+              </label>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Sets the default document style for this folder.
+                <br />
+                You can create any document type later.
+              </p>
+            </div>
             
-            {/* Premium Radio List */}
-            <div className="space-y-2">
-              {FOLDER_TYPES.map((type) => (
+            {/* Box - first item in grid, spans 1 column */}
+            <label
+              className={`
+                flex items-start gap-2 p-3 rounded-lg cursor-pointer transition-all duration-150 ease
+                ${folderType === BOX_TYPE.value
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                  : 'bg-gray-50 dark:bg-gray-700/50 border border-transparent hover:bg-gray-100 dark:hover:bg-gray-700'
+                }
+              `}
+            >
+              <input
+                type="radio"
+                name="folderType"
+                value={BOX_TYPE.value}
+                checked={folderType === BOX_TYPE.value}
+                onChange={(e) => setFolderType(e.target.value as AiruFolderType)}
+                className="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-2 flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl flex-shrink-0">{getFolderTypeIcon(BOX_TYPE.value)}</span>
+                  <span className="font-medium text-gray-900 dark:text-white text-sm">{BOX_TYPE.label}</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{BOX_TYPE.description}</p>
+              </div>
+            </label>
+              
+              {/* Other folder types */}
+              {OTHER_FOLDER_TYPES.map((type) => (
                 <label
                   key={type.value}
                   className={`
-                    flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all duration-150 ease
+                    flex items-start gap-2 p-3 rounded-lg cursor-pointer transition-all duration-150 ease
                     ${folderType === type.value
                       ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
                       : 'bg-gray-50 dark:bg-gray-700/50 border border-transparent hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -155,12 +188,12 @@ export function EditFolderModal({
                     value={type.value}
                     checked={folderType === type.value}
                     onChange={(e) => setFolderType(e.target.value as AiruFolderType)}
-                    className="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                    className="mt-1 w-4 h-4 text-blue-600 focus:ring-blue-500 focus:ring-2 flex-shrink-0"
                   />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">{getFolderTypeIcon(type.value)}</span>
-                      <span className="font-medium text-gray-900 dark:text-white">{type.label}</span>
+                      <span className="text-xl flex-shrink-0">{getFolderTypeIcon(type.value)}</span>
+                      <span className="font-medium text-gray-900 dark:text-white text-sm">{type.label}</span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{type.description}</p>
                   </div>

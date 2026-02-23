@@ -19,6 +19,7 @@ import {
   airuDocumentRevisionsTable,
   airuAuditLogsTable,
   airuLensesTable,
+  airuLensItemsTable,
 } from '../../infrastructure/db/drizzle/schema';
 
 // Transaction type - drizzle transactions have the same interface as db
@@ -61,13 +62,108 @@ export interface LensQuery {
   groupBy?: string | null;
 }
 
+/**
+ * Lens Type Union
+ * Locked contract for projection engine
+ */
+export type AiruLensType = 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+
+/**
+ * Board Column Definition
+ * Used in board lens metadata
+ */
+export type AiruBoardColumn = {
+  id: string;
+  title: string;
+  description?: string | null;
+  order: number;
+};
+
+/**
+ * Board Lens Metadata
+ * Contains column definitions for board view
+ */
+export type AiruBoardLensMetadata = {
+  columns: AiruBoardColumn[];
+};
+
+/**
+ * Canvas Lens Metadata
+ * Global canvas settings (zoom, pan)
+ */
+export type AiruCanvasLensMetadata = {
+  zoom?: number;
+  panX?: number;
+  panY?: number;
+};
+
+/**
+ * Book Lens Metadata
+ * Book-specific settings (order stored in lens_items)
+ */
+export type AiruBookLensMetadata = {
+  // Book settings later; for now order is stored in lens_items
+};
+
+/**
+ * Lens Metadata Union
+ * Typed but permissive - allows type-specific metadata or generic objects
+ */
+export type AiruLensMetadata =
+  | AiruBoardLensMetadata
+  | AiruCanvasLensMetadata
+  | AiruBookLensMetadata
+  | Record<string, unknown>;
+
+/**
+ * Lens Item View Mode
+ * Controls how items are displayed in lens projections
+ */
+export type AiruLensItemViewMode = 'icon' | 'preview' | 'full' | 'scroll';
+
+/**
+ * Lens Item Metadata
+ * View mode and other per-item settings
+ */
+export type AiruLensItemMetadata = {
+  viewMode?: AiruLensItemViewMode;
+};
+
+/**
+ * Lens Entity Type
+ * What type of entity is referenced by a lens item
+ */
+export type AiruLensEntityType = 'document' | 'folder';
+
+/**
+ * Lens Item Entity
+ * Represents a document or folder placement in a lens projection
+ */
+export interface AiruLensItem {
+  id: string;
+  lensId: string;
+  entityId: string;
+  entityType: AiruLensEntityType;
+  columnId: string | null;
+  order: number | null;
+  x: number | null;
+  y: number | null;
+  metadata: AiruLensItemMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Airu Lens Interface
+ * Updated with typed metadata and query
+ */
 export interface AiruLens {
   id: string;
   folderId: string | null;
   name: string;
-  type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+  type: AiruLensType;
   isDefault: boolean;
-  metadata: Record<string, unknown>;
+  metadata: AiruLensMetadata; // Typed but stored as jsonb; runtime validation deferred
   query: LensQuery | Record<string, unknown> | null; // Phase 6: Standardized to LensQuery, but keep backward compatible
   createdAt: Date;
   updatedAt: Date;
@@ -124,6 +220,25 @@ export interface AccessResult {
   canDelete: boolean;
   shareType?: 'user' | 'org' | 'public' | 'link';
   viewOnly?: boolean;
+}
+
+/**
+ * Map database row to AiruLensItem interface
+ */
+function mapLensItemRow(row: typeof airuLensItemsTable.$inferSelect): AiruLensItem {
+  return {
+    id: row.id,
+    lensId: row.lensId,
+    entityId: row.entityId,
+    entityType: row.entityType as AiruLensEntityType,
+    columnId: row.columnId,
+    order: row.order ? parseFloat(row.order) : null,
+    x: row.x ? parseFloat(row.x) : null,
+    y: row.y ? parseFloat(row.y) : null,
+    metadata: (row.metadata ?? {}) as AiruLensItemMetadata,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
 export interface AiruRevision {
@@ -485,7 +600,7 @@ export class AirunoteRepository {
           id: lens.id,
           folderId: lens.folderId,
           name: lens.name,
-          type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+          type: lens.type as AiruLensType,
           isDefault: lens.isDefault,
           metadata: (lens.metadata as Record<string, unknown>) || {},
           query: (lens.query as Record<string, unknown> | null) || null,
@@ -2493,7 +2608,7 @@ export class AirunoteRepository {
     data: {
       folderId: string | null;
       name: string;
-      type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+      type: AiruLensType;
       metadata?: Record<string, unknown>;
       query?: LensQuery | Record<string, unknown> | null;
     },
@@ -2516,7 +2631,7 @@ export class AirunoteRepository {
       id: inserted.id,
       folderId: inserted.folderId,
       name: inserted.name,
-      type: inserted.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      type: inserted.type as AiruLensType,
       isDefault: inserted.isDefault,
       metadata: (inserted.metadata as Record<string, unknown>) || {},
       query: (inserted.query as Record<string, unknown> | null) || null,
@@ -2539,7 +2654,7 @@ export class AirunoteRepository {
     lensId: string,
     partialData: {
       name?: string;
-      type?: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+      type?: AiruLensType;
       metadata?: Record<string, unknown>;
       query?: LensQuery | Record<string, unknown> | null;
     },
@@ -2581,7 +2696,7 @@ export class AirunoteRepository {
       id: updated.id,
       folderId: updated.folderId,
       name: updated.name,
-      type: updated.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      type: updated.type as AiruLensType,
       isDefault: updated.isDefault,
       metadata: (updated.metadata as Record<string, unknown>) || {},
       query: (updated.query as Record<string, unknown> | null) || null,
@@ -2676,13 +2791,239 @@ export class AirunoteRepository {
       id: updated.id,
       folderId: updated.folderId,
       name: updated.name,
-      type: updated.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      type: updated.type as AiruLensType,
       isDefault: updated.isDefault,
       metadata: (updated.metadata as Record<string, unknown>) || {},
       query: (updated.query as Record<string, unknown> | null) || null,
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
+  }
+
+  /**
+   * Get all lens items for a lens
+   */
+  async getLensItems(
+    lensId: string,
+    tx?: Transaction
+  ): Promise<AiruLensItem[]> {
+    const dbInstance = tx ?? db;
+    const rows = await dbInstance
+      .select()
+      .from(airuLensItemsTable)
+      .where(eq(airuLensItemsTable.lensId, lensId));
+
+    return rows.map(mapLensItemRow);
+  }
+
+  /**
+   * Upsert a lens item
+   * If row exists (lensId + entityId) → update, else → insert
+   */
+  async upsertLensItem(
+    input: {
+      lensId: string;
+      entityId: string;
+      entityType: AiruLensEntityType;
+      columnId?: string | null;
+      order?: number | null;
+      x?: number | null;
+      y?: number | null;
+      metadata?: AiruLensItemMetadata;
+    },
+    tx?: Transaction
+  ): Promise<void> {
+    const dbInstance = tx ?? db;
+
+    const existing = await dbInstance
+      .select({ id: airuLensItemsTable.id })
+      .from(airuLensItemsTable)
+      .where(
+        and(
+          eq(airuLensItemsTable.lensId, input.lensId),
+          eq(airuLensItemsTable.entityId, input.entityId)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      await dbInstance
+        .update(airuLensItemsTable)
+        .set({
+          columnId: input.columnId ?? null,
+          order: input.order !== null && input.order !== undefined ? String(input.order) : null,
+          x: input.x !== null && input.x !== undefined ? String(input.x) : null,
+          y: input.y !== null && input.y !== undefined ? String(input.y) : null,
+          metadata: input.metadata ?? {},
+          updatedAt: new Date(),
+        })
+        .where(eq(airuLensItemsTable.id, existing[0].id));
+    } else {
+      await dbInstance.insert(airuLensItemsTable).values({
+        lensId: input.lensId,
+        entityId: input.entityId,
+        entityType: input.entityType,
+        columnId: input.columnId ?? null,
+        order: input.order !== null && input.order !== undefined ? String(input.order) : null,
+        x: input.x !== null && input.x !== undefined ? String(input.x) : null,
+        y: input.y !== null && input.y !== undefined ? String(input.y) : null,
+        metadata: input.metadata ?? {},
+      });
+    }
+  }
+
+  /**
+   * Batch upsert lens items
+   * Wrapped in transaction for atomicity
+   */
+  async batchUpsertLensItems(
+    lensId: string,
+    items: Array<{
+      entityId: string;
+      entityType: AiruLensEntityType;
+      columnId?: string | null;
+      order?: number | null;
+      x?: number | null;
+      y?: number | null;
+      metadata?: AiruLensItemMetadata;
+    }>,
+    tx?: Transaction
+  ): Promise<void> {
+    const dbInstance = tx ?? db;
+
+    await dbInstance.transaction(async (txInner) => {
+      for (const item of items) {
+        const existing = await txInner
+          .select({ id: airuLensItemsTable.id })
+          .from(airuLensItemsTable)
+          .where(
+            and(
+              eq(airuLensItemsTable.lensId, lensId),
+              eq(airuLensItemsTable.entityId, item.entityId)
+            )
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          await txInner
+            .update(airuLensItemsTable)
+            .set({
+              columnId: item.columnId ?? null,
+              order: item.order !== null && item.order !== undefined ? String(item.order) : null,
+              x: item.x !== null && item.x !== undefined ? String(item.x) : null,
+              y: item.y !== null && item.y !== undefined ? String(item.y) : null,
+              metadata: item.metadata ?? {},
+              updatedAt: new Date(),
+            })
+            .where(eq(airuLensItemsTable.id, existing[0].id));
+        } else {
+          await txInner.insert(airuLensItemsTable).values({
+            lensId,
+            entityId: item.entityId,
+            entityType: item.entityType,
+            columnId: item.columnId ?? null,
+            order: item.order !== null && item.order !== undefined ? String(item.order) : null,
+            x: item.x !== null && item.x !== undefined ? String(item.x) : null,
+            y: item.y !== null && item.y !== undefined ? String(item.y) : null,
+            metadata: item.metadata ?? {},
+          });
+        }
+      }
+    });
+  }
+
+  /**
+   * Delete all lens items for a lens
+   */
+  async deleteLensItemsByLensId(
+    lensId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const dbInstance = tx ?? db;
+    await dbInstance
+      .delete(airuLensItemsTable)
+      .where(eq(airuLensItemsTable.lensId, lensId));
+  }
+
+  /**
+   * Duplicate a lens (copy lens + lens items)
+   */
+  async duplicateLens(
+    lensId: string,
+    newName: string,
+    tx?: Transaction
+  ): Promise<AiruLens> {
+    const dbInstance = tx ?? db;
+
+    // Get original lens
+    const originalLens = await this.getLensById(lensId, dbInstance);
+    if (!originalLens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Create new lens with same type, metadata, query
+    const newLens = await this.createLens(
+      {
+        folderId: originalLens.folderId,
+        name: newName,
+        type: originalLens.type,
+        metadata: originalLens.metadata,
+        query: originalLens.query,
+      },
+      dbInstance
+    );
+
+    // Copy lens items
+    const originalItems = await this.getLensItems(lensId, dbInstance);
+    if (originalItems.length > 0) {
+      await this.batchUpsertLensItems(
+        newLens.id,
+        originalItems.map((item) => ({
+          entityId: item.entityId,
+          entityType: item.entityType,
+          columnId: item.columnId,
+          order: item.order,
+          x: item.x,
+          y: item.y,
+          metadata: item.metadata,
+        })),
+        dbInstance
+      );
+    }
+
+    return newLens;
+  }
+
+  /**
+   * Delete a lens
+   * If it's a default lens, clear folder.defaultLensId
+   */
+  async deleteLens(
+    lensId: string,
+    orgId: string,
+    userId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const dbInstance = tx ?? db;
+
+    // Get lens
+    const lens = await this.getLensById(lensId, dbInstance);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // If lens is default and has folderId, clear folder.defaultLensId
+    if (lens.isDefault && lens.folderId) {
+      await dbInstance
+        .update(airuFoldersTable)
+        .set({ defaultLensId: null })
+        .where(eq(airuFoldersTable.id, lens.folderId));
+    }
+
+    // Delete lens (lens_items cascade deletes via FK ON DELETE CASCADE)
+    await dbInstance
+      .delete(airuLensesTable)
+      .where(eq(airuLensesTable.id, lensId));
   }
 
   /**
