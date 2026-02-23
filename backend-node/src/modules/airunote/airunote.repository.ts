@@ -9,7 +9,7 @@
  * - Org boundary enforced in all queries
  */
 import { injectable } from 'tsyringe';
-import { eq, and, sql, ne, or, desc, isNull, gt, lt, inArray } from 'drizzle-orm';
+import { eq, and, sql, ne, or, desc, isNull, gt, lt, inArray, ilike } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   airuFoldersTable,
@@ -18,10 +18,16 @@ import {
   airuSharesTable,
   airuDocumentRevisionsTable,
   airuAuditLogsTable,
+  airuLensesTable,
 } from '../../infrastructure/db/drizzle/schema';
 
 // Transaction type - drizzle transactions have the same interface as db
 type Transaction = typeof db;
+
+export type AiruFolderType = 
+  | 'box' | 'board' | 'book' | 'canvas' | 'collection' 
+  | 'contacts' | 'ledger' | 'journal' | 'manual' 
+  | 'notebook' | 'pipeline' | 'project' | 'wiki';
 
 export interface AiruFolder {
   id: string;
@@ -30,9 +36,41 @@ export interface AiruFolder {
   parentFolderId: string;
   humanId: string;
   visibility: 'private' | 'org' | 'public';
-  type: 'box' | 'book' | 'board';
+  type: AiruFolderType;
   metadata: Record<string, unknown> | null;
+  defaultLensId: string | null;
   createdAt: Date;
+}
+
+/**
+ * Phase 6 — Unified Projection Engine
+ * Standardized lens query format
+ */
+export interface LensQuery {
+  filters?: {
+    tags?: string[];
+    state?: string[];
+    authorId?: string;
+    text?: string;
+    attributes?: Record<string, any>; // Phase 7: Hybrid Attribute Engine - filter by attribute key-value pairs
+  };
+  sort?: {
+    field: 'createdAt' | 'updatedAt';
+    direction: 'asc' | 'desc';
+  };
+  groupBy?: string | null;
+}
+
+export interface AiruLens {
+  id: string;
+  folderId: string | null;
+  name: string;
+  type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+  isDefault: boolean;
+  metadata: Record<string, unknown>;
+  query: LensQuery | Record<string, unknown> | null; // Phase 6: Standardized to LensQuery, but keep backward compatible
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface AiruUserRoot {
@@ -53,6 +91,7 @@ export interface AiruDocument {
   sharedContent?: string | null; // Phase 2: shared content (nullable)
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
+  attributes: Record<string, any>; // Phase 7: Hybrid Attribute Engine
   createdAt: Date;
   updatedAt: Date;
 }
@@ -107,6 +146,58 @@ export interface AiruAuditLog {
   createdAt: Date;
 }
 
+/**
+ * Phase 7: Hybrid Attribute Engine
+ * Validates document attributes against folder schema if present
+ */
+function validateDocumentAttributes(
+  attributes: Record<string, any>,
+  folderSchema?: Record<string, any> | null
+): void {
+  if (!folderSchema || typeof folderSchema !== 'object') {
+    // No schema defined, skip validation
+    return;
+  }
+
+  const schema = folderSchema as Record<string, { type: string; required?: boolean }>;
+  
+  // Validate each attribute key
+  for (const [key, value] of Object.entries(attributes)) {
+    const fieldSchema = schema[key];
+    if (!fieldSchema) {
+      // Attribute not in schema - allow it (flexible schema)
+      continue;
+    }
+
+    // Type validation
+    const expectedType = fieldSchema.type;
+    const actualType = typeof value;
+    
+    if (expectedType === 'string' && actualType !== 'string') {
+      throw new Error(`Attribute "${key}" must be of type string, got ${actualType}`);
+    }
+    if (expectedType === 'number' && actualType !== 'number') {
+      throw new Error(`Attribute "${key}" must be of type number, got ${actualType}`);
+    }
+    if (expectedType === 'boolean' && actualType !== 'boolean') {
+      throw new Error(`Attribute "${key}" must be of type boolean, got ${actualType}`);
+    }
+    if (expectedType === 'array' && !Array.isArray(value)) {
+      throw new Error(`Attribute "${key}" must be of type array, got ${actualType}`);
+    }
+    if (expectedType === 'object' && (actualType !== 'object' || Array.isArray(value) || value === null)) {
+      throw new Error(`Attribute "${key}" must be of type object, got ${actualType}`);
+    }
+  }
+
+  // Check required fields
+  for (const [key, fieldSchema] of Object.entries(schema)) {
+    if (fieldSchema.required && !(key in attributes)) {
+      throw new Error(`Required attribute "${key}" is missing`);
+    }
+  }
+}
+
 export interface AiruDocumentMetadata {
   id: string;
   folderId: string;
@@ -115,6 +206,7 @@ export interface AiruDocumentMetadata {
   name: string;
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
+  attributes: Record<string, any>; // Phase 7: Hybrid Attribute Engine
   createdAt: Date;
   updatedAt: Date;
   size?: number; // Optional: content size in bytes if available
@@ -166,8 +258,9 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
-      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      type: (folder.type as AiruFolderType) || 'box',
       metadata: folder.metadata as Record<string, unknown> | null,
+      defaultLensId: folder.defaultLensId || null,
       createdAt: folder.createdAt,
     };
   }
@@ -206,8 +299,9 @@ export class AirunoteRepository {
       parentFolderId: inserted.parentFolderId,
       humanId: inserted.humanId,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
-      type: (inserted.type as 'box' | 'book' | 'board') || 'box',
+      type: (inserted.type as AiruFolderType) || 'box',
       metadata: inserted.metadata as Record<string, unknown> | null,
+      defaultLensId: inserted.defaultLensId || null,
       createdAt: inserted.createdAt,
     };
   }
@@ -312,8 +406,9 @@ export class AirunoteRepository {
       parentFolderId: inserted.parentFolderId,
       humanId: inserted.humanId,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
-      type: (inserted.type as 'box' | 'book' | 'board') || 'box',
+      type: (inserted.type as AiruFolderType) || 'box',
       metadata: inserted.metadata as Record<string, unknown> | null,
+      defaultLensId: inserted.defaultLensId || null,
       createdAt: inserted.createdAt,
     };
   }
@@ -348,10 +443,86 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
-      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      type: (folder.type as AiruFolderType) || 'box',
       metadata: folder.metadata as Record<string, unknown> | null,
+      defaultLensId: folder.defaultLensId || null,
       createdAt: folder.createdAt,
     };
+  }
+
+  /**
+   * Get default lens for a folder
+   * Phase 1 — Folder → Lens Rendering Refactor
+   * 
+   * Logic:
+   * 1. Fetch folder by id
+   * 2. If folder.defaultLensId exists: fetch lens by id and return
+   * 3. Else: fetch lens where folderId = folderId AND isDefault = true, if exists return
+   * 4. Else return null
+   */
+  async getDefaultLensForFolder(
+    folderId: string,
+    tx?: Transaction
+  ): Promise<AiruLens | null> {
+    const dbInstance = tx ?? db;
+
+    // Fetch folder by id
+    const folder = await this.findFolderById(folderId, dbInstance);
+    if (!folder) {
+      return null;
+    }
+
+    // If folder.defaultLensId exists: fetch lens by id and return
+    if (folder.defaultLensId) {
+      const [lens] = await dbInstance
+        .select()
+        .from(airuLensesTable)
+        .where(eq(airuLensesTable.id, folder.defaultLensId))
+        .limit(1);
+
+      if (lens) {
+        return {
+          id: lens.id,
+          folderId: lens.folderId,
+          name: lens.name,
+          type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+          isDefault: lens.isDefault,
+          metadata: (lens.metadata as Record<string, unknown>) || {},
+          query: (lens.query as Record<string, unknown> | null) || null,
+          createdAt: lens.createdAt,
+          updatedAt: lens.updatedAt,
+        };
+      }
+    }
+
+    // Else: fetch lens where folderId = folderId AND isDefault = true
+    const [defaultLens] = await dbInstance
+      .select()
+      .from(airuLensesTable)
+      .where(
+        and(
+          eq(airuLensesTable.folderId, folderId),
+          eq(airuLensesTable.isDefault, true)
+        )
+      )
+      .limit(1);
+
+    if (defaultLens) {
+      return {
+        id: defaultLens.id,
+        folderId: defaultLens.folderId,
+        name: defaultLens.name,
+        type: defaultLens.type as 'box' | 'board' | 'canvas' | 'book',
+        isDefault: defaultLens.isDefault,
+        metadata: (defaultLens.metadata as Record<string, unknown>) || {},
+        query: (defaultLens.query as Record<string, unknown> | null) || null,
+        createdAt: defaultLens.createdAt,
+        updatedAt: defaultLens.updatedAt,
+      };
+    }
+
+    // Else return null
+    return null;
   }
 
   // =====================================================
@@ -390,8 +561,9 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
-      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      type: (folder.type as AiruFolderType) || 'box',
       metadata: folder.metadata as Record<string, unknown> | null,
+      defaultLensId: folder.defaultLensId || null,
       createdAt: folder.createdAt,
     }));
   }
@@ -405,7 +577,7 @@ export class AirunoteRepository {
     ownerUserId: string,
     parentFolderId: string,
     humanId: string,
-    type: 'box' | 'book' | 'board' = 'box',
+    type: AiruFolderType = 'box',
     metadata: Record<string, unknown> | null = null,
     tx?: Transaction
   ): Promise<AiruFolder> {
@@ -451,8 +623,9 @@ export class AirunoteRepository {
       parentFolderId: inserted.parentFolderId,
       humanId: inserted.humanId,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
-      type: (inserted.type as 'box' | 'book' | 'board') || 'box',
+      type: (inserted.type as AiruFolderType) || 'box',
       metadata: inserted.metadata as Record<string, unknown> | null,
+      defaultLensId: inserted.defaultLensId || null,
       createdAt: inserted.createdAt,
     };
   }
@@ -481,7 +654,7 @@ export class AirunoteRepository {
     ownerUserId: string,
     updates: {
       humanId?: string;
-      type?: 'box' | 'book' | 'board';
+      type?: AiruFolderType;
       metadata?: Record<string, unknown> | null;
     },
     tx?: Transaction
@@ -513,14 +686,19 @@ export class AirunoteRepository {
     }
 
     // Validate type if provided
-    if (updates.type && !['box', 'book', 'board'].includes(updates.type)) {
-      throw new Error(`Invalid folder type: ${updates.type}. Must be 'box', 'book', or 'board'`);
+    const validTypes: AiruFolderType[] = [
+      'box', 'board', 'book', 'canvas', 'collection', 
+      'contacts', 'ledger', 'journal', 'manual', 
+      'notebook', 'pipeline', 'project', 'wiki'
+    ];
+    if (updates.type && !validTypes.includes(updates.type as AiruFolderType)) {
+      throw new Error(`Invalid folder type: ${updates.type}. Must be one of: ${validTypes.join(', ')}`);
     }
 
     // Build update object
     const updateValues: {
       humanId?: string;
-      type?: 'box' | 'book' | 'board';
+      type?: AiruFolderType;
       metadata?: Record<string, unknown> | null;
     } = {};
     if (updates.humanId !== undefined) {
@@ -552,8 +730,9 @@ export class AirunoteRepository {
       parentFolderId: updated.parentFolderId,
       humanId: updated.humanId,
       visibility: updated.visibility as 'private' | 'org' | 'public',
-      type: (updated.type as 'box' | 'book' | 'board') || 'box',
+      type: (updated.type as AiruFolderType) || 'box',
       metadata: updated.metadata as Record<string, unknown> | null,
+      defaultLensId: updated.defaultLensId || null,
       createdAt: updated.createdAt,
     };
   }
@@ -628,8 +807,9 @@ export class AirunoteRepository {
       parentFolderId: updated.parentFolderId,
       humanId: updated.humanId,
       visibility: updated.visibility as 'private' | 'org' | 'public',
-      type: (updated.type as 'box' | 'book' | 'board') || 'box',
+      type: (updated.type as AiruFolderType) || 'box',
       metadata: updated.metadata as Record<string, unknown> | null,
+      defaultLensId: updated.defaultLensId || null,
       createdAt: updated.createdAt,
     };
   }
@@ -749,6 +929,7 @@ export class AirunoteRepository {
         sharedContent: doc.sharedContent,
         visibility: doc.visibility as 'private' | 'org' | 'public',
         state: doc.state as 'active' | 'archived' | 'trashed',
+        attributes: (doc.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
       }));
@@ -830,6 +1011,7 @@ export class AirunoteRepository {
     name: string,
     content: string,
     type: 'TXT' | 'MD' | 'RTF',
+    attributes?: Record<string, any>,
     tx?: Transaction
   ): Promise<AiruDocument> {
     const dbInstance = tx ?? db;
@@ -857,6 +1039,7 @@ export class AirunoteRepository {
         canonicalContent: content, // Phase 2: Set canonical content
         visibility: 'private', // Constitution: privacy default
         state: 'active',
+        attributes: attributes || {}, // Phase 7: Hybrid Attribute Engine
       })
       .returning();
 
@@ -871,6 +1054,7 @@ export class AirunoteRepository {
       sharedContent: inserted.sharedContent,
       visibility: inserted.visibility as 'private' | 'org' | 'public',
       state: inserted.state as 'active' | 'archived' | 'trashed',
+      attributes: (inserted.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: inserted.createdAt,
       updatedAt: inserted.updatedAt,
     };
@@ -920,6 +1104,7 @@ export class AirunoteRepository {
       sharedContent: result.document.sharedContent,
       visibility: result.document.visibility as 'private' | 'org' | 'public',
       state: result.document.state as 'active' | 'archived' | 'trashed',
+      attributes: (result.document.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: result.document.createdAt,
       updatedAt: result.document.updatedAt,
     };
@@ -971,9 +1156,240 @@ export class AirunoteRepository {
       sharedContent: doc.sharedContent,
       visibility: doc.visibility as 'private' | 'org' | 'public',
       state: doc.state as 'active' | 'archived' | 'trashed',
+      attributes: (doc.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     }));
+  }
+
+  /**
+   * Query documents by query filter (for desktop lenses)
+   * Phase 5 — Desktop Lenses
+   * 
+   * Supports:
+   * - tags: array match (checks if document metadata contains any of the tags)
+   * - state: exact match
+   * - text: ILIKE search on name and content
+   */
+  async queryDocumentsByFilter(
+    orgId: string,
+    ownerUserId: string,
+    query: Record<string, unknown>,
+    tx?: Transaction
+  ): Promise<AiruDocument[]> {
+    const dbInstance = tx ?? db;
+
+    // Build where conditions
+    const conditions: any[] = [
+      eq(airuDocumentsTable.ownerUserId, ownerUserId), // Constitution: owner isolation
+    ];
+
+    // Filter by state if provided
+    if (query.state && typeof query.state === 'string') {
+      conditions.push(eq(airuDocumentsTable.state, query.state as 'active' | 'archived' | 'trashed'));
+    }
+
+    // Text search (ILIKE on name and content)
+    if (query.text && typeof query.text === 'string') {
+      const searchText = `%${query.text}%`;
+      conditions.push(
+        or(
+          ilike(airuDocumentsTable.name, searchText),
+          ilike(airuDocumentsTable.canonicalContent, searchText)
+        )!
+      );
+    }
+
+    // Execute query
+    const documents = await dbInstance
+      .select()
+      .from(airuDocumentsTable)
+      .where(and(...conditions))
+      .orderBy(desc(airuDocumentsTable.createdAt));
+
+    // Filter by tags if provided (tags are stored in metadata, so we filter in memory)
+    let filteredDocuments = documents.map((doc) => ({
+      id: doc.id,
+      folderId: doc.folderId,
+      ownerUserId: doc.ownerUserId,
+      type: doc.type as 'TXT' | 'MD' | 'RTF',
+      name: doc.name,
+      content: doc.canonicalContent || doc.content || '',
+      canonicalContent: doc.canonicalContent || undefined,
+      sharedContent: doc.sharedContent,
+      visibility: doc.visibility as 'private' | 'org' | 'public',
+      state: doc.state as 'active' | 'archived' | 'trashed',
+      attributes: (doc.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    }));
+
+    // Filter by tags if provided (check metadata)
+    if (query.tags && Array.isArray(query.tags) && query.tags.length > 0) {
+      // Note: Tags would need to be stored in a metadata field or separate table
+      // For now, we'll skip tag filtering if metadata doesn't exist
+      // This is a placeholder for future tag implementation
+      filteredDocuments = filteredDocuments.filter((doc) => {
+        // If tags are in metadata, check them
+        // For now, return all documents (tags not yet implemented in schema)
+        return true;
+      });
+    }
+
+    return filteredDocuments;
+  }
+
+  /**
+   * Phase 6 — Unified Projection Engine
+   * Resolve documents for a lens using standardized LensQuery format
+   * 
+   * Handles both folder-based and desktop/saved lenses
+   */
+  async resolveLensDocuments(
+    lens: AiruLens,
+    orgId: string,
+    ownerUserId: string,
+    tx?: Transaction
+  ): Promise<AiruDocument[]> {
+    const dbInstance = tx ?? db;
+
+    // Build base where conditions
+    const conditions: any[] = [
+      eq(airuDocumentsTable.ownerUserId, ownerUserId), // Constitution: owner isolation
+    ];
+
+    // Phase 6: If lens has folderId, restrict to that folder
+    if (lens.folderId !== null) {
+      conditions.push(eq(airuDocumentsTable.folderId, lens.folderId));
+    }
+    // If folderId is null (desktop/saved lens), no folder restriction
+
+    // Parse query - support both new LensQuery format and legacy format
+    let lensQuery: LensQuery | null = null;
+    if (lens.query) {
+      // Check if it's already in LensQuery format
+      if (
+        typeof lens.query === 'object' &&
+        lens.query !== null &&
+        !Array.isArray(lens.query) &&
+        ('filters' in lens.query || 'sort' in lens.query || 'groupBy' in lens.query)
+      ) {
+        lensQuery = lens.query as LensQuery;
+      } else {
+        // Legacy format - convert to LensQuery
+        const legacyQuery = lens.query as Record<string, unknown>;
+        lensQuery = {
+          filters: {},
+        };
+        if (legacyQuery.state) {
+          lensQuery.filters!.state = Array.isArray(legacyQuery.state)
+            ? (legacyQuery.state as string[])
+            : [legacyQuery.state as string];
+        }
+        if (legacyQuery.text && typeof legacyQuery.text === 'string') {
+          lensQuery.filters!.text = legacyQuery.text;
+        }
+        if (legacyQuery.tags && Array.isArray(legacyQuery.tags)) {
+          lensQuery.filters!.tags = legacyQuery.tags as string[];
+        }
+        if (legacyQuery.authorId && typeof legacyQuery.authorId === 'string') {
+          lensQuery.filters!.authorId = legacyQuery.authorId;
+        }
+      }
+    }
+
+    // Apply filters
+    if (lensQuery?.filters) {
+      const filters = lensQuery.filters;
+
+      // Filter by state (array support)
+      if (filters.state && Array.isArray(filters.state) && filters.state.length > 0) {
+        conditions.push(inArray(airuDocumentsTable.state, filters.state as ('active' | 'archived' | 'trashed')[]));
+      }
+
+      // Filter by authorId
+      if (filters.authorId && typeof filters.authorId === 'string') {
+        conditions.push(eq(airuDocumentsTable.ownerUserId, filters.authorId));
+      }
+
+      // Text search (ILIKE on name and content)
+      if (filters.text && typeof filters.text === 'string') {
+        const searchText = `%${filters.text}%`;
+        conditions.push(
+          or(
+            ilike(airuDocumentsTable.name, searchText),
+            ilike(airuDocumentsTable.canonicalContent, searchText)
+          )!
+        );
+      }
+
+      // Phase 7: Filter by attributes (JSONB queries)
+      if (filters.attributes && typeof filters.attributes === 'object') {
+        const attrFilters = filters.attributes as Record<string, any>;
+        for (const [key, value] of Object.entries(attrFilters)) {
+          // Use JSONB path query: attributes->>'key' = 'value'
+          // For exact match
+          if (value !== null && value !== undefined) {
+            conditions.push(
+              sql`${airuDocumentsTable.attributes}->>${key} = ${String(value)}`
+            );
+          }
+        }
+      }
+    }
+
+    // Build order by clause
+    let orderByClause: any;
+    if (lensQuery?.sort) {
+      const sortField = lensQuery.sort.field === 'updatedAt' ? airuDocumentsTable.updatedAt : airuDocumentsTable.createdAt;
+      orderByClause = lensQuery.sort.direction === 'asc' ? sortField : desc(sortField);
+    } else {
+      // Default: sort by createdAt desc
+      orderByClause = desc(airuDocumentsTable.createdAt);
+    }
+
+    // Execute query
+    const documents = await dbInstance
+      .select()
+      .from(airuDocumentsTable)
+      .where(and(...conditions))
+      .orderBy(orderByClause);
+
+    // Map to AiruDocument format
+    let mappedDocuments = documents.map((doc) => ({
+      id: doc.id,
+      folderId: doc.folderId,
+      ownerUserId: doc.ownerUserId,
+      type: doc.type as 'TXT' | 'MD' | 'RTF',
+      name: doc.name,
+      content: doc.canonicalContent || doc.content || '',
+      canonicalContent: doc.canonicalContent || undefined,
+      sharedContent: doc.sharedContent,
+      visibility: doc.visibility as 'private' | 'org' | 'public',
+      state: doc.state as 'active' | 'archived' | 'trashed',
+      attributes: (doc.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+    }));
+
+    // Filter by tags if provided (tags are stored in metadata, so we filter in memory)
+    // Phase 6: Support tags array filter
+    if (lensQuery?.filters?.tags && Array.isArray(lensQuery.filters.tags) && lensQuery.filters.tags.length > 0) {
+      // Note: Tags would need to be stored in a metadata field or separate table
+      // For now, we'll skip tag filtering if metadata doesn't exist
+      // This is a placeholder for future tag implementation
+      mappedDocuments = mappedDocuments.filter((doc) => {
+        // If tags are in metadata, check them
+        // For now, return all documents (tags not yet implemented in schema)
+        return true;
+      });
+    }
+
+    // Phase 7: groupBy support for board grouping
+    // Note: groupBy is handled in the service layer for board views
+    // The repository returns flat list, grouping happens in domain service
+
+    return mappedDocuments;
   }
 
   /**
@@ -1020,6 +1436,58 @@ export class AirunoteRepository {
       sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Update document attributes
+   * Phase 7: Hybrid Attribute Engine
+   * Constitution: Owner-only operation
+   */
+  async updateDocumentAttributes(
+    documentId: string,
+    orgId: string,
+    ownerUserId: string,
+    attributes: Record<string, any>,
+    tx?: Transaction
+  ): Promise<AiruDocument> {
+    const dbInstance = tx ?? db;
+
+    // Verify document exists and belongs to org and owner
+    const document = await this.findDocument(documentId, orgId, ownerUserId, dbInstance);
+    if (!document) {
+      throw new Error(`Document not found or access denied: ${documentId}`);
+    }
+
+    const [updated] = await dbInstance
+      .update(airuDocumentsTable)
+      .set({
+        attributes: attributes,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(airuDocumentsTable.id, documentId),
+          eq(airuDocumentsTable.ownerUserId, ownerUserId) // Constitution: owner-only
+        )
+      )
+      .returning();
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      ownerUserId: updated.ownerUserId,
+      type: updated.type as 'TXT' | 'MD' | 'RTF',
+      name: updated.name,
+      content: updated.canonicalContent || updated.content || '', // Use canonicalContent, fallback to content
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
+      visibility: updated.visibility as 'private' | 'org' | 'public',
+      state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1069,6 +1537,7 @@ export class AirunoteRepository {
       sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1130,6 +1599,7 @@ export class AirunoteRepository {
       sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1523,8 +1993,11 @@ export class AirunoteRepository {
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
       content: updated.canonicalContent || updated.content || '', // Use canonical if available
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1571,8 +2044,11 @@ export class AirunoteRepository {
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
       content: updated.canonicalContent || updated.content || '', // Return canonical for display
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1628,8 +2104,11 @@ export class AirunoteRepository {
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
       content: updated.canonicalContent || updated.content || '',
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1670,8 +2149,11 @@ export class AirunoteRepository {
       type: updated.type as 'TXT' | 'MD' | 'RTF',
       name: updated.name,
       content: updated.canonicalContent || updated.content || '',
+      canonicalContent: updated.canonicalContent || undefined,
+      sharedContent: updated.sharedContent,
       visibility: updated.visibility as 'private' | 'org' | 'public',
       state: updated.state as 'active' | 'archived' | 'trashed',
+      attributes: (updated.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: updated.createdAt,
       updatedAt: updated.updatedAt,
     };
@@ -1751,8 +2233,9 @@ export class AirunoteRepository {
           parentFolderId: child.parentFolderId,
           humanId: child.humanId,
           visibility: child.visibility as 'private' | 'org' | 'public',
-          type: (child.type as 'box' | 'book' | 'board') || 'box',
+          type: (child.type as AiruFolderType) || 'box',
           metadata: child.metadata as Record<string, unknown> | null,
+          defaultLensId: child.defaultLensId || null,
           createdAt: child.createdAt,
         };
         descendants.push(folder);
@@ -1820,8 +2303,9 @@ export class AirunoteRepository {
       parentFolderId: folder.parentFolderId,
       humanId: folder.humanId,
       visibility: folder.visibility as 'private' | 'org' | 'public',
-      type: (folder.type as 'box' | 'book' | 'board') || 'box',
+      type: (folder.type as AiruFolderType) || 'box',
       metadata: folder.metadata as Record<string, unknown> | null,
+      defaultLensId: folder.defaultLensId || null,
       createdAt: folder.createdAt,
     }));
 
@@ -1858,6 +2342,7 @@ export class AirunoteRepository {
         name: airuDocumentsTable.name,
         visibility: airuDocumentsTable.visibility,
         state: airuDocumentsTable.state,
+        attributes: airuDocumentsTable.attributes, // Phase 7: Hybrid Attribute Engine
         createdAt: airuDocumentsTable.createdAt,
         updatedAt: airuDocumentsTable.updatedAt,
         // Calculate content size from canonicalContent or content (if available)
@@ -1886,6 +2371,7 @@ export class AirunoteRepository {
       name: doc.name,
       visibility: doc.visibility as 'private' | 'org' | 'public',
       state: doc.state as 'active' | 'archived' | 'trashed',
+      attributes: (doc.attributes as Record<string, any>) || {}, // Phase 7: Hybrid Attribute Engine
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
       size: doc.size ?? undefined,
@@ -1936,5 +2422,304 @@ export class AirunoteRepository {
       metadata: inserted.metadata as Record<string, unknown> | null,
       createdAt: inserted.createdAt,
     };
+  }
+
+  // =====================================================
+  // PHASE 2: Multi-lens per folder
+  // =====================================================
+
+  /**
+   * Get lens by ID
+   */
+  async getLensById(
+    lensId: string,
+    tx?: Transaction
+  ): Promise<AiruLens | null> {
+    const dbInstance = tx ?? db;
+    const [lens] = await dbInstance
+      .select()
+      .from(airuLensesTable)
+      .where(eq(airuLensesTable.id, lensId))
+      .limit(1);
+
+    if (!lens) {
+      return null;
+    }
+
+    return {
+      id: lens.id,
+      folderId: lens.folderId,
+      name: lens.name,
+      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      isDefault: lens.isDefault,
+      metadata: (lens.metadata as Record<string, unknown>) || {},
+      query: (lens.query as Record<string, unknown> | null) || null,
+      createdAt: lens.createdAt,
+      updatedAt: lens.updatedAt,
+    };
+  }
+
+  /**
+   * Get all lenses for a folder
+   */
+  async getLensesForFolder(
+    folderId: string,
+    tx?: Transaction
+  ): Promise<AiruLens[]> {
+    const dbInstance = tx ?? db;
+    const lenses = await dbInstance
+      .select()
+      .from(airuLensesTable)
+      .where(eq(airuLensesTable.folderId, folderId))
+      .orderBy(desc(airuLensesTable.isDefault), desc(airuLensesTable.createdAt));
+
+    return lenses.map((lens) => ({
+      id: lens.id,
+      folderId: lens.folderId,
+      name: lens.name,
+      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      isDefault: lens.isDefault,
+      metadata: (lens.metadata as Record<string, unknown>) || {},
+      query: (lens.query as Record<string, unknown> | null) || null,
+      createdAt: lens.createdAt,
+      updatedAt: lens.updatedAt,
+    }));
+  }
+
+  /**
+   * Create a new lens
+   */
+  async createLens(
+    data: {
+      folderId: string | null;
+      name: string;
+      type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+      metadata?: Record<string, unknown>;
+      query?: LensQuery | Record<string, unknown> | null;
+    },
+    tx?: Transaction
+  ): Promise<AiruLens> {
+    const dbInstance = tx ?? db;
+    const [inserted] = await dbInstance
+      .insert(airuLensesTable)
+      .values({
+        folderId: data.folderId,
+        name: data.name,
+        type: data.type,
+        isDefault: false, // New lenses are not default by default
+        metadata: data.metadata || {},
+        query: data.query || null,
+      })
+      .returning();
+
+    return {
+      id: inserted.id,
+      folderId: inserted.folderId,
+      name: inserted.name,
+      type: inserted.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      isDefault: inserted.isDefault,
+      metadata: (inserted.metadata as Record<string, unknown>) || {},
+      query: (inserted.query as Record<string, unknown> | null) || null,
+      createdAt: inserted.createdAt,
+      updatedAt: inserted.updatedAt,
+    };
+  }
+
+  /**
+   * Update a lens
+   */
+  /**
+   * Update lens properties
+   * Phase 8.1 — Query Optimization: JSONB Merge Patch for metadata
+   * 
+   * Uses PostgreSQL JSONB merge operator (||) when updating metadata
+   * to ensure concurrent-safe updates that only modify relevant subtrees
+   */
+  async updateLens(
+    lensId: string,
+    partialData: {
+      name?: string;
+      type?: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+      metadata?: Record<string, unknown>;
+      query?: LensQuery | Record<string, unknown> | null;
+    },
+    tx?: Transaction
+  ): Promise<AiruLens> {
+    const dbInstance = tx ?? db;
+    const updateValues: {
+      name?: string;
+      type?: string;
+      metadata?: ReturnType<typeof sql>;
+      query?: LensQuery | Record<string, unknown> | null;
+      updatedAt?: Date;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (partialData.name !== undefined) updateValues.name = partialData.name;
+    if (partialData.type !== undefined) updateValues.type = partialData.type;
+    
+    // Phase 8.1: Use JSONB merge operator for metadata to ensure concurrent-safe updates
+    if (partialData.metadata !== undefined) {
+      const metadataPatch = JSON.stringify(partialData.metadata);
+      updateValues.metadata = sql`COALESCE(${airuLensesTable.metadata}, '{}'::jsonb) || ${metadataPatch}::jsonb`;
+    }
+    
+    if (partialData.query !== undefined) updateValues.query = partialData.query as LensQuery | Record<string, unknown> | null;
+
+    const [updated] = await dbInstance
+      .update(airuLensesTable)
+      .set(updateValues)
+      .where(eq(airuLensesTable.id, lensId))
+      .returning();
+
+    if (!updated) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      name: updated.name,
+      type: updated.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      isDefault: updated.isDefault,
+      metadata: (updated.metadata as Record<string, unknown>) || {},
+      query: (updated.query as Record<string, unknown> | null) || null,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Set default lens for a folder
+   * Must be called within a transaction to ensure atomicity
+   * 
+   * Logic:
+   * 1. Set all lenses where folderId = folderId → isDefault = false
+   * 2. Set chosen lens → isDefault = true
+   * 3. Update folders.defaultLensId = lensId
+   */
+  async setDefaultLens(
+    folderId: string,
+    lensId: string,
+    tx: Transaction
+  ): Promise<void> {
+    // Verify lens exists and belongs to folder
+    const [lens] = await tx
+      .select()
+      .from(airuLensesTable)
+      .where(
+        and(
+          eq(airuLensesTable.id, lensId),
+          eq(airuLensesTable.folderId, folderId)
+        )
+      )
+      .limit(1);
+
+    if (!lens) {
+      throw new Error(`Lens ${lensId} not found or does not belong to folder ${folderId}`);
+    }
+
+    // Set all lenses where folderId = folderId → isDefault = false
+    await tx
+      .update(airuLensesTable)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(airuLensesTable.folderId, folderId));
+
+    // Set chosen lens → isDefault = true
+    await tx
+      .update(airuLensesTable)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(eq(airuLensesTable.id, lensId));
+
+    // Update folders.defaultLensId = lensId
+    await tx
+      .update(airuFoldersTable)
+      .set({ defaultLensId: lensId })
+      .where(eq(airuFoldersTable.id, folderId));
+  }
+
+  /**
+   * Update lens metadata with partial merge
+   * Phase 8.1 — Query Optimization: JSONB Merge Patch
+   * 
+   * Uses PostgreSQL JSONB merge operator (||) for concurrent-safe updates
+   * Only updates relevant subtrees, does not overwrite full metadata object
+   * 
+   * SQL: metadata = COALESCE(metadata, '{}'::jsonb) || $patch::jsonb
+   */
+  async updateLensMetadataPartial(
+    lensId: string,
+    metadataUpdate: Record<string, unknown>,
+    tx?: Transaction
+  ): Promise<AiruLens> {
+    const dbInstance = tx ?? db;
+
+    // Use PostgreSQL JSONB merge operator for atomic, concurrent-safe updates
+    // COALESCE handles null metadata, || merges the patch
+    // Convert metadataUpdate to JSONB using sql template with proper parameterization
+    const metadataPatch = JSON.stringify(metadataUpdate);
+    const [updated] = await dbInstance
+      .update(airuLensesTable)
+      .set({
+        metadata: sql`COALESCE(${airuLensesTable.metadata}, '{}'::jsonb) || ${metadataPatch}::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(eq(airuLensesTable.id, lensId))
+      .returning();
+
+    if (!updated) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    return {
+      id: updated.id,
+      folderId: updated.folderId,
+      name: updated.name,
+      type: updated.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      isDefault: updated.isDefault,
+      metadata: (updated.metadata as Record<string, unknown>) || {},
+      query: (updated.query as Record<string, unknown> | null) || null,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  /**
+   * Deep merge utility for JSON objects
+   * Merges source into target, preserving nested structures
+   */
+  private deepMerge(
+    target: Record<string, unknown>,
+    source: Record<string, unknown>
+  ): Record<string, unknown> {
+    const result = { ...target };
+
+    for (const key in source) {
+      if (source.hasOwnProperty(key)) {
+        const sourceValue = source[key];
+        const targetValue = result[key];
+
+        if (
+          sourceValue !== null &&
+          typeof sourceValue === 'object' &&
+          !Array.isArray(sourceValue) &&
+          targetValue !== null &&
+          typeof targetValue === 'object' &&
+          !Array.isArray(targetValue)
+        ) {
+          // Recursively merge nested objects
+          result[key] = this.deepMerge(
+            targetValue as Record<string, unknown>,
+            sourceValue as Record<string, unknown>
+          );
+        } else {
+          // Overwrite with source value
+          result[key] = sourceValue;
+        }
+      }
+    }
+
+    return result;
   }
 }

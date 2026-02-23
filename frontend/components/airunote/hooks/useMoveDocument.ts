@@ -43,6 +43,7 @@ export function useMoveDocument() {
         state: data.state,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
+        attributes: data.attributes || {},
       };
       store.updateDocumentMetadata(documentMetadata);
       store.setDocumentContent(data);

@@ -1,14 +1,16 @@
 /**
  * CreateDocumentModal Component
  * Modal for creating a new document
+ * Uses folder type to set default document type
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCreateDocument } from '../hooks/useCreateDocument';
 import { useRouter } from 'next/navigation';
-import type { AiruDocument } from '../types';
+import type { AiruDocument, AiruFolderType } from '../types';
+import { getDefaultDocumentType } from '../utils/defaultDocumentTemplate';
 
 interface CreateDocumentModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface CreateDocumentModalProps {
   orgId: string;
   userId: string;
   folderId: string;
+  folderType?: AiruFolderType; // Optional: folder type to determine default document type
 }
 
 export function CreateDocumentModal({
@@ -24,9 +27,18 @@ export function CreateDocumentModal({
   orgId,
   userId,
   folderId,
+  folderType,
 }: CreateDocumentModalProps) {
   const [documentName, setDocumentName] = useState('');
   const [documentType, setDocumentType] = useState<'TXT' | 'MD' | 'RTF'>('TXT');
+  
+  // Set default document type based on folder type when modal opens
+  useEffect(() => {
+    if (isOpen && folderType) {
+      const defaultType = getDefaultDocumentType(folderType);
+      setDocumentType(defaultType);
+    }
+  }, [isOpen, folderType]);
   const [content, setContent] = useState('');
   const [error, setError] = useState<string | null>(null);
   const createDocument = useCreateDocument();

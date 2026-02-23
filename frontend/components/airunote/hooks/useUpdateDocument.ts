@@ -33,6 +33,7 @@ export function useUpdateDocument() {
         name: data.name,
         visibility: data.visibility,
         state: data.state,
+        attributes: data.attributes || {}, // Phase 7: Hybrid Attribute Engine
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       };

@@ -498,6 +498,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
         state: doc.state,
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
+        attributes: doc.attributes || {},
       }));
 
       // Recursively build children for each folder

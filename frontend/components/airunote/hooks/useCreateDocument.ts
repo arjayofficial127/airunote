@@ -35,6 +35,7 @@ export function useCreateDocument() {
         state: data.state,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
+        attributes: data.attributes || {},
       };
       store.addDocument(documentMetadata);
       

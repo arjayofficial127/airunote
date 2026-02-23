@@ -14,6 +14,10 @@ import type {
   UpdateDocumentRequest,
   AirunoteApiResponse,
   FullMetadataResponse,
+  AiruLens,
+  UpdateCanvasPositionsRequest,
+  UpdateBoardCardRequest,
+  UpdateBoardLanesRequest,
 } from '../types';
 
 /**
@@ -185,6 +189,169 @@ export const airunoteApi = {
       confirmedByUserId,
       confirmation: 'DELETE_VAULT_PERMANENTLY',
     });
+    return response.data;
+  },
+
+  /**
+   * Get folder by ID (with lens projection)
+   */
+  getFolder: async (
+    folderId: string,
+    orgId: string,
+    userId: string
+  ): Promise<AirunoteApiResponse<{ folder: AiruFolder }>> => {
+    const response = await apiClient.get(`/internal/airunote/folder/${folderId}`, {
+      params: { orgId, userId },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get lenses for a folder
+   */
+  getFolderLenses: async (
+    folderId: string,
+    orgId: string,
+    userId: string
+  ): Promise<AirunoteApiResponse<{ lenses: AiruLens[] }>> => {
+    const response = await apiClient.get(`/internal/airunote/folders/${folderId}/lenses`, {
+      params: { orgId, userId },
+    });
+    return response.data;
+  },
+
+  /**
+   * Update canvas positions for a lens
+   */
+  updateCanvasPositions: async (
+    lensId: string,
+    request: UpdateCanvasPositionsRequest
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.patch(`/internal/airunote/lenses/${lensId}/canvas-positions`, request);
+    return response.data;
+  },
+
+  /**
+   * Update board card position (fractional order)
+   */
+  updateBoardCard: async (
+    lensId: string,
+    request: UpdateBoardCardRequest
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.patch(`/internal/airunote/lenses/${lensId}/board-card`, request);
+    return response.data;
+  },
+
+  /**
+   * Update board lanes
+   */
+  updateBoardLanes: async (
+    lensId: string,
+    request: UpdateBoardLanesRequest
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.patch(`/internal/airunote/lenses/${lensId}/board-lanes`, request);
+    return response.data;
+  },
+
+  /**
+   * Batch update lens layout (canvas and/or board positions)
+   * Phase 8.1 — Batch Layout Updates
+   */
+  updateBatchLayout: async (
+    lensId: string,
+    request: {
+      canvasPositions?: Record<string, { x: number; y: number }>;
+      boardPositions?: Record<string, { laneId: string; order: number }>;
+    }
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.patch(`/internal/airunote/lenses/${lensId}/batch-layout`, request);
+    return response.data;
+  },
+
+  /**
+   * Create desktop lens (Phase 5)
+   * Phase 6 — Also supports "saved" type
+   */
+  createDesktopLens: async (
+    orgId: string,
+    userId: string,
+    name: string,
+    query?: Record<string, unknown> | null,
+    metadata?: Record<string, unknown>,
+    type: 'desktop' | 'saved' = 'desktop'
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.post('/internal/airunote/lenses', {
+      orgId,
+      userId,
+      name,
+      type,
+      query: query || null,
+      metadata: metadata || {},
+    });
+    return response.data;
+  },
+
+  /**
+   * Get lens by ID with documents (Phase 5 - Desktop Lenses)
+   */
+  getLens: async (
+    lensId: string,
+    orgId: string,
+    userId: string
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens; documents: AiruDocument[] }>> => {
+    const response = await apiClient.get(`/internal/airunote/lenses/${lensId}`, {
+      params: { orgId, userId },
+    });
+    return response.data;
+  },
+
+  /**
+   * Update desktop/saved lens (Phase 6)
+   */
+  updateDesktopLens: async (
+    lensId: string,
+    orgId: string,
+    userId: string,
+    name?: string,
+    query?: Record<string, unknown> | null,
+    metadata?: Record<string, unknown>
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.patch(
+      `/internal/airunote/lenses/${lensId}`,
+      {
+        name,
+        query: query || null,
+        metadata: metadata || {},
+      },
+      {
+        params: { orgId, userId },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Update folder lens
+   */
+  updateFolderLens: async (
+    folderId: string,
+    lensId: string,
+    orgId: string,
+    userId: string,
+    partialData: {
+      name?: string;
+      type?: 'box' | 'board' | 'canvas' | 'book';
+      metadata?: Record<string, unknown>;
+      query?: Record<string, unknown> | null;
+    }
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.patch(
+      `/internal/airunote/folders/${folderId}/lenses/${lensId}`,
+      partialData,
+      {
+        params: { orgId, userId },
+      }
+    );
     return response.data;
   },
 };

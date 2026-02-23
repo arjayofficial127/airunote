@@ -3,6 +3,11 @@
  * Derived from backend repository interfaces
  */
 
+export type AiruFolderType = 
+  | 'box' | 'board' | 'book' | 'canvas' | 'collection' 
+  | 'contacts' | 'ledger' | 'journal' | 'manual' 
+  | 'notebook' | 'pipeline' | 'project' | 'wiki';
+
 export interface AiruFolder {
   id: string;
   orgId: string;
@@ -10,7 +15,7 @@ export interface AiruFolder {
   parentFolderId: string;
   humanId: string;
   visibility: 'private' | 'org' | 'public';
-  type: 'box' | 'book' | 'board';
+  type: AiruFolderType;
   metadata?: Record<string, unknown> | null;
   createdAt: Date;
 }
@@ -26,6 +31,7 @@ export interface AiruDocument {
   sharedContent?: string | null;
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
+  attributes: Record<string, any>; // Phase 7: Hybrid Attribute Engine
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +44,7 @@ export interface AiruDocumentMetadata {
   name: string;
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
+  attributes: Record<string, any>; // Phase 7: Hybrid Attribute Engine
   createdAt: Date;
   updatedAt: Date;
   size?: number; // Optional: content size in bytes if available
@@ -70,7 +77,7 @@ export interface CreateFolderRequest {
   userId: string;
   parentFolderId: string;
   humanId: string;
-  type?: 'box' | 'book' | 'board';
+  type?: AiruFolderType;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -79,7 +86,7 @@ export interface UpdateFolderRequest {
   userId: string;
   humanId?: string;
   parentFolderId?: string;
-  type?: 'box' | 'book' | 'board';
+  type?: AiruFolderType;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -90,6 +97,7 @@ export interface CreateDocumentRequest {
   name: string;
   content: string;
   type: 'TXT' | 'MD' | 'RTF';
+  attributes?: Record<string, any>; // Phase 7: Hybrid Attribute Engine
 }
 
 export interface UpdateDocumentRequest {
@@ -98,6 +106,7 @@ export interface UpdateDocumentRequest {
   content?: string;
   name?: string;
   folderId?: string;
+  attributes?: Record<string, any>; // Phase 7: Hybrid Attribute Engine
 }
 
 // Error Types
@@ -106,4 +115,64 @@ export type AirunoteErrorCode = 'VALIDATION_ERROR' | 'FORBIDDEN' | 'NOT_FOUND' |
 export interface AirunoteError {
   message: string;
   code: AirunoteErrorCode;
+}
+
+// Lens Types (Phase 2+)
+// Phase 6 — Unified Projection Engine
+export interface LensQuery {
+  filters?: {
+    tags?: string[];
+    state?: string[];
+    authorId?: string;
+    text?: string;
+    attributes?: Record<string, any>; // Phase 7: Hybrid Attribute Engine - filter by attribute key-value pairs
+  };
+  sort?: {
+    field: 'createdAt' | 'updatedAt';
+    direction: 'asc' | 'desc';
+  };
+  groupBy?: string | null;
+}
+
+export interface AiruLens {
+  id: string;
+  folderId: string | null;
+  name: string;
+  type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+  isDefault: boolean;
+  metadata: Record<string, unknown>;
+  query: LensQuery | Record<string, unknown> | null; // Phase 6: Standardized to LensQuery, but keep backward compatible
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CanvasPosition {
+  x: number;
+  y: number;
+}
+
+export interface UpdateCanvasPositionsRequest {
+  positions: Record<string, CanvasPosition>;
+}
+
+// Board Types (Phase 4+)
+export interface BoardLane {
+  id: string;
+  name: string;
+  order: number;
+}
+
+export interface BoardCardPosition {
+  laneId: string;
+  fractionalOrder: number;
+}
+
+export interface UpdateBoardCardRequest {
+  documentId: string;
+  laneId: string;
+  fractionalOrder: number;
+}
+
+export interface UpdateBoardLanesRequest {
+  lanes: BoardLane[];
 }

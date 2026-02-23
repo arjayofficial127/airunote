@@ -14,12 +14,14 @@ import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { FolderViewLayout } from '@/components/airunote/components/FolderViewLayout';
 import { CreateFolderModal } from '@/components/airunote/components/CreateFolderModal';
 import { CreateDocumentModal } from '@/components/airunote/components/CreateDocumentModal';
+import { CreateDesktopLensModal } from '@/components/airunote/components/CreateDesktopLensModal';
+import { CreateSavedViewModal } from '@/components/airunote/components/CreateSavedViewModal';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
 import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { airunoteApi } from '@/components/airunote/services/airunoteApi';
-import type { AiruFolder } from '@/components/airunote/types';
+import type { AiruFolder, AiruLens } from '@/components/airunote/types';
 
 export default function AirunoteHomePage() {
   const params = useParams();
@@ -41,6 +43,8 @@ export default function AirunoteHomePage() {
 
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
+  const [isCreateDesktopLensModalOpen, setIsCreateDesktopLensModalOpen] = useState(false);
+  const [isCreateSavedViewModalOpen, setIsCreateSavedViewModalOpen] = useState(false);
   const [isPasteDockOpen, setIsPasteDockOpen] = useState(false);
 
   // Find user root folder
@@ -77,6 +81,12 @@ export default function AirunoteHomePage() {
   const handleCreateFolderSuccess = (folder: AiruFolder) => {
     // Modal will close automatically
     // Tree will refetch automatically via React Query invalidation
+  };
+
+  const handleCreateDesktopLensSuccess = (lens: AiruLens) => {
+    // Navigate to lens view
+    const orgIdFromPath = window.location.pathname.split('/')[2];
+    window.location.href = `/orgs/${orgIdFromPath}/airunote/lens/${lens.id}`;
   };
 
   if (!orgId || !userId) {
@@ -129,6 +139,30 @@ export default function AirunoteHomePage() {
         onPasteDock={() => setIsPasteDockOpen(true)}
       />
 
+      {/* Desktop Lens & Saved View Creation Buttons */}
+      <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-3">
+        <button
+          onClick={() => setIsCreateSavedViewModalOpen(true)}
+          className="px-6 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors duration-150 flex items-center space-x-2"
+          title="Create Saved View"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+          </svg>
+          <span className="font-medium">New Saved View</span>
+        </button>
+        <button
+          onClick={() => setIsCreateDesktopLensModalOpen(true)}
+          className="px-6 py-3 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-colors duration-150 flex items-center space-x-2"
+          title="Create Desktop Lens"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="font-medium">New Desktop Lens</span>
+        </button>
+      </div>
+
       {/* Modals */}
       <CreateFolderModal
         isOpen={isCreateFolderModalOpen}
@@ -153,6 +187,26 @@ export default function AirunoteHomePage() {
         orgId={orgId}
         userId={userId}
         defaultFolderId={effectiveRootFolderId || ''} // Will be resolved on submit if needed
+      />
+
+      <CreateDesktopLensModal
+        isOpen={isCreateDesktopLensModalOpen}
+        onClose={() => setIsCreateDesktopLensModalOpen(false)}
+        orgId={orgId}
+        userId={userId}
+        onSuccess={handleCreateDesktopLensSuccess}
+      />
+
+      <CreateSavedViewModal
+        isOpen={isCreateSavedViewModalOpen}
+        onClose={() => setIsCreateSavedViewModalOpen(false)}
+        orgId={orgId}
+        userId={userId}
+        onSuccess={(lens) => {
+          // Navigate to lens view
+          const orgIdFromPath = window.location.pathname.split('/')[2];
+          window.location.href = `/orgs/${orgIdFromPath}/airunote/lens/${lens.id}`;
+        }}
       />
     </>
   );

@@ -192,6 +192,7 @@ export default function FolderViewPage() {
         orgId={orgId}
         userId={userId}
         folderId={folderId}
+        folderType={currentFolder?.type}
       />
 
       <PasteDock

@@ -23,10 +23,13 @@ import {
 import {
   AirunoteRepository,
   type AiruFolder,
+  type AiruFolderType,
   type AiruDocument,
   type FolderTreeResponse,
   type AiruShare,
   type AiruDocumentMetadata,
+  type AiruLens,
+  type LensQuery,
 } from './airunote.repository';
 
 // Transaction type - drizzle transactions have the same interface as db
@@ -235,7 +238,7 @@ export class AirunoteDomainService {
     userId: string,
     parentFolderId: string,
     humanId: string,
-    type: 'box' | 'book' | 'board' = 'box',
+    type: AiruFolderType = 'box',
     metadata: Record<string, unknown> | null = null
   ): Promise<AiruFolder> {
     return await db.transaction(async (tx) => {
@@ -262,9 +265,14 @@ export class AirunoteDomainService {
         throw new Error('Cannot create folder under org root');
       }
 
-      // Validate type
-      if (!['box', 'book', 'board'].includes(type)) {
-        throw new Error(`Invalid folder type: ${type}. Must be 'box', 'book', or 'board'`);
+      // Validate type - extended folder types
+      const validTypes: AiruFolderType[] = [
+        'box', 'board', 'book', 'canvas', 'collection', 
+        'contacts', 'ledger', 'journal', 'manual', 
+        'notebook', 'pipeline', 'project', 'wiki'
+      ];
+      if (!validTypes.includes(type as AiruFolderType)) {
+        throw new Error(`Invalid folder type: ${type}. Must be one of: ${validTypes.join(', ')}`);
       }
 
       // Create folder
@@ -301,7 +309,7 @@ export class AirunoteDomainService {
     folderId: string,
     updates: {
       humanId?: string;
-      type?: 'box' | 'book' | 'board';
+      type?: AiruFolderType;
       metadata?: Record<string, unknown> | null;
     }
   ): Promise<AiruFolder> {
@@ -425,6 +433,7 @@ export class AirunoteDomainService {
   /**
    * Create user document
    * Constitution: Privacy default = 'private', owner isolation enforced
+   * Phase 7: Supports attributes and optional schema validation
    */
   async createUserDocument(
     orgId: string,
@@ -432,7 +441,8 @@ export class AirunoteDomainService {
     folderId: string,
     name: string,
     content: string,
-    type: 'TXT' | 'MD' | 'RTF'
+    type: 'TXT' | 'MD' | 'RTF',
+    attributes?: Record<string, any>
   ): Promise<AiruDocument> {
     return await db.transaction(async (tx) => {
       // Ensure user root exists
@@ -450,6 +460,12 @@ export class AirunoteDomainService {
         throw new Error(`Folder owner mismatch: expected ${userId}, got ${folder.ownerUserId}`);
       }
 
+      // Phase 7: Validate attributes against folder schema if present
+      const folderSchema = folder.metadata?.schema;
+      if (attributes && folderSchema) {
+        this.validateDocumentAttributes(attributes, folderSchema);
+      }
+
       // Create document
       return await this.repository.createDocument(
         folderId,
@@ -458,9 +474,62 @@ export class AirunoteDomainService {
         name,
         content,
         type,
+        attributes || {},
         tx
       );
     });
+  }
+
+  /**
+   * Phase 7: Hybrid Attribute Engine
+   * Validates document attributes against folder schema if present
+   */
+  private validateDocumentAttributes(
+    attributes: Record<string, any>,
+    folderSchema?: Record<string, any> | null
+  ): void {
+    if (!folderSchema || typeof folderSchema !== 'object') {
+      // No schema defined, skip validation
+      return;
+    }
+
+    const schema = folderSchema as Record<string, { type: string; required?: boolean }>;
+    
+    // Validate each attribute key
+    for (const [key, value] of Object.entries(attributes)) {
+      const fieldSchema = schema[key];
+      if (!fieldSchema) {
+        // Attribute not in schema - allow it (flexible schema)
+        continue;
+      }
+
+      // Type validation
+      const expectedType = fieldSchema.type;
+      const actualType = typeof value;
+      
+      if (expectedType === 'string' && actualType !== 'string') {
+        throw new Error(`Attribute "${key}" must be of type string, got ${actualType}`);
+      }
+      if (expectedType === 'number' && actualType !== 'number') {
+        throw new Error(`Attribute "${key}" must be of type number, got ${actualType}`);
+      }
+      if (expectedType === 'boolean' && actualType !== 'boolean') {
+        throw new Error(`Attribute "${key}" must be of type boolean, got ${actualType}`);
+      }
+      if (expectedType === 'array' && !Array.isArray(value)) {
+        throw new Error(`Attribute "${key}" must be of type array, got ${actualType}`);
+      }
+      if (expectedType === 'object' && (actualType !== 'object' || Array.isArray(value) || value === null)) {
+        throw new Error(`Attribute "${key}" must be of type object, got ${actualType}`);
+      }
+    }
+
+    // Check required fields
+    for (const [key, fieldSchema] of Object.entries(schema)) {
+      if (fieldSchema.required && !(key in attributes)) {
+        throw new Error(`Required attribute "${key}" is missing`);
+      }
+    }
   }
 
   /**
@@ -794,6 +863,44 @@ export class AirunoteDomainService {
   // =====================================================
   // PHASE 2: Content Management
   // =====================================================
+
+  /**
+   * Update user document attributes
+   * Phase 7: Hybrid Attribute Engine
+   * Constitution: Owner-only operation
+   */
+  async updateUserDocumentAttributes(
+    orgId: string,
+    userId: string,
+    documentId: string,
+    attributes: Record<string, any>
+  ): Promise<AiruDocument> {
+    return await db.transaction(async (tx) => {
+      // Get document to find its folder
+      const document = await this.repository.findDocument(documentId, orgId, userId, tx);
+      if (!document) {
+        throw new Error(`Document not found or access denied: ${documentId}`);
+      }
+
+      // Get folder to check for schema validation
+      const folder = await this.repository.findFolderById(document.folderId, tx);
+      if (folder) {
+        const folderSchema = folder.metadata?.schema;
+        if (folderSchema) {
+          this.validateDocumentAttributes(attributes, folderSchema);
+        }
+      }
+
+      // Update attributes
+      return await this.repository.updateDocumentAttributes(
+        documentId,
+        orgId,
+        userId,
+        attributes,
+        tx
+      );
+    });
+  }
 
   /**
    * Update document canonical content
@@ -1140,6 +1247,531 @@ export class AirunoteDomainService {
         deletedShares,
         deletedLinks,
       };
+    });
+  }
+
+  /**
+   * Resolve folder projection with lens
+   * Phase 1 — Folder → Lens Rendering Refactor
+   * 
+   * Fetches folder and its default lens (or creates implicit box lens if none exists)
+   * 
+   * @returns Object with folder and lens (never null - falls back to implicit box lens)
+   */
+  async resolveFolderProjection(
+    folderId: string
+  ): Promise<{ folder: AiruFolder; lens: AiruLens }> {
+    // Fetch folder
+    const folder = await this.repository.findFolderById(folderId);
+    if (!folder) {
+      throw new Error(`Folder not found: ${folderId}`);
+    }
+
+    // Fetch lens via getDefaultLensForFolder
+    let lens = await this.repository.getDefaultLensForFolder(folderId);
+
+    // If lens is null: construct implicit lens object
+    if (!lens) {
+      lens = {
+        id: '', // Empty string for implicit lens (no database id)
+        folderId: folderId,
+        name: 'Default',
+        type: 'box',
+        isDefault: true,
+        metadata: { layout: { defaultView: 'box' } },
+        query: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    return {
+      folder,
+      lens,
+    };
+  }
+
+  /**
+   * Resolve lens and fetch documents by query
+   * Phase 6 — Unified Projection Engine
+   * 
+   * Uses unified resolveLensDocuments for all lens types
+   * 
+   * @returns Object with lens and documents
+   */
+  async resolveLensProjection(
+    lensId: string,
+    orgId: string,
+    userId: string
+  ): Promise<{ lens: AiruLens; documents: AiruDocument[] }> {
+    // Fetch lens
+    const lens = await this.repository.getLensById(lensId);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Phase 6: Use unified resolver for all lens types
+    const documents = await this.repository.resolveLensDocuments(lens, orgId, userId);
+    return { lens, documents };
+  }
+
+  // =====================================================
+  // PHASE 2: Multi-lens per folder
+  // =====================================================
+
+  /**
+   * Create a lens for a folder
+   */
+  async createFolderLens(
+    folderId: string,
+    orgId: string,
+    userId: string,
+    data: {
+      name: string;
+      type: 'box' | 'board' | 'canvas' | 'book';
+      metadata?: Record<string, unknown>;
+      query?: Record<string, unknown> | null;
+    }
+  ): Promise<AiruLens> {
+    // Verify folder exists and user has access
+    const folder = await this.repository.findFolderById(folderId);
+    if (!folder) {
+      throw new Error(`Folder not found: ${folderId}`);
+    }
+
+    if (folder.orgId !== orgId) {
+      throw new Error('Folder does not belong to organization');
+    }
+
+    if (folder.ownerUserId !== userId) {
+      throw new Error('User does not own this folder');
+    }
+
+    // Validate type
+    if (!['box', 'board', 'canvas', 'book'].includes(data.type)) {
+      throw new Error(`Invalid lens type: ${data.type}. Must be one of: box, board, canvas, book`);
+    }
+
+    return await this.repository.createLens({
+      folderId,
+      name: data.name,
+      type: data.type,
+      metadata: data.metadata,
+      query: data.query,
+    });
+  }
+
+  /**
+   * Create a desktop lens (folderId = null)
+   * Phase 5 — Desktop Lenses
+   * Phase 6 — Also supports "saved" type
+   */
+  async createDesktopLens(
+    orgId: string,
+    userId: string,
+    data: {
+      name: string;
+      type: 'desktop' | 'saved';
+      query?: Record<string, unknown> | null;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<AiruLens> {
+    // Validate type
+    if (data.type !== 'desktop' && data.type !== 'saved') {
+      throw new Error(`Invalid lens type: ${data.type}. Must be "desktop" or "saved"`);
+    }
+
+    // Desktop/saved lenses don't require folderId (it will be null)
+    return await this.repository.createLens({
+      folderId: null,
+      name: data.name,
+      type: data.type,
+      metadata: data.metadata,
+      query: data.query,
+    });
+  }
+
+  /**
+   * Update a desktop/saved lens (folderId = null)
+   * Phase 6 — Unified Projection Engine + Saved Views
+   */
+  async updateDesktopLens(
+    lensId: string,
+    orgId: string,
+    userId: string,
+    partialData: {
+      name?: string;
+      query?: LensQuery | Record<string, unknown> | null;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<AiruLens> {
+    // Fetch lens to verify it exists and is a desktop/saved lens
+    const lens = await this.repository.getLensById(lensId);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Only allow updating desktop/saved lenses (folderId is null)
+    if (lens.folderId !== null) {
+      throw new Error('Use updateFolderLens for folder lenses');
+    }
+
+    // Update lens
+    return await this.repository.updateLens(lensId, partialData);
+  }
+
+  /**
+   * Update a lens
+   */
+  async updateFolderLens(
+    folderId: string,
+    lensId: string,
+    orgId: string,
+    userId: string,
+    partialData: {
+      name?: string;
+      type?: 'box' | 'board' | 'canvas' | 'book';
+      metadata?: Record<string, unknown>;
+      query?: Record<string, unknown> | null;
+    }
+  ): Promise<AiruLens> {
+    // Verify folder exists and user has access
+    const folder = await this.repository.findFolderById(folderId);
+    if (!folder) {
+      throw new Error(`Folder not found: ${folderId}`);
+    }
+
+    if (folder.orgId !== orgId) {
+      throw new Error('Folder does not belong to organization');
+    }
+
+    if (folder.ownerUserId !== userId) {
+      throw new Error('User does not own this folder');
+    }
+
+    // Verify lens exists and belongs to folder
+    const lenses = await this.repository.getLensesForFolder(folderId);
+    const lens = lenses.find((l) => l.id === lensId);
+    if (!lens) {
+      throw new Error(`Lens ${lensId} not found or does not belong to folder ${folderId}`);
+    }
+
+    // Validate type if provided
+    if (partialData.type && !['box', 'board', 'canvas', 'book'].includes(partialData.type)) {
+      throw new Error(`Invalid lens type: ${partialData.type}. Must be one of: box, board, canvas, book`);
+    }
+
+    return await this.repository.updateLens(lensId, partialData);
+  }
+
+  /**
+   * Switch default lens for a folder
+   * Uses transaction to ensure atomicity
+   */
+  async switchFolderLens(
+    folderId: string,
+    lensId: string,
+    orgId: string,
+    userId: string
+  ): Promise<void> {
+    // Verify folder exists and user has access
+    const folder = await this.repository.findFolderById(folderId);
+    if (!folder) {
+      throw new Error(`Folder not found: ${folderId}`);
+    }
+
+    if (folder.orgId !== orgId) {
+      throw new Error('Folder does not belong to organization');
+    }
+
+    if (folder.ownerUserId !== userId) {
+      throw new Error('User does not own this folder');
+    }
+
+    // Use transaction to ensure atomicity
+    return await db.transaction(async (tx) => {
+      await this.repository.setDefaultLens(folderId, lensId, tx);
+    });
+  }
+
+  /**
+   * Get lenses for a folder (with access control)
+   */
+  async getFolderLenses(
+    folderId: string,
+    orgId: string,
+    userId: string
+  ): Promise<AiruLens[]> {
+    // Verify folder exists and user has access
+    const folder = await this.repository.findFolderById(folderId);
+    if (!folder) {
+      throw new Error(`Folder not found: ${folderId}`);
+    }
+
+    if (folder.orgId !== orgId) {
+      throw new Error('Folder does not belong to organization');
+    }
+
+    if (folder.ownerUserId !== userId) {
+      throw new Error('User does not own this folder');
+    }
+
+    return await this.repository.getLensesForFolder(folderId);
+  }
+
+  /**
+   * Update canvas positions for a lens
+   * Phase 3 — Canvas layout ownership by Lens
+   * 
+   * Merges positions into lens.metadata.views.canvas.positions
+   * Only updates metadata column, preserves other metadata
+   */
+  async updateCanvasPositions(
+    lensId: string,
+    positions: Record<string, { x: number; y: number }>
+  ): Promise<AiruLens> {
+    // Fetch lens to verify it exists and is canvas type
+    const lens = await this.repository.getLensById(lensId);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Verify lens type is canvas
+    if (lens.type !== 'canvas') {
+      throw new Error(`Lens type must be "canvas", got "${lens.type}"`);
+    }
+
+    // Validate positions shape
+    for (const [docId, position] of Object.entries(positions)) {
+      if (typeof docId !== 'string') {
+        throw new Error(`Invalid document ID: ${docId}`);
+      }
+      if (
+        typeof position !== 'object' ||
+        position === null ||
+        typeof position.x !== 'number' ||
+        typeof position.y !== 'number'
+      ) {
+        throw new Error(`Invalid position for document ${docId}: must have x and y as numbers`);
+      }
+    }
+
+    // Merge positions into metadata.views.canvas.positions
+    const metadataUpdate = {
+      views: {
+        canvas: {
+          positions: positions,
+        },
+      },
+    };
+
+    return await this.repository.updateLensMetadataPartial(lensId, metadataUpdate);
+  }
+
+  /**
+   * Update board card position (fractional order)
+   * Phase 4 — Board state ownership by Lens
+   * 
+   * Updates card position in lens.metadata.views.board.cardPositions
+   */
+  async updateBoardCard(
+    lensId: string,
+    documentId: string,
+    laneId: string,
+    fractionalOrder: number
+  ): Promise<AiruLens> {
+    // Fetch lens to verify it exists and is board type
+    const lens = await this.repository.getLensById(lensId);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Verify lens type is board
+    if (lens.type !== 'board') {
+      throw new Error(`Lens type must be "board", got "${lens.type}"`);
+    }
+
+    // Validate inputs
+    if (typeof documentId !== 'string' || !documentId) {
+      throw new Error('Invalid document ID');
+    }
+    if (typeof laneId !== 'string' || !laneId) {
+      throw new Error('Invalid lane ID');
+    }
+    if (typeof fractionalOrder !== 'number' || isNaN(fractionalOrder)) {
+      throw new Error('Invalid fractional order');
+    }
+
+    // Update card position in metadata.views.board.cardPositions
+    const metadata = lens.metadata || {};
+    const views = (metadata.views as Record<string, unknown>) || {};
+    const board = (views.board as Record<string, unknown>) || {};
+    const cardPositions = (board.cardPositions as Record<string, { laneId: string; fractionalOrder: number }>) || {};
+
+    // Update or add card position
+    cardPositions[documentId] = { laneId, fractionalOrder };
+
+    const metadataUpdate = {
+      views: {
+        board: {
+          ...board,
+          cardPositions,
+        },
+      },
+    };
+
+    return await this.repository.updateLensMetadataPartial(lensId, metadataUpdate);
+  }
+
+  /**
+   * Update board lanes
+   * Phase 4 — Board state ownership by Lens
+   * 
+   * Updates lanes in lens.metadata.views.board.lanes
+   */
+  async updateBoardLanes(
+    lensId: string,
+    lanes: Array<{ id: string; name: string; order: number }>
+  ): Promise<AiruLens> {
+    // Fetch lens to verify it exists and is board type
+    const lens = await this.repository.getLensById(lensId);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Verify lens type is board
+    if (lens.type !== 'board') {
+      throw new Error(`Lens type must be "board", got "${lens.type}"`);
+    }
+
+    // Validate lanes
+    if (!Array.isArray(lanes)) {
+      throw new Error('Lanes must be an array');
+    }
+
+    for (const lane of lanes) {
+      if (typeof lane.id !== 'string' || !lane.id) {
+        throw new Error('Invalid lane ID');
+      }
+      if (typeof lane.name !== 'string') {
+        throw new Error('Invalid lane name');
+      }
+      if (typeof lane.order !== 'number' || isNaN(lane.order)) {
+        throw new Error('Invalid lane order');
+      }
+    }
+
+    // Update lanes in metadata.views.board.lanes
+    const metadataUpdate = {
+      views: {
+        board: {
+          lanes,
+        },
+      },
+    };
+
+    return await this.repository.updateLensMetadataPartial(lensId, metadataUpdate);
+  }
+
+  /**
+   * Batch update lens layout (canvas positions and/or board positions)
+   * Phase 8.1 — Batch Layout Updates
+   * 
+   * Updates both canvas and board positions in a single transaction
+   * Uses JSONB merge patch to ensure concurrent-safe updates
+   */
+  async updateBatchLayout(
+    lensId: string,
+    updates: {
+      canvasPositions?: Record<string, { x: number; y: number }>;
+      boardPositions?: Record<string, { laneId: string; order: number }>;
+    }
+  ): Promise<AiruLens> {
+    // Fetch lens to verify it exists
+    const lens = await this.repository.getLensById(lensId);
+    if (!lens) {
+      throw new Error(`Lens not found: ${lensId}`);
+    }
+
+    // Validate canvas positions if provided
+    if (updates.canvasPositions) {
+      if (lens.type !== 'canvas') {
+        throw new Error(`Lens type must be "canvas" to update canvas positions, got "${lens.type}"`);
+      }
+
+      for (const [docId, position] of Object.entries(updates.canvasPositions)) {
+        if (typeof docId !== 'string') {
+          throw new Error(`Invalid document ID: ${docId}`);
+        }
+        if (
+          typeof position !== 'object' ||
+          position === null ||
+          typeof position.x !== 'number' ||
+          typeof position.y !== 'number'
+        ) {
+          throw new Error(`Invalid position for document ${docId}: must have x and y as numbers`);
+        }
+      }
+    }
+
+    // Validate board positions if provided
+    if (updates.boardPositions) {
+      if (lens.type !== 'board') {
+        throw new Error(`Lens type must be "board" to update board positions, got "${lens.type}"`);
+      }
+
+      for (const [docId, position] of Object.entries(updates.boardPositions)) {
+        if (typeof docId !== 'string') {
+          throw new Error(`Invalid document ID: ${docId}`);
+        }
+        if (
+          typeof position !== 'object' ||
+          position === null ||
+          typeof position.laneId !== 'string' ||
+          typeof position.order !== 'number'
+        ) {
+          throw new Error(`Invalid board position for document ${docId}: must have laneId (string) and order (number)`);
+        }
+      }
+    }
+
+    // Build metadata update with both canvas and board positions
+    const metadataUpdate: Record<string, unknown> = {};
+
+    if (updates.canvasPositions) {
+      metadataUpdate.views = {
+        ...(metadataUpdate.views as Record<string, unknown> || {}),
+        canvas: {
+          positions: updates.canvasPositions,
+        },
+      };
+    }
+
+    if (updates.boardPositions) {
+      // Convert boardPositions to cardPositions format
+      const cardPositions: Record<string, { laneId: string; fractionalOrder: number }> = {};
+      for (const [docId, position] of Object.entries(updates.boardPositions)) {
+        cardPositions[docId] = {
+          laneId: position.laneId,
+          fractionalOrder: position.order,
+        };
+      }
+
+      const existingViews = (metadataUpdate.views as Record<string, unknown>) || {};
+      const existingBoard = (existingViews.board as Record<string, unknown>) || {};
+
+      metadataUpdate.views = {
+        ...existingViews,
+        board: {
+          ...existingBoard,
+          cardPositions,
+        },
+      };
+    }
+
+    // Use transaction to ensure atomicity
+    return await db.transaction(async (tx) => {
+      return await this.repository.updateLensMetadataPartial(lensId, metadataUpdate, tx);
     });
   }
 }

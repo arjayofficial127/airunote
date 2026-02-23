@@ -188,6 +188,51 @@ export default function DocumentViewPage() {
     }
   };
 
+  const handleUpdateAttributes = async (attributes: Record<string, any>) => {
+    if (!orgId || !userId || !documentId) return;
+
+    try {
+      const updated = await updateDocument.mutateAsync({
+        documentId,
+        request: {
+          orgId,
+          userId,
+          attributes,
+        },
+      });
+
+      // Update ContentStore
+      store.setDocumentContent(updated);
+      
+      // Update MetadataStore
+      const metadata = store.getDocumentMetadataById(documentId);
+      if (metadata) {
+        store.updateDocumentMetadata({
+          ...metadata,
+          attributes: updated.attributes,
+          updatedAt: updated.updatedAt,
+        });
+      }
+
+      // Update editing document
+      if (editingDocument) {
+        const updatedEditingDocument: AiruDocument = {
+          ...editingDocument,
+          attributes: updated.attributes,
+          updatedAt: updated.updatedAt,
+        };
+        setEditingDocument(updatedEditingDocument);
+      }
+      
+      // Update original ref
+      originalDocumentRef.current = updated;
+    } catch (err) {
+      console.error('Failed to update attributes:', err);
+      // Error toast is handled by the hook
+      throw err;
+    }
+  };
+
   const handleCancel = () => {
     // Discard editing document, revert to original
     if (originalDocumentRef.current) {
@@ -283,6 +328,7 @@ export default function DocumentViewPage() {
         onSave={handleSave}
         onDelete={async () => { setIsDeleteModalOpen(true); }}
         onRename={handleRename}
+        onUpdateAttributes={handleUpdateAttributes}
         isSaving={updateDocument.isPending}
       />
 

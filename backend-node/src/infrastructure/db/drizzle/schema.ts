@@ -424,7 +424,13 @@ export const airuDocumentStateEnum = pgEnum('airu_document_state', ['active', 'a
 export const airuShortcutTargetTypeEnum = pgEnum('airu_shortcut_target_type', ['folder', 'document']);
 export const airuShareTypeEnum = pgEnum('airu_share_type', ['user', 'org', 'public', 'link']);
 export const airuContentTypeEnum = pgEnum('airu_content_type', ['canonical', 'shared']);
-export const airuFolderTypeEnum = pgEnum('airu_folder_type', ['box', 'book', 'board']);
+// Folder type is now VARCHAR for flexibility (extended from enum)
+// Valid types: 'box', 'board', 'book', 'canvas', 'collection', 'contacts', 
+//              'ledger', 'journal', 'manual', 'notebook', 'pipeline', 'project', 'wiki'
+export type AiruFolderType = 
+  | 'box' | 'board' | 'book' | 'canvas' | 'collection' 
+  | 'contacts' | 'ledger' | 'journal' | 'manual' 
+  | 'notebook' | 'pipeline' | 'project' | 'wiki';
 
 // Airu Folders table
 export const airuFoldersTable = pgTable('airu_folders', {
@@ -440,8 +446,9 @@ export const airuFoldersTable = pgTable('airu_folders', {
     .references(() => airuFoldersTable.id, { onDelete: 'restrict' }),
   humanId: varchar('human_id', { length: 255 }).notNull(),
   visibility: airuVisibilityEnum('visibility').notNull().default('private'),
-  type: airuFolderTypeEnum('type').notNull().default('box'),
+  type: varchar('type', { length: 50 }).notNull().default('box'),
   metadata: jsonb('metadata'),
+  defaultLensId: uuid('default_lens_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   orgIdx: index('airu_folders_org_idx').on(table.orgId),
@@ -470,6 +477,7 @@ export const airuDocumentsTable = pgTable('airu_documents', {
   sharedContent: text('shared_content'), // nullable
   visibility: airuVisibilityEnum('visibility').notNull().default('private'),
   state: airuDocumentStateEnum('state').notNull().default('active'),
+  attributes: jsonb('attributes').notNull().default('{}'), // Phase 7: Hybrid Attribute Engine
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => ({
@@ -581,4 +589,19 @@ export const airuAuditLogsTable = pgTable('airu_audit_logs', {
   orgIdx: index('airu_audit_logs_org_idx').on(table.orgId),
   eventTypeIdx: index('airu_audit_logs_event_type_idx').on(table.eventType),
   createdAtIdx: index('airu_audit_logs_created_at_idx').on(table.createdAt),
+}));
+
+// Airu Lenses table (Phase 0 - Schema Freeze)
+export const airuLensesTable = pgTable('airu_lenses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  folderId: uuid('folder_id').references(() => airuFoldersTable.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 120 }).notNull(),
+  type: varchar('type', { length: 20 }).notNull(), // 'box' | 'board' | 'canvas' | 'book'
+  isDefault: boolean('is_default').notNull().default(false),
+  metadata: jsonb('metadata').notNull().default('{}'),
+  query: jsonb('query'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  folderIdIdx: index('airu_lenses_folder_id_idx').on(table.folderId),
 }));

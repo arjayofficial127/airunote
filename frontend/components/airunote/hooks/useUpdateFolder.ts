@@ -7,14 +7,14 @@ import { useMutation } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
-import type { UpdateFolderRequest, AiruFolder } from '../types';
+import type { UpdateFolderRequest, AiruFolder, AiruFolderType } from '../types';
 
 interface UpdateFolderParams {
   folderId: string;
   orgId: string;
   userId: string;
   humanId?: string;
-  type?: 'box' | 'book' | 'board';
+  type?: AiruFolderType;
   metadata?: Record<string, unknown> | null;
 }
 

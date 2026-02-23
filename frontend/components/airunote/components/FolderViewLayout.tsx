@@ -13,9 +13,13 @@ import { SearchBar } from './SearchBar';
 import { FolderTreeView } from './FolderTreeView';
 import { FolderCountBadge } from './FolderCountBadge';
 import { DocumentList } from './DocumentList';
+import { CanvasView } from './CanvasView';
+import { BoardView } from './BoardView';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EditFolderModal } from './EditFolderModal';
 import { getFolderTypeIcon } from '../utils/folderTypeIcon';
+import { useFolderLens } from '../hooks/useFolderLens';
+import { useLens } from '../hooks/useLens';
 import type { AiruFolder, AiruDocument, AiruDocumentMetadata } from '../types';
 
 interface FolderViewLayoutProps {
@@ -57,6 +61,17 @@ export function FolderViewLayout({
     getFilteredDocuments,
     getFolderCounts,
   } = useAirunoteStore();
+
+  // Fetch lens for folder (Phase 1+)
+  // Phase 5: For desktop lenses, we need to fetch via GET /lenses/:id
+  // But FolderViewLayout is folder-based, so we only use useFolderLens here
+  // Desktop lenses will have their own page route
+  const { data: lens, isLoading: isLoadingLens } = useFolderLens({
+    folderId,
+    orgId,
+    userId,
+    enabled: !!folderId && !!orgId && !!userId,
+  });
 
   // Get direct children (filtered by search)
   const childFolders = folderId ? getFilteredFolders(folderId) : [];
@@ -292,6 +307,22 @@ export function FolderViewLayout({
                 Create Document
               </button>
             }
+          />
+        ) : lens && lens.type === 'canvas' && lens.id ? (
+          // Phase 3: Canvas view - positions stored in lens metadata
+          <CanvasView
+            documents={documents}
+            lens={lens}
+            lensId={lens.id}
+            orgId={orgId}
+          />
+        ) : lens && lens.type === 'board' && lens.id ? (
+          // Phase 4: Board view - lanes and card positions stored in lens metadata
+          <BoardView
+            documents={documents}
+            lens={lens}
+            lensId={lens.id}
+            orgId={orgId}
           />
         ) : (
           <DocumentList 
