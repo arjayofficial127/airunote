@@ -14,11 +14,11 @@ import type {
   UpdateDocumentRequest,
   AirunoteApiResponse,
   FullMetadataResponse,
-  AiruLens,
   UpdateCanvasPositionsRequest,
   UpdateBoardCardRequest,
   UpdateBoardLanesRequest,
 } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 /**
  * Airunote API client
@@ -323,6 +323,30 @@ export const airunoteApi = {
         query: query || null,
         metadata: metadata || {},
       },
+      {
+        params: { orgId, userId },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Create folder lens
+   */
+  createFolderLens: async (
+    folderId: string,
+    orgId: string,
+    userId: string,
+    payload: {
+      name: string;
+      type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+      metadata?: Record<string, unknown>;
+      query?: Record<string, unknown> | null;
+    }
+  ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
+    const response = await apiClient.post(
+      `/internal/airunote/folders/${folderId}/lenses`,
+      payload,
       {
         params: { orgId, userId },
       }

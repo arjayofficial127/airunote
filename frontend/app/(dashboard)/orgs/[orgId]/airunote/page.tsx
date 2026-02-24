@@ -21,7 +21,8 @@ import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSk
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { airunoteApi } from '@/components/airunote/services/airunoteApi';
-import type { AiruFolder, AiruLens } from '@/components/airunote/types';
+import type { AiruFolder } from '@/components/airunote/types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 export default function AirunoteHomePage() {
   const params = useParams();

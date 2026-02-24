@@ -13,6 +13,7 @@ import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { FolderViewLayout } from '@/components/airunote/components/FolderViewLayout';
 import { CreateFolderModal } from '@/components/airunote/components/CreateFolderModal';
 import { CreateDocumentModal } from '@/components/airunote/components/CreateDocumentModal';
+import { CreateFolderLensModal } from '@/components/airunote/components/CreateFolderLensModal';
 import { MoveFolderModal } from '@/components/airunote/components/MoveFolderModal';
 import { MoveDocumentModal } from '@/components/airunote/components/MoveDocumentModal';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
@@ -45,6 +46,7 @@ export default function FolderViewPage() {
 
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
+  const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
   const [isPasteDockOpen, setIsPasteDockOpen] = useState(false);
   const [moveFolderModal, setMoveFolderModal] = useState<AiruFolder | null>(null);
   const [moveDocumentModal, setMoveDocumentModal] = useState<AiruDocument | null>(null);
@@ -59,6 +61,8 @@ export default function FolderViewPage() {
     getFolderById,
     getFilteredFolders,
     getFilteredDocuments,
+    getFoldersByParent,
+    getDocumentsByFolder,
     isLoading,
     error,
   } = useAirunoteStore();
@@ -67,7 +71,7 @@ export default function FolderViewPage() {
   const currentFolder = folderId ? getFolderById(folderId) : null;
 
   // Fetch folder lenses
-  const { data: folderLenses = [], isLoading: isLoadingLenses } = useFolderLenses(
+  const { data: folderLenses = [], isLoading: isLoadingLenses, refetch: refetchFolderLenses } = useFolderLenses(
     orgId || undefined,
     folderId || undefined
   );
@@ -135,12 +139,23 @@ export default function FolderViewPage() {
     return projection;
   }, [lensData, selectedLensId, folderId, getFilteredFolders, getFilteredDocuments]);
 
-  // Prepare children for BoardLens
+  // Prepare children for BoardLens and CanvasLens
+  // Use direct store methods to avoid stale closure issues
   const boardChildren = useMemo(() => {
     if (!folderId) return [];
     
-    const folders = getFilteredFolders(folderId);
-    const documents = getFilteredDocuments(folderId);
+    // Use direct store methods instead of filtered versions to ensure we get all items
+    // Filtered versions might be affected by search query or other state
+    const folders = getFoldersByParent(folderId);
+    const documents = getDocumentsByFolder(folderId);
+    
+    console.log('[FolderPage] boardChildren computation:', {
+      folderId,
+      foldersCount: folders.length,
+      documentsCount: documents.length,
+      selectedLensId,
+      lensType: lensData?.lens.type,
+    });
     
     return [
       ...folders.map((f) => ({
@@ -156,7 +171,7 @@ export default function FolderViewPage() {
         name: d.name,
       })),
     ];
-  }, [folderId, getFilteredFolders, getFilteredDocuments]);
+  }, [folderId, getFoldersByParent, getDocumentsByFolder, selectedLensId, lensData]);
 
   // Handle persist for board lens
   const handleBoardPersist = useCallback(
@@ -167,28 +182,11 @@ export default function FolderViewPage() {
     [updateLensItems]
   );
 
-  // Filter lenses by type for switcher (only show types that exist)
-  const availableLensTypes = useMemo(() => {
-    const types = new Set<string>();
-    folderLenses.forEach((lens) => {
-      if (['box', 'board', 'canvas', 'book'].includes(lens.type)) {
-        types.add(lens.type);
-      }
-    });
-    return Array.from(types);
-  }, [folderLenses]);
-
-  // Get lenses by type for switcher
-  const lensesByType = useMemo(() => {
-    const map = new Map<string, typeof folderLenses[0]>();
-    folderLenses.forEach((lens) => {
-      if (['box', 'board', 'canvas', 'book'].includes(lens.type)) {
-        if (!map.has(lens.type)) {
-          map.set(lens.type, lens);
-        }
-      }
-    });
-    return map;
+  // Filter lenses for switcher (show ALL lenses, not just one per type)
+  const availableLenses = useMemo(() => {
+    return folderLenses.filter((lens) => 
+      ['box', 'board', 'canvas', 'book'].includes(lens.type)
+    );
   }, [folderLenses]);
 
   // Build breadcrumb path from store (for clickable navigation)
@@ -200,13 +198,19 @@ export default function FolderViewPage() {
     // Build path upward from current to root
     while (folder) {
       const currentFolderItem: AiruFolder = folder;
-      pathFolders.unshift(currentFolderItem);
-
-      // Find parent folder
-      if (currentFolderItem.parentFolderId === currentFolderItem.id) {
-        // Self-parent means root, stop here
+      
+      // Stop conditions: root folders or parent not found
+      if (
+        !currentFolderItem.parentFolderId ||
+        currentFolderItem.parentFolderId === '' ||
+        currentFolderItem.humanId === '__user_root__' ||
+        currentFolderItem.humanId === '__org_root__'
+      ) {
+        // Don't add root folders to path
         break;
       }
+
+      pathFolders.unshift(currentFolderItem);
 
       const parent = getFolderById(currentFolderItem.parentFolderId);
       if (!parent) {
@@ -217,15 +221,15 @@ export default function FolderViewPage() {
       folder = parent;
     }
 
-    // Build breadcrumb path (filter out root folders and user root)
+    // Build breadcrumb path (filter out root folders)
     for (const pathFolder of pathFolders) {
-      // Skip root folders (self-parent pattern)
-      if (pathFolder.parentFolderId === pathFolder.id) {
-        continue;
-      }
-
-      // Skip user root folder (__user_root__) - it's internal
-      if (pathFolder.humanId === '__user_root__') {
+      // Skip root folders
+      if (
+        pathFolder.humanId === '__user_root__' ||
+        pathFolder.humanId === '__org_root__' ||
+        !pathFolder.parentFolderId ||
+        pathFolder.parentFolderId === ''
+      ) {
         continue;
       }
 
@@ -307,41 +311,51 @@ export default function FolderViewPage() {
 
   return (
     <>
-      {/* Lens Switcher UI */}
-      {availableLensTypes.length > 0 && (
-        <div className="px-8 pt-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex gap-2">
-            {availableLensTypes.map((type) => {
-              const lens = lensesByType.get(type);
-              if (!lens) return null;
-              
-              const isActive = selectedLensId === lens.id;
-              const typeLabels: Record<string, string> = {
-                box: 'Box',
-                board: 'Board',
-                canvas: 'Canvas',
-                book: 'Book',
-              };
+      {/* Lens Switcher UI - Shows ALL lenses */}
+      <div className="px-8 pt-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 flex-wrap">
+          {availableLenses.map((lens) => {
+            const isActive = selectedLensId === lens.id;
+            const typeLabels: Record<string, string> = {
+              box: 'Box',
+              board: 'Board',
+              canvas: 'Canvas',
+              book: 'Book',
+            };
 
-              return (
-                <button
-                  key={lens.id}
-                  onClick={() => setSelectedLensId(lens.id)}
-                  className={`
-                    px-4 py-2 rounded-md text-sm font-medium transition-colors
-                    ${isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }
-                  `}
-                >
-                  {typeLabels[type] || type}
-                </button>
-              );
-            })}
-          </div>
+            return (
+              <button
+                key={lens.id}
+                onClick={() => setSelectedLensId(lens.id)}
+                className={`
+                  px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2
+                  ${isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }
+                `}
+                title={lens.name}
+              >
+                <span className="text-xs opacity-75">
+                  {typeLabels[lens.type] || lens.type}
+                </span>
+                <span>{lens.name}</span>
+              </button>
+            );
+          })}
+          {/* Always show + Lens button */}
+          <button
+            onClick={() => setIsCreateLensModalOpen(true)}
+            className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1 border-2 border-dashed border-gray-300 dark:border-gray-600"
+            title="Create new lens"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>+ Lens</span>
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Render Board Lens if active */}
       {shouldRenderBoardLens ? (
@@ -356,13 +370,19 @@ export default function FolderViewPage() {
         </div>
       ) : shouldRenderCanvasLens ? (
         <div className="h-screen overflow-hidden">
-          <CanvasLens
-            orgId={orgId || orgIdFromParams}
-            lens={lensData.lens}
-            items={boardChildren}
-            lensItems={lensData.items}
-            onPersist={handleBoardPersist}
-          />
+          {isLoadingLens ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-500">Loading canvas...</div>
+            </div>
+          ) : (
+            <CanvasLens
+              orgId={orgId || orgIdFromParams}
+              lens={lensData.lens}
+              items={boardChildren}
+              lensItems={lensData.items || []}
+              onPersist={handleBoardPersist}
+            />
+          )}
         </div>
       ) : (
         <FolderViewLayout
@@ -378,6 +398,12 @@ export default function FolderViewPage() {
         onDeleteFolder={(folder) => setDeleteFolderModal(folder)}
         onMoveDocument={(doc) => setMoveDocumentModal(doc as AiruDocument)}
         onDeleteDocument={(doc) => setDeleteDocumentModal(doc as AiruDocument)}
+        onLensCreated={async (lens) => {
+          // Refetch folder lenses to get the new lens
+          await refetchFolderLenses();
+          // Auto-select the new lens
+          setSelectedLensId(lens.id);
+        }}
         />
       )}
 
@@ -467,6 +493,24 @@ export default function FolderViewPage() {
           message="Are you sure you want to delete this document? This action cannot be undone."
           itemName={deleteDocumentModal.name}
           isDeleting={deleteDocument.isPending}
+        />
+      )}
+
+      {/* Create Lens Modal - Always available */}
+      {folderId && (
+        <CreateFolderLensModal
+          isOpen={isCreateLensModalOpen}
+          onClose={() => setIsCreateLensModalOpen(false)}
+          onSuccess={async (lens) => {
+            // Refetch folder lenses to get the new lens
+            await refetchFolderLenses();
+            // Auto-select the new lens
+            setSelectedLensId(lens.id);
+            setIsCreateLensModalOpen(false);
+          }}
+          folderId={folderId}
+          orgId={orgId || orgIdFromParams}
+          userId={userId || ''}
         />
       )}
     </>

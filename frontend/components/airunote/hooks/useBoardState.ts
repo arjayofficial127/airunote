@@ -11,7 +11,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { toast } from '@/lib/toast';
-import type { AiruLens, BoardLane, BoardCardPosition, AiruDocumentMetadata } from '../types';
+import type { BoardLane, BoardCardPosition, AiruDocumentMetadata } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface UseBoardStateOptions {
   lensId: string | null;

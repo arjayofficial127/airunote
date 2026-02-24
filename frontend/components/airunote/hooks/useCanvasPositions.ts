@@ -11,7 +11,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { toast } from '@/lib/toast';
-import type { CanvasPosition, AiruLens, AiruDocumentMetadata } from '../types';
+import type { CanvasPosition, AiruDocumentMetadata } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface UseCanvasPositionsOptions {
   lensId: string | null;

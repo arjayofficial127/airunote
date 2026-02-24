@@ -13,7 +13,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
-import { useLens } from '@/components/airunote/hooks/useLens';
+import { useLens } from '@/hooks/useAirunoteLenses';
 import { FolderViewLayout } from '@/components/airunote/components/FolderViewLayout';
 import { CanvasView } from '@/components/airunote/components/CanvasView';
 import { BoardView } from '@/components/airunote/components/BoardView';
@@ -22,7 +22,8 @@ import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSk
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EditSavedViewModal } from '@/components/airunote/components/EditSavedViewModal';
-import type { AiruDocumentMetadata, AiruLens } from '@/components/airunote/types';
+import type { AiruDocumentMetadata } from '@/components/airunote/types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 export default function LensViewPage() {
   const params = useParams();
@@ -40,15 +41,13 @@ export default function LensViewPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Fetch lens and documents via GET /lenses/:id
-  const { data: lensData, isLoading, error } = useLens({
-    lensId,
-    orgId: orgId || orgIdFromParams,
-    userId: userId || '',
-    enabled: !!lensId && !!orgId && !!userId,
-  });
+  const { data: lensData, isLoading, error } = useLens(
+    orgId || orgIdFromParams,
+    lensId || undefined
+  );
 
   const lens = lensData?.lens || null;
-  const documents = lensData?.documents || [];
+  const documents: AiruDocumentMetadata[] = [];
 
   // Convert documents to metadata format for display
   const documentMetadata: AiruDocumentMetadata[] = documents.map((doc) => ({

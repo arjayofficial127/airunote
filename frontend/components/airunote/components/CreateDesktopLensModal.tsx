@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { toast } from '@/lib/toast';
-import type { AiruLens } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface CreateDesktopLensModalProps {
   isOpen: boolean;

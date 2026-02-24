@@ -9,7 +9,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
-import type { AiruLens } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface UseFolderLensOptions {
   folderId: string | null;

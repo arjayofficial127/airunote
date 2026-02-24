@@ -13,7 +13,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useBoardState } from '../hooks/useBoardState';
 import { FileTypeChip } from './FileTypeChip';
-import type { AiruDocumentMetadata, AiruLens, BoardLane } from '../types';
+import type { AiruDocumentMetadata, BoardLane } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface BoardViewProps {
   documents: AiruDocumentMetadata[];

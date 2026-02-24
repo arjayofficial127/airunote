@@ -280,6 +280,11 @@ export function CanvasLens({
   // Initialize local items state from lensItems
   useEffect(() => {
     const itemsMap = new Map<string, CanvasItemState>();
+    console.log('[CanvasLens] Initializing items:', { 
+      childrenCount: children.length, 
+      lensItemsCount: lensItems.length,
+      children: children.map(c => ({ id: c.id, type: c.type, title: c.title }))
+    });
     children.forEach((child) => {
       const lensItem = lensItems.find((item) => item.entityId === child.id);
       if (lensItem) {
@@ -301,6 +306,7 @@ export function CanvasLens({
         });
       }
     });
+    console.log('[CanvasLens] Local items map size:', itemsMap.size);
     setLocalItems(itemsMap);
   }, [children, lensItems]);
 
@@ -438,22 +444,34 @@ export function CanvasLens({
         className="relative w-full h-screen overflow-auto bg-gray-50 dark:bg-gray-900"
         style={{ minHeight: '600px' }}
       >
-        {children.map((child) => {
-          const state = localItems.get(child.id);
-          if (!state) return null;
+        {children.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              <p className="text-lg font-medium mb-2">No items in this folder</p>
+              <p className="text-sm">Add folders or documents to see them on the canvas</p>
+            </div>
+          </div>
+        ) : (
+          children.map((child) => {
+            const state = localItems.get(child.id);
+            if (!state) {
+              console.warn('[CanvasLens] No state found for item:', child.id);
+              return null;
+            }
 
-          return (
-            <CanvasItem
-              key={child.id}
-              item={child}
-              x={state.x}
-              y={state.y}
-              viewMode={state.viewMode}
-              onToggleViewMode={() => handleToggleViewMode(child.id)}
-              orgId={orgId}
-            />
-          );
-        })}
+            return (
+              <CanvasItem
+                key={child.id}
+                item={child}
+                x={state.x}
+                y={state.y}
+                viewMode={state.viewMode}
+                onToggleViewMode={() => handleToggleViewMode(child.id)}
+                orgId={orgId}
+              />
+            );
+          })
+        )}
       </div>
     </DndContext>
   );

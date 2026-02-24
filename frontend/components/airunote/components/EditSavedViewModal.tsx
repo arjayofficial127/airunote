@@ -11,7 +11,8 @@ import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { airunoteApi } from '../services/airunoteApi';
 import { toast } from '@/lib/toast';
-import type { AiruLens, LensQuery } from '../types';
+import type { LensQuery } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface EditSavedViewModalProps {
   isOpen: boolean;

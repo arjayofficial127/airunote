@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { postsApi, type Post } from '@/lib/api/posts';
@@ -167,6 +168,7 @@ function extractFileMetadata(file: OrgFile): FileMetadata {
 export function MetadataIndexProvider({ children }: { children: React.ReactNode }) {
   const orgSession = useOrgSession();
   const authSession = useAuthSession();
+  const pathname = usePathname();
   
   const [status, setStatus] = useState<MetadataIndexStatus>('idle');
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
@@ -176,6 +178,9 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     files: [],
   });
   const [error, setError] = useState<string | null>(null);
+  
+  // Check if we're on an Airunote route (skip collections/files loading)
+  const isAirunoteRoute = pathname?.includes('/airunote') ?? false;
 
   // Request deduplication: cache in-flight request promise per key
   const inFlightRequestsRef = useRef<Record<string, Promise<void>>>({});
@@ -285,6 +290,10 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
             break;
           }
           case 'collections': {
+            // Skip collections loading on Airunote routes (endpoints return 404)
+            if (isAirunoteRoute) {
+              break;
+            }
             const res = await collectionsApi.list(orgId).catch((err) => {
               console.error('[MetadataIndexProvider] Failed to load collections:', err);
               return { success: false, data: [] };
@@ -294,6 +303,10 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
             break;
           }
           case 'files': {
+            // Skip files loading on Airunote routes (endpoints return 404)
+            if (isAirunoteRoute) {
+              break;
+            }
             const files = await filesApi.list(orgId).catch((err) => {
               console.error('[MetadataIndexProvider] Failed to load files:', err);
               return [];
@@ -315,7 +328,7 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     // Store in-flight request
     inFlightRequestsRef.current[requestKey] = requestPromise;
     await requestPromise;
-  }, []);
+  }, [isAirunoteRoute]);
 
   /**
    * Load all metadata
@@ -348,11 +361,15 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         }
 
         // Load all metadata in parallel
-        await Promise.all([
-          loadMetadataKey(orgId, 'posts'),
-          loadMetadataKey(orgId, 'collections'),
-          loadMetadataKey(orgId, 'files'),
-        ]);
+        // Skip collections/files on Airunote routes (endpoints return 404)
+        const loadPromises = [loadMetadataKey(orgId, 'posts')];
+        if (!isAirunoteRoute) {
+          loadPromises.push(
+            loadMetadataKey(orgId, 'collections'),
+            loadMetadataKey(orgId, 'files')
+          );
+        }
+        await Promise.all(loadPromises);
 
         setStatus('ready');
       } catch (err: any) {
@@ -368,7 +385,7 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     // Store in-flight request
     inFlightRequestsRef.current[requestKey] = requestPromise;
     await requestPromise;
-  }, [loadMetadataKey]);
+  }, [loadMetadataKey, isAirunoteRoute]);
 
   /**
    * Refresh all metadata

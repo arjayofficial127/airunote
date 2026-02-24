@@ -13,7 +13,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCanvasPositions } from '../hooks/useCanvasPositions';
 import { FileTypeChip } from './FileTypeChip';
-import type { AiruDocumentMetadata, AiruLens } from '../types';
+import type { AiruDocumentMetadata } from '../types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 interface CanvasViewProps {
   documents: AiruDocumentMetadata[];

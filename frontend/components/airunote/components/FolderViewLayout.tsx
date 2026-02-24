@@ -21,7 +21,8 @@ import { getFolderTypeIcon } from '../utils/folderTypeIcon';
 import { useFolderLens } from '../hooks/useFolderLens';
 import { useLens } from '../hooks/useLens';
 import { useUpdateFolder } from '../hooks/useUpdateFolder';
-import type { AiruFolder, AiruDocument, AiruDocumentMetadata } from '../types';
+import { CreateFolderLensModal } from './CreateFolderLensModal';
+import type { AiruFolder, AiruDocument, AiruDocumentMetadata, AiruFolderType } from '../types';
 
 interface FolderViewLayoutProps {
   folderId: string | null;
@@ -36,6 +37,7 @@ interface FolderViewLayoutProps {
   onDeleteFolder?: (folder: AiruFolder) => void;
   onMoveDocument?: (document: AiruDocumentMetadata) => void;
   onDeleteDocument?: (document: AiruDocumentMetadata) => void;
+  onLensCreated?: (lens: { id: string; type: string }) => void;
 }
 
 export function FolderViewLayout({
@@ -51,6 +53,7 @@ export function FolderViewLayout({
   onDeleteFolder,
   onMoveDocument,
   onDeleteDocument,
+  onLensCreated,
 }: FolderViewLayoutProps) {
   const params = useParams();
   const orgIdFromParams = params.orgId as string;
@@ -58,6 +61,7 @@ export function FolderViewLayout({
   const [editingFolder, setEditingFolder] = useState<AiruFolder | null>(null);
   const [isEditingFolderName, setIsEditingFolderName] = useState(false);
   const [editingFolderName, setEditingFolderName] = useState('');
+  const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
   const updateFolder = useUpdateFolder();
 
   const {
@@ -223,6 +227,14 @@ export function FolderViewLayout({
               </div>
             )}
             <p className="text-sm text-gray-600 mt-1">{countText}</p>
+            {currentFolder && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-lg">{getFolderTypeIcon(currentFolder.type)}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {currentFolder.type ? currentFolder.type.charAt(0).toUpperCase() + currentFolder.type.slice(1) : 'Folder'}
+                </span>
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <button
@@ -280,6 +292,18 @@ export function FolderViewLayout({
               >
                 Tree
               </button>
+              {folderId && (
+                <button
+                  onClick={() => setIsCreateLensModalOpen(true)}
+                  className="px-3 py-1 text-sm rounded-md transition-colors duration-150 bg-gray-200 text-gray-700 hover:bg-gray-300 flex items-center gap-1"
+                  title="Create Lens"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Lens
+                </button>
+              )}
             </div>
           </div>
 
@@ -437,6 +461,23 @@ export function FolderViewLayout({
         userId={userId}
         onSuccess={() => setEditingFolder(null)}
       />
+
+      {/* Create Lens Modal */}
+      {folderId && (
+        <CreateFolderLensModal
+          isOpen={isCreateLensModalOpen}
+          onClose={() => setIsCreateLensModalOpen(false)}
+          onSuccess={(lens) => {
+            if (onLensCreated) {
+              onLensCreated(lens);
+            }
+            setIsCreateLensModalOpen(false);
+          }}
+          folderId={folderId}
+          orgId={orgId}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }
