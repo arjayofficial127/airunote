@@ -76,7 +76,7 @@ export function AirunoteLandingPage() {
             </p>
             
             <p className="mt-4 text-sm text-gray-500">
-              Folders. Documents. Zero noise.
+              Folders. Documents. Different Lenses.
             </p>
             
             <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
