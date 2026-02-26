@@ -7,6 +7,7 @@ import { useRouter, usePathname, useParams } from 'next/navigation';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import Link from 'next/link';
+import Image from 'next/image';
 import UserProfileModal from '@/components/user/UserProfileModal';
 import OrgAccessChecker from '@/components/org/OrgAccessChecker';
 import type { Org } from '@/lib/api/orgs';
@@ -62,6 +63,9 @@ export default function DashboardLayout({
   
   // Detect if we're viewing an app (but not the app management page)
   const isViewingApp = (pathname?.includes('/apps/') && !pathname?.includes('/apps/manage') && !pathname?.endsWith('/apps')) ?? false;
+  
+  // Hide sidebar on /orgs page (onboarding state)
+  const isOrgsOnboardingPage = pathname === '/orgs';
   
   // Extract app code from pathname
   const appCode = isViewingApp && pathname ? (() => {
@@ -225,61 +229,65 @@ export default function DashboardLayout({
       <ErrorBoundary>
         <OrgAccessChecker>
         <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+          {!isOrgsOnboardingPage && (
           <nav className="bg-white border-b border-gray-200 flex-shrink-0 fixed top-0 left-0 right-0 z-30">
             <div className="w-full px-3 sm:px-4 lg:px-8">
               <div className="flex items-center justify-between h-14 sm:h-16">
                 {/* Left: airunote + Hamburger */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   {/* airunote */}
-                  <Link href="/dashboard" className="text-lg sm:text-xl font-bold text-gray-900 hover:text-gray-700 transition">
-                    airunote
+                  <Link href="/dashboard" className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-900 hover:text-gray-700 transition">
+                    <Image src="/airunote/airunote_logo.png" alt="" width={20} height={20} className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>airunote</span>
                   </Link>
                   {/* Online Indicator */}
                   <OnlineIndicator />
                   
-                  {/* Hamburger menu - show for all views (including apps) */}
-                  <button
-                    onClick={() => {
-                      if (isViewingApp) {
-                        // Check if app has its own sidebar state (like PostApp)
-                        if (typeof window !== 'undefined' && (window as any).__postAppSidebarState) {
-                          (window as any).__postAppSidebarState.toggle();
+                  {/* Hamburger menu - show for all views (including apps), but hide on /orgs onboarding */}
+                  {!isOrgsOnboardingPage && (
+                    <button
+                      onClick={() => {
+                        if (isViewingApp) {
+                          // Check if app has its own sidebar state (like PostApp)
+                          if (typeof window !== 'undefined' && (window as any).__postAppSidebarState) {
+                            (window as any).__postAppSidebarState.toggle();
+                          } else {
+                            // Use unified app sidebar state
+                            setAppSidebarOpen(!appSidebarOpen);
+                          }
+                        } else if (isEditorMode) {
+                          setEditorSidebarOpen(!editorSidebarOpen);
                         } else {
-                          // Use unified app sidebar state
-                          setAppSidebarOpen(!appSidebarOpen);
+                          setSidebarOpen(!sidebarOpen);
                         }
-                      } else if (isEditorMode) {
-                        setEditorSidebarOpen(!editorSidebarOpen);
-                      } else {
-                        setSidebarOpen(!sidebarOpen);
-                      }
-                    }}
-                    className={`p-2 rounded-md text-gray-600 hover:text-gray-900 transition-all duration-200 ${
-                      (isViewingApp && (
-                        (typeof window !== 'undefined' && (window as any).__postAppSidebarState?.isOpen) ||
-                        appSidebarOpen
-                      )) ||
-                      (isEditorMode ? editorSidebarOpen : sidebarOpen)
-                        ? 'bg-gray-100' 
-                        : 'hover:bg-gray-50'
-                    }`}
-                    aria-label="Toggle sidebar"
-                  >
-                    {/* Static hamburger icon - always shows 3 lines */}
-                    <svg 
-                      className="w-5 h-5"
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                      }}
+                      className={`p-2 rounded-md text-gray-600 hover:text-gray-900 transition-all duration-200 ${
+                        (isViewingApp && (
+                          (typeof window !== 'undefined' && (window as any).__postAppSidebarState?.isOpen) ||
+                          appSidebarOpen
+                        )) ||
+                        (isEditorMode ? editorSidebarOpen : sidebarOpen)
+                          ? 'bg-gray-100' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                      aria-label="Toggle sidebar"
                     >
-                      <line x1="4" y1="6" x2="20" y2="6" />
-                      <line x1="4" y1="12" x2="20" y2="12" />
-                      <line x1="4" y1="18" x2="20" y2="18" />
-                    </svg>
-                  </button>
+                      {/* Static hamburger icon - always shows 3 lines */}
+                      <svg 
+                        className="w-5 h-5"
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="4" y1="6" x2="20" y2="6" />
+                        <line x1="4" y1="12" x2="20" y2="12" />
+                        <line x1="4" y1="18" x2="20" y2="18" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
 
                 {/* Right cluster: Settings + User dropdown (same on mobile and desktop) */}
@@ -371,10 +379,11 @@ export default function DashboardLayout({
               </div>
             </div>
           </nav>
+          )}
           <ErrorBoundary>
-            <div className="flex-1 overflow-hidden min-h-0 flex relative pt-14 sm:pt-16">
+            <div className={`flex-1 overflow-hidden min-h-0 flex relative ${!isOrgsOnboardingPage ? 'pt-14 sm:pt-16' : ''}`}>
               {/* Overlay backdrop - only on mobile when sidebar is open */}
-              {sidebarOpen && !isEditorMode && !isViewingApp && (
+              {sidebarOpen && !isEditorMode && !isViewingApp && !isOrgsOnboardingPage && (
                 <div
                   className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
                   onClick={() => setSidebarOpen(false)}
@@ -391,7 +400,7 @@ export default function DashboardLayout({
               )}
               
               {/* Unified Sidebar - always visible, not blocked by loading */}
-              {!isEditorMode && !isViewingApp && (
+              {!isEditorMode && !isViewingApp && !isOrgsOnboardingPage && (
                 <UnifiedSidebar 
                   context={isInOrgContext ? 'org' : 'dashboard'} 
                   orgId={orgId} 
@@ -425,7 +434,7 @@ export default function DashboardLayout({
               {/* Main content area - SessionBoundary handles loading/error states */}
               <main 
                 className={`flex-1 overflow-auto min-h-0 transition-all duration-300 ${
-                  !isEditorMode && !isViewingApp && sidebarOpen ? 'lg:ml-64' : ''
+                  !isEditorMode && !isViewingApp && !isOrgsOnboardingPage && sidebarOpen ? 'lg:ml-64' : ''
                 }`}
               >
                     {children}

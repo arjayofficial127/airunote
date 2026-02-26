@@ -40,6 +40,7 @@ export function AirunoteLandingPage() {
       <header className="relative z-10 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
+            <Image src="/airunote/airunote_logo.png" alt="" width={24} height={24} className="w-6 h-6" />
             <span className="text-base font-semibold tracking-tight text-gray-900">airunote</span>
           </div>
 
