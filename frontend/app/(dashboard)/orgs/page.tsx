@@ -383,7 +383,22 @@ export default function OrgsPage() {
           `}} />
           <div className="min-h-screen flex flex-col md:flex-row">
           {/* MOBILE: Hero Section */}
-          <div className="md:hidden bg-[#1E3A8A] flex flex-col items-center justify-center px-6 py-12 min-h-[50vh]">
+          <div className="md:hidden bg-[#1E3A8A] flex flex-col items-center justify-center px-6 py-12 min-h-[50vh] relative">
+            {/* Logo - Top Left */}
+            <div className="absolute top-6 left-6">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <Image src="/airunote/airunote_logo_white.png" alt="" width={20} height={20} className="w-5 h-5" />
+                <span className="text-lg font-semibold text-white">airunote</span>
+              </Link>
+            </div>
+            {/* User Name - Top Right */}
+            {user?.name && (
+              <div className="absolute top-6 right-6">
+                <p className="text-sm font-medium text-white">
+                  {user.name}
+                </p>
+              </div>
+            )}
             <div className="flex flex-col items-center justify-center text-center max-w-md">
               {/* Rotating word */}
               <div className="mb-8">
@@ -399,8 +414,8 @@ export default function OrgsPage() {
               {/* Triangle Metronome SVG */}
               <div className="mb-6 flex justify-center">
                 <svg
-                  width="70"
-                  height="89"
+                  width="75"
+                  height="95"
                   viewBox="0 0 110 140"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -495,10 +510,25 @@ export default function OrgsPage() {
 
           {/* DESKTOP: LEFT COLUMN - Hero Section */}
           <div className="hidden md:flex w-full md:w-1/2 bg-[#1E3A8A] flex-col items-center justify-center p-12 lg:p-16 relative overflow-hidden">
+            {/* Logo - Top Left */}
+            <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
+              <Link href="/dashboard" className="flex items-center gap-2.5">
+                <Image src="/airunote/airunote_logo_white.png" alt="" width={24} height={24} className="w-6 h-6" />
+                <span className="text-xl font-semibold text-white">airunote</span>
+              </Link>
+            </div>
+            {/* User Name - Top Right */}
+            {user?.name && (
+              <div className="absolute top-8 right-8 lg:top-12 lg:right-12">
+                <p className="text-base lg:text-lg font-medium text-white">
+                  {user.name}
+                </p>
+              </div>
+            )}
             {/* Centered content */}
             <div className="flex flex-col items-center justify-center text-center max-w-lg">
               {/* Rotating word - Large Hero Heading */}
-              <div className="mb-8">
+              <div className="mb-8 mt-[30px]">
                 <h1 
                   className={`text-5xl lg:text-6xl xl:text-7xl font-bold text-white transition-opacity duration-150 ${
                     isFading ? 'opacity-0' : 'opacity-100'
@@ -511,8 +541,8 @@ export default function OrgsPage() {
               {/* Triangle Metronome SVG */}
               <div className="mb-6 flex justify-center">
                 <svg
-                  width="90"
-                  height="115"
+                  width="480"
+                  height="615"
                   viewBox="0 0 110 140"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
@@ -729,7 +759,7 @@ export default function OrgsPage() {
                         disabled={creating || !spaceName.trim()}
                         className="w-full h-11 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                       >
-                        {creating ? 'Creating...' : 'Create Your Base'}
+                        {creating ? 'Creating...' : 'Create My Base'}
                       </button>
                       <p className="mt-3 text-xs text-gray-500 text-center">
                         You can create additional bases anytime.
