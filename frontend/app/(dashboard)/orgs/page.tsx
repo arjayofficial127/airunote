@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { orgsApi, type Org } from '@/lib/api/orgs';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthSession } from '@/providers/AuthSessionProvider';
 import apiClient from '@/lib/api/client';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -35,7 +36,35 @@ export default function OrgsPage() {
   const [orgLimit, setOrgLimit] = useState<{ currentCount: number; maxAllowed: number | null; canCreate: boolean } | null>(null);
   const { isSuperAdmin, loading: superAdminLoading } = useSuperAdmin();
   const { user } = useAuth();
+  const authSession = useAuthSession();
+  const logoutAuth = authSession.logout;
   const router = useRouter();
+  
+  // Logout dropdown state
+  const [showLogoutDropdown, setShowLogoutDropdown] = useState(false);
+  const logoutDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (logoutDropdownRef.current && !logoutDropdownRef.current.contains(event.target as Node)) {
+        setShowLogoutDropdown(false);
+      }
+    };
+    
+    if (showLogoutDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showLogoutDropdown]);
+  
+  const handleLogout = async () => {
+    await logoutAuth();
+    setShowLogoutDropdown(false);
+  };
   
   // Tab state for onboarding
   const [activeTab, setActiveTab] = useState<'create' | 'join'>('create');
@@ -46,6 +75,10 @@ export default function OrgsPage() {
   const [isSlugCustomized, setIsSlugCustomized] = useState(false);
   const [description, setDescription] = useState('');
   const [systemTypeCode, setSystemTypeCode] = useState('');
+  
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<{ spaceName?: string }>({});
+  const [touchedFields, setTouchedFields] = useState<{ spaceName?: boolean }>({});
   
   // Rotating word state
   const words = ['Thoughts.', 'Projects.', 'Creativity.'];
@@ -158,10 +191,29 @@ export default function OrgsPage() {
     }
   };
   
+  // Validation function
+  const validateForm = (): boolean => {
+    const errors: { spaceName?: string } = {};
+    
+    if (!spaceName.trim()) {
+      errors.spaceName = 'Base Name is required';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
   // Inline create handler for onboarding
   const handleInlineCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!spaceName.trim()) return;
+    
+    // Mark all fields as touched to show validation
+    setTouchedFields({ spaceName: true });
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
     
     setCreating(true);
     setCreateError(null);
@@ -179,6 +231,8 @@ export default function OrgsPage() {
       setIsSlugCustomized(false);
       setDescription('');
       setSystemTypeCode('');
+      setValidationErrors({});
+      setTouchedFields({});
       // Redirect to newly created space
       if (newOrg?.data?.id) {
         router.push(`/orgs/${newOrg.data.id}/airunote`);
@@ -383,7 +437,7 @@ export default function OrgsPage() {
           `}} />
           <div className="min-h-screen flex flex-col md:flex-row">
           {/* MOBILE: Hero Section */}
-          <div className="md:hidden bg-[#1E3A8A] flex flex-col items-center justify-center px-6 py-12 min-h-[50vh] relative">
+          <div className="md:hidden bg-[#1E3A8B] flex flex-col items-center justify-center px-6 py-12 min-h-[50vh] relative">
             {/* Logo - Top Left */}
             <div className="absolute top-6 left-6">
               <Link href="/dashboard" className="flex items-center gap-2">
@@ -391,12 +445,36 @@ export default function OrgsPage() {
                 <span className="text-lg font-semibold text-white">airunote</span>
               </Link>
             </div>
-            {/* User Name - Top Right */}
+            {/* User Dropdown - Top Right */}
             {user?.name && (
-              <div className="absolute top-6 right-6">
-                <p className="text-sm font-medium text-white">
-                  {user.name}
-                </p>
+              <div className="absolute top-6 right-6" ref={logoutDropdownRef}>
+                <button
+                  onClick={() => setShowLogoutDropdown(!showLogoutDropdown)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-white hover:opacity-80 transition-opacity"
+                >
+                  <span>{user.name}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showLogoutDropdown && (
+                  <div className="absolute right-0 mt-2 min-w-[280px] max-w-[320px] bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                      <p className="font-semibold break-words">{user.name}</p>
+                      <p className="text-gray-500 text-xs break-all">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             <div className="flex flex-col items-center justify-center text-center max-w-md">
@@ -476,7 +554,7 @@ export default function OrgsPage() {
                       width="14"
                       height="12"
                       rx="2"
-                      fill="white"
+                      fill="rgb(139, 58, 30)"
                     />
                     {/* Pivot Joint (center of rotation) */}
                     <circle
@@ -509,7 +587,7 @@ export default function OrgsPage() {
           </div>
 
           {/* DESKTOP: LEFT COLUMN - Hero Section */}
-          <div className="hidden md:flex w-full md:w-1/2 bg-[#1E3A8A] flex-col items-center justify-center p-12 lg:p-16 relative overflow-hidden">
+          <div className="hidden md:flex w-full md:w-1/2 bg-[#1E3A8B] flex-col items-center justify-center p-12 lg:p-16 relative overflow-hidden">
             {/* Logo - Top Left */}
             <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
               <Link href="/dashboard" className="flex items-center gap-2.5">
@@ -517,12 +595,36 @@ export default function OrgsPage() {
                 <span className="text-xl font-semibold text-white">airunote</span>
               </Link>
             </div>
-            {/* User Name - Top Right */}
+            {/* User Dropdown - Top Right */}
             {user?.name && (
-              <div className="absolute top-8 right-8 lg:top-12 lg:right-12">
-                <p className="text-base lg:text-lg font-medium text-white">
-                  {user.name}
-                </p>
+              <div className="absolute top-8 right-8 lg:top-12 lg:right-12" ref={logoutDropdownRef}>
+                <button
+                  onClick={() => setShowLogoutDropdown(!showLogoutDropdown)}
+                  className="flex items-center gap-1.5 text-base lg:text-lg font-medium text-white hover:opacity-80 transition-opacity"
+                >
+                  <span>{user.name}</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showLogoutDropdown && (
+                  <div className="absolute right-0 mt-2 min-w-[280px] max-w-[320px] bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                    <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                      <p className="font-semibold break-words">{user.name}</p>
+                      <p className="text-gray-500 text-xs break-all">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {/* Centered content */}
@@ -603,7 +705,7 @@ export default function OrgsPage() {
                       width="14"
                       height="12"
                       rx="2"
-                      fill="white"
+                      fill="rgb(139, 58, 30)"
                     />
                     {/* Pivot Joint (center of rotation) */}
                     <circle
@@ -685,6 +787,10 @@ export default function OrgsPage() {
                         value={spaceName}
                         onChange={(e) => {
                           setSpaceName(e.target.value);
+                          // Clear error when user types
+                          if (validationErrors.spaceName) {
+                            setValidationErrors(prev => ({ ...prev, spaceName: undefined }));
+                          }
                           if (!isSlugCustomized) {
                             const generated = e.target.value
                               .toLowerCase()
@@ -693,12 +799,28 @@ export default function OrgsPage() {
                             setCustomSlug(generated);
                           }
                         }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onBlur={() => {
+                          setTouchedFields(prev => ({ ...prev, spaceName: true }));
+                          if (!spaceName.trim()) {
+                            setValidationErrors(prev => ({ ...prev, spaceName: 'Base Name is required' }));
+                          } else {
+                            setValidationErrors(prev => ({ ...prev, spaceName: undefined }));
+                          }
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                          touchedFields.spaceName && validationErrors.spaceName
+                            ? 'border-red-300 focus:ring-red-500'
+                            : 'border-gray-300 focus:ring-blue-500'
+                        }`}
                         placeholder="My Base"
-                        required
                       />
+                      {touchedFields.spaceName && validationErrors.spaceName && (
+                        <p className="mt-1.5 text-sm text-red-600">
+                          {validationErrors.spaceName}
+                        </p>
+                      )}
                       {/* Slug Preview - Below Base Name */}
-                      {getSlugPreview() && (
+                      {getSlugPreview() && !validationErrors.spaceName && (
                         <p className="mt-1.5 text-xs text-gray-500 font-mono">
                           airunote.com/s/{getSlugPreview()}
                         </p>
@@ -756,8 +878,17 @@ export default function OrgsPage() {
                     <div>
                       <button
                         type="submit"
-                        disabled={creating || !spaceName.trim()}
-                        className="w-full h-11 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        disabled={creating}
+                        className="w-full h-11 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        style={{ backgroundColor: 'rgb(139, 58, 30)' }}
+                        onMouseEnter={(e) => {
+                          if (!creating) {
+                            e.currentTarget.style.backgroundColor = 'rgb(120, 50, 25)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgb(139, 58, 30)';
+                        }}
                       >
                         {creating ? 'Creating...' : 'Create My Base'}
                       </button>

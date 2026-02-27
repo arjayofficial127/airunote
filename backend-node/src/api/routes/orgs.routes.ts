@@ -14,6 +14,7 @@ import { ITeamUseCase } from '../../application/use-cases/TeamUseCase';
 import { ForbiddenError, NotFoundError } from '../../core/errors/AppError';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { requireOrgRole } from '../middleware/requireOrgRole';
+import { EmailService } from '../../infrastructure/email/email.service';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -40,6 +41,35 @@ router.post('/', async (req: Request, res: Response, next) => {
     }
 
     const org = result.unwrap();
+
+    // Send welcome email (non-blocking)
+    try {
+      const userRepo = container.resolve<IUserRepository>(TYPES.IUserRepository);
+      const user = await userRepo.findById(req.user!.userId);
+      
+      if (user && user.email) {
+        const emailService = new EmailService();
+        const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        
+        const result = await emailService.sendOrgCreatedEmail({
+          to: user.email,
+          userName: user.name || 'there',
+          orgName: org.name,
+          dashboardUrl: `${appUrl}/orgs/${org.id}/airunote`,
+        });
+        
+        if (result.success) {
+          console.log(`[OrgCreation] ✅ Welcome email sent to ${user.email}`);
+        } else {
+          console.log(`[OrgCreation] ❌ Welcome email NOT sent to ${user.email}: ${result.message}`);
+        }
+      } else {
+        console.log(`[OrgCreation] ⚠️ Welcome email NOT sent: User email not found`);
+      }
+    } catch (emailError) {
+      // Log error but don't block org creation
+      console.error('[OrgCreation] ❌ Failed to send welcome email:', emailError);
+    }
 
     res.status(201).json({
       success: true,

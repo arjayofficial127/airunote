@@ -12,6 +12,7 @@ import { IOrgUseCase } from '../../application/use-cases/OrgUseCase';
 import { IOrgUserRoleRepository } from '../../application/interfaces/IOrgUserRoleRepository';
 import { IRoleRepository } from '../../application/interfaces/IRoleRepository';
 import { IJoinCodeRepository } from '../../application/interfaces/IJoinCodeRepository';
+import { EmailService } from '../../infrastructure/email/email.service';
 
 const router: ReturnType<typeof Router> = Router();
 
@@ -123,6 +124,40 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next) =
 
     console.log('[Login] ✅ Cookies set successfully');
     console.log('[Login] Response headers:', Object.keys(res.getHeaders()));
+
+    // Send login success email (non-blocking, controlled by IS_EMAIL_LOGIN env var)
+    const isEmailLoginEnabled = process.env.IS_EMAIL_LOGIN === 'true';
+    if (isEmailLoginEnabled) {
+      try {
+        const emailService = new EmailService();
+        const loginTime = new Date().toLocaleString('en-US', {
+          timeZone: 'UTC',
+          dateStyle: 'full',
+          timeStyle: 'long',
+        });
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+
+        const result = await emailService.sendLoginSuccessEmail({
+          to: user.email,
+          userName: user.name || 'there',
+          loginTime,
+          ipAddress: typeof ipAddress === 'string' ? ipAddress : undefined,
+          userAgent: typeof userAgent === 'string' ? userAgent : undefined,
+        });
+
+        if (result.success) {
+          console.log(`[Login] ✅ Login success email sent to ${user.email}`);
+        } else {
+          console.log(`[Login] ❌ Login success email NOT sent to ${user.email}: ${result.message}`);
+        }
+      } catch (emailError) {
+        // Log error but don't block login
+        console.error('[Login] ❌ Failed to send login success email:', emailError);
+      }
+    } else {
+      console.log('[Login] ⚠️ Login email NOT sent: IS_EMAIL_LOGIN is not enabled');
+    }
 
     res.json({
       success: true,

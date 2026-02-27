@@ -18,40 +18,8 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<SuperAdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const redirectToAppropriatePage = () => {
-      // Wait for super admin check to complete
-      if (superAdminLoading) {
-        return;
-      }
-
-      // Super admins stay on dashboard page - don't redirect
-      if (isSuperAdmin) {
-        return;
-      }
-
-      // Wait for org session to be ready
-      if (orgSession.status !== 'ready') {
-        return;
-      }
-
-      // ✅ Use orgs from session provider (no direct API call)
-      const orgs = orgSession.orgs || [];
-      
-      if (orgs.length === 0) {
-        // No orgs - go to orgs page to create one
-        router.push('/orgs');
-      } else if (orgs.length === 1) {
-        // One org - go directly to Airunote
-        router.push(`/orgs/${orgs[0].id}/airunote`);
-      } else {
-        // Multiple orgs - show org selection page
-        router.push('/orgs');
-      }
-    };
-
-    redirectToAppropriatePage();
-  }, [router, isSuperAdmin, superAdminLoading, orgSession.status, orgSession.orgs]);
+  // Redirect logic is now handled in middleware to avoid redirect blip
+  // This page only renders for super admins (middleware redirects others)
 
   // Fetch dashboard data for super admin
   useEffect(() => {
