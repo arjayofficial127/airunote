@@ -79,12 +79,19 @@ async function handleRequest(
     const cookieHeader = request.headers.get('cookie');
     if (cookieHeader) {
       headers['Cookie'] = cookieHeader;
+      // Debug: Log cookie presence (without value for security)
+      console.log(`[Proxy] Cookie header present: ${cookieHeader.length} chars, contains accessToken: ${cookieHeader.includes('accessToken')}`);
+    } else {
+      console.warn(`[Proxy] ⚠️ NO Cookie header received from client`);
     }
     
     // Authorization (CRITICAL for authentication)
     const authHeader = request.headers.get('authorization');
     if (authHeader) {
       headers['Authorization'] = authHeader;
+      console.log(`[Proxy] Authorization header present: ${authHeader.substring(0, 20)}...`);
+    } else {
+      console.log(`[Proxy] No Authorization header (relying on cookies)`);
     }
     
     // User-Agent
@@ -99,12 +106,24 @@ async function handleRequest(
       headers['Referer'] = referer;
     }
 
+    // Debug: Log what we're sending to backend
+    console.log(`[Proxy] Forwarding to backend: ${method} ${url.toString()}`);
+    console.log(`[Proxy] Headers being sent:`, {
+      hasCookie: !!headers['Cookie'],
+      cookieLength: headers['Cookie']?.length || 0,
+      hasAuthorization: !!headers['Authorization'],
+      hasContentType: !!headers['Content-Type'],
+      headerKeys: Object.keys(headers),
+    });
+
     // Forward request to backend
     const backendResponse = await fetch(url.toString(), {
       method,
       headers,
       body: body || undefined,
     });
+    
+    console.log(`[Proxy] Backend response: ${backendResponse.status} ${backendResponse.statusText}`);
 
     // Get response data
     const data = await backendResponse.text();
