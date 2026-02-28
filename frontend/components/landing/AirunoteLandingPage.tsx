@@ -274,7 +274,7 @@ export function AirunoteLandingPage() {
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p className="text-sm text-gray-500">
-              © {new Date().getFullYear()} airunote. A calm workspace for your ideas.
+              © {new Date().getFullYear()} airunote | AOTECH. A calm workspace for your ideas.
             </p>
             <div className="flex gap-6 text-sm text-gray-500">
               <Link href="/login" className="hover:text-gray-900 transition-colors">
