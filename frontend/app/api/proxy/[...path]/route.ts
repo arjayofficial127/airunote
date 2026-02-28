@@ -43,6 +43,7 @@ async function handleRequest(
   method: string
 ) {
   try {
+    // Build backend URL
     const path = `/api/${pathSegments.join('/')}`;
     const url = new URL(path, BACKEND_URL);
     
@@ -51,59 +52,63 @@ async function handleRequest(
       url.searchParams.append(key, value);
     });
 
-    console.log(`[Proxy] ${method} ${path} -> ${url.toString()}`);
-
-    // Get request body if present
+    // Get request body for non-GET/DELETE methods
     let body: string | undefined;
     if (method !== 'GET' && method !== 'DELETE') {
       try {
         body = await request.text();
-      } catch (e) {
+      } catch {
         // No body
       }
     }
 
-    // Get the frontend domain from the request
-    // Try multiple sources in order of reliability:
-    // 1. nextUrl.host (most reliable - the actual domain being accessed)
-    // 2. x-forwarded-host (Vercel sets this with original host)
-    // 3. host header (fallback)
-    const frontendHost = 
-      request.nextUrl.host || 
-      request.headers.get('x-forwarded-host') || 
-      request.headers.get('host') || 
-      '';
-    const frontendReferer = request.headers.get('referer') || '';
+    // Build headers - forward only necessary headers
+    const headers: Record<string, string> = {};
     
-    // Log for debugging
-    console.log(`[Proxy] Frontend domain detection:`, {
-      'nextUrl.host': request.nextUrl.host,
-      'x-forwarded-host': request.headers.get('x-forwarded-host'),
-      'host': request.headers.get('host'),
-      'selected': frontendHost,
-      'url': request.url,
-    });
+    // Content-Type (only if body exists)
+    if (body) {
+      const contentType = request.headers.get('content-type');
+      if (contentType) {
+        headers['Content-Type'] = contentType;
+      } else {
+        headers['Content-Type'] = 'application/json';
+      }
+    }
     
+    // Cookie (CRITICAL for authentication)
+    const cookieHeader = request.headers.get('cookie');
+    if (cookieHeader) {
+      headers['Cookie'] = cookieHeader;
+    }
+    
+    // Authorization (CRITICAL for authentication)
+    const authHeader = request.headers.get('authorization');
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    
+    // User-Agent
+    const userAgent = request.headers.get('user-agent');
+    if (userAgent) {
+      headers['User-Agent'] = userAgent;
+    }
+    
+    // Referer
+    const referer = request.headers.get('referer');
+    if (referer) {
+      headers['Referer'] = referer;
+    }
+
     // Forward request to backend
     const backendResponse = await fetch(url.toString(), {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        // Forward cookies from the original request
-        Cookie: request.headers.get('cookie') || '',
-        // Forward other important headers
-        'User-Agent': request.headers.get('user-agent') || '',
-        // Add header to identify request origin (frontend)
-        'X-Forwarded-From': frontendHost,
-        // Forward Referer if present (for browser requests)
-        ...(frontendReferer ? { 'Referer': frontendReferer } : {}),
-      },
+      headers,
       body: body || undefined,
     });
 
     // Get response data
     const data = await backendResponse.text();
-    let jsonData;
+    let jsonData: any;
     try {
       jsonData = JSON.parse(data);
     } catch {
@@ -117,65 +122,84 @@ async function handleRequest(
     });
 
     // Forward Set-Cookie headers from backend to client
-    // This is crucial - it allows cookies to be set on the same domain (frontend)
     const setCookieHeaders = backendResponse.headers.getSetCookie();
-    
-    if (setCookieHeaders.length > 0) {
-      console.log(`[Proxy] Forwarding ${setCookieHeaders.length} Set-Cookie headers`);
-    }
-    
-    setCookieHeaders.forEach((cookieString) => {
+    for (const cookieString of setCookieHeaders) {
       try {
-        // Parse cookie string (format: "name=value; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=900")
+        // Parse cookie: "name=value; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=900"
         const parts = cookieString.split(';').map(p => p.trim());
         const [nameValue] = parts;
         const [name, ...valueParts] = nameValue.split('=');
         const value = valueParts.join('=');
 
-        // Extract cookie options
-        const options: any = {
-          httpOnly: parts.some(p => p.toLowerCase() === 'httponly'),
-          secure: parts.some(p => p.toLowerCase() === 'secure') || process.env.NODE_ENV === 'production',
-          sameSite: parts.some(p => p.toLowerCase().includes('samesite=none')) 
-            ? 'none' 
-            : parts.some(p => p.toLowerCase().includes('samesite=lax'))
-            ? 'lax'
-            : 'strict',
-          path: '/',
-        };
+        // Extract cookie attributes
+        const options: {
+          httpOnly?: boolean;
+          secure?: boolean;
+          sameSite?: 'strict' | 'lax' | 'none';
+          path?: string;
+          maxAge?: number;
+        } = {};
 
-        // Extract maxAge if present
+        // HttpOnly
+        if (parts.some(p => p.toLowerCase() === 'httponly')) {
+          options.httpOnly = true;
+        }
+
+        // Secure
+        if (parts.some(p => p.toLowerCase() === 'secure')) {
+          options.secure = true;
+        } else if (process.env.NODE_ENV === 'production') {
+          options.secure = true;
+        }
+
+        // SameSite
+        const sameSitePart = parts.find(p => p.toLowerCase().startsWith('samesite='));
+        if (sameSitePart) {
+          const sameSiteValue = sameSitePart.split('=')[1].toLowerCase();
+          if (sameSiteValue === 'none' || sameSiteValue === 'lax' || sameSiteValue === 'strict') {
+            options.sameSite = sameSiteValue as 'strict' | 'lax' | 'none';
+          }
+        }
+
+        // Path
+        const pathPart = parts.find(p => p.toLowerCase().startsWith('path='));
+        if (pathPart) {
+          options.path = pathPart.split('=')[1];
+        } else {
+          options.path = '/';
+        }
+
+        // Max-Age
         const maxAgePart = parts.find(p => p.toLowerCase().startsWith('max-age='));
         if (maxAgePart) {
-          const maxAgeValue = maxAgePart.split('=')[1];
-          options.maxAge = parseInt(maxAgeValue);
+          const maxAgeValue = parseInt(maxAgePart.split('=')[1], 10);
+          if (!isNaN(maxAgeValue)) {
+            options.maxAge = maxAgeValue;
+          }
+        } else {
+          // Expires (convert to maxAge)
+          const expiresPart = parts.find(p => p.toLowerCase().startsWith('expires='));
+          if (expiresPart) {
+            const expiresValue = expiresPart.split('=')[1];
+            const expiresDate = new Date(expiresValue);
+            if (!isNaN(expiresDate.getTime())) {
+              options.maxAge = Math.floor((expiresDate.getTime() - Date.now()) / 1000);
+            }
+          }
         }
 
-        // Extract expires if present (convert to maxAge)
-        const expiresPart = parts.find(p => p.toLowerCase().startsWith('expires='));
-        if (expiresPart && !maxAgePart) {
-          const expiresValue = expiresPart.split('=')[1];
-          const expiresDate = new Date(expiresValue);
-          options.maxAge = Math.floor((expiresDate.getTime() - Date.now()) / 1000);
-        }
-
-        // Set cookie on the frontend domain (same origin - no third-party cookie issues!)
+        // Set cookie on frontend domain
         response.cookies.set(name.trim(), value, options);
-        console.log(`[Proxy] Set cookie: ${name.trim()}`);
       } catch (error) {
-        console.error(`[Proxy] Error parsing cookie: ${cookieString}`, error);
+        // Silently skip malformed cookies
       }
-    });
-
-    console.log(`[Proxy] Response: ${backendResponse.status}, Set-Cookie headers: ${setCookieHeaders.length}`);
+    }
 
     return response;
   } catch (error: any) {
-    console.error('[Proxy] Error:', error);
     return NextResponse.json(
       { error: 'Proxy error', message: error.message },
       { status: 500 }
     );
   }
 }
-
