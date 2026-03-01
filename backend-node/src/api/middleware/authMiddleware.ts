@@ -21,18 +21,10 @@ export async function authMiddleware(
   next: NextFunction
 ): Promise<void> {
   try {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[AuthMiddleware] Path:', req.path);
-    }
-
-    const token =
-      req.cookies?.accessToken ||
-      req.headers.authorization?.replace('Bearer ', '');
+    // Extract token from Authorization header only
+    const token = req.headers.authorization?.replace('Bearer ', '');
 
     if (!token) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[AuthMiddleware] No token provided');
-      }
       throw new UnauthorizedError('No token provided');
     }
 
@@ -40,9 +32,6 @@ export async function authMiddleware(
     const payload = tokenService.verifyAccessToken(token);
 
     if (!payload) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.error('[AuthMiddleware] Token verification failed');
-      }
       throw new UnauthorizedError('Invalid or expired token');
     }
 
@@ -53,9 +42,6 @@ export async function authMiddleware(
 
     next();
   } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('[AuthMiddleware] Error:', error);
-    }
     next(error);
   }
 }

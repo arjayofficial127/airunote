@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authApi, type User } from '@/lib/api/auth';
+import { tokenStorage } from '@/lib/api/token';
 
 /**
  * Auth session status lifecycle
@@ -161,6 +162,21 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
 
     // We're online, clear offline flag
     isOfflineRef.current = false;
+
+    // Check if token exists before making API call
+    // This prevents 401 errors when token is missing
+    const token = tokenStorage.getToken();
+    
+    if (!token) {
+      // No token available - user is not authenticated
+      setUser(null);
+      setSystemRole(null);
+      setStatus('ready');
+      setError(null);
+      setIsOfflineLimited(false);
+      inFlightRequestRef.current = null;
+      return;
+    }
 
     // Create new request promise
     const requestPromise = (async () => {

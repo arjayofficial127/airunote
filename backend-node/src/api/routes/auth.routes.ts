@@ -38,39 +38,14 @@ router.post(
         return next(result.unwrap());
       }
 
-      const { user, accessToken, refreshToken } = result.unwrap();
-
-      // Set HttpOnly cookies
-      // Use 'none' for cross-domain cookies (frontend and backend on different domains)
-      // 'secure' must be true when sameSite is 'none'
-      // Check both NODE_ENV and if we're on Render (which uses HTTPS)
-      const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-      const cookieOptions = {
-        httpOnly: true,
-        secure: isProduction, // Must be true for sameSite: 'none'
-        sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax' | 'strict',
-        path: '/',
-        // Don't set domain - let browser handle it for cross-domain cookies
-      };
-      
-      // Debug logging
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('[Login] Setting cookies with options:', cookieOptions);
-      }
-      
-      res.cookie('accessToken', accessToken, {
-        ...cookieOptions,
-        maxAge: 15 * 60 * 1000, // 15 minutes
-      });
-
-      res.cookie('refreshToken', refreshToken, {
-        ...cookieOptions,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      const { user, accessToken } = result.unwrap();
 
       res.status(201).json({
         success: true,
-        data: { user },
+        data: {
+          user,
+          accessToken,
+        },
       });
     } catch (error) {
       next(error);
@@ -89,41 +64,7 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next) =
       return next(result.unwrap());
     }
 
-    const { user, accessToken, refreshToken } = result.unwrap();
-
-    // Set HttpOnly cookies
-    // Use 'none' for cross-domain cookies (frontend and backend on different domains)
-    // 'secure' must be true when sameSite is 'none'
-    // Check both NODE_ENV and if we're on Render (which uses HTTPS)
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction, // Must be true for sameSite: 'none'
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax' | 'strict',
-      path: '/',
-      // Don't set domain - let browser handle it for cross-domain cookies
-    };
-    
-    console.log('[Login] ===== SETTING COOKIES =====');
-    console.log('[Login] isProduction:', isProduction);
-    console.log('[Login] cookieOptions:', JSON.stringify(cookieOptions, null, 2));
-    console.log('[Login] accessToken length:', accessToken.length);
-    console.log('[Login] refreshToken length:', refreshToken.length);
-    console.log('[Login] Origin:', req.headers.origin);
-    console.log('[Login] User-Agent:', req.headers['user-agent']);
-    
-    res.cookie('accessToken', accessToken, {
-      ...cookieOptions,
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    console.log('[Login] ✅ Cookies set successfully');
-    console.log('[Login] Response headers:', Object.keys(res.getHeaders()));
+    const { user, accessToken } = result.unwrap();
 
     // Send login success email (non-blocking, controlled by IS_EMAIL_LOGIN env var)
     const isEmailLoginEnabled = process.env.IS_EMAIL_LOGIN === 'true';
@@ -161,111 +102,28 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next) =
 
     res.json({
       success: true,
-      data: { user },
+      data: {
+        user,
+        accessToken,
+      },
     });
   } catch (error) {
     next(error);
   }
 });
 
-router.post('/refresh', async (req: Request, res: Response, next) => {
-  try {
-    console.log('[Refresh] ===== REFRESH TOKEN REQUEST =====');
-    console.log('[Refresh] Origin:', req.headers.origin);
-    console.log('[Refresh] Cookies object:', req.cookies);
-    console.log('[Refresh] Cookies keys:', req.cookies ? Object.keys(req.cookies) : 'none');
-    console.log('[Refresh] refreshToken cookie:', req.cookies?.refreshToken ? 'EXISTS' : 'MISSING');
-    console.log('[Refresh] Cookie header:', req.headers.cookie);
-    
-    const refreshToken = req.cookies?.refreshToken;
-
-    if (!refreshToken) {
-      console.error('[Refresh] ❌ No refresh token found');
-      console.error('[Refresh] Full cookie header:', req.headers.cookie);
-      return res.status(401).json({
-        success: false,
-        error: { message: 'Refresh token required', code: 'UNAUTHORIZED' },
-      });
-    }
-
-    console.log('[Refresh] ✅ Refresh token found, length:', refreshToken.length);
-
-    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
-    const result = await authUseCase.refreshToken(refreshToken);
-
-    if (result.isErr()) {
-      console.error('[Refresh] ❌ Token refresh failed:', result.unwrap());
-      return next(result.unwrap());
-    }
-
-    const { user, accessToken, refreshToken: newRefreshToken } = result.unwrap();
-    console.log('[Refresh] ✅ New tokens generated');
-
-    // Use 'none' for cross-domain cookies (frontend and backend on different domains)
-    // 'secure' must be true when sameSite is 'none'
-    // Check both NODE_ENV and if we're on Render (which uses HTTPS)
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction, // Must be true for sameSite: 'none'
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax' | 'strict',
-      path: '/',
-      // Don't set domain - let browser handle it for cross-domain cookies
-    };
-    
-    console.log('[Refresh] Setting new cookies with options:', JSON.stringify(cookieOptions, null, 2));
-    
-    res.cookie('accessToken', accessToken, {
-      ...cookieOptions,
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.cookie('refreshToken', newRefreshToken, {
-      ...cookieOptions,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    console.log('[Refresh] ✅ New tokens set successfully');
-
-    res.json({
-      success: true,
-      data: { user },
-    });
-  } catch (error) {
-    next(error);
-  }
+// Refresh token endpoint - disabled for MVP (Bearer-only)
+// TODO: Re-enable with refreshToken in request body when needed
+router.post('/refresh', async (req: Request, res: Response) => {
+  return res.status(501).json({
+    success: false,
+    error: { message: 'Refresh token endpoint disabled for MVP', code: 'NOT_IMPLEMENTED' },
+  });
 });
 
 router.post('/logout', (_req: Request, res: Response) => {
-  // Check both NODE_ENV and if we're on Render (which uses HTTPS)
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-  const cookieOptions = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax' | 'strict',
-    path: '/',
-  };
-  
-  res.clearCookie('accessToken', cookieOptions);
-  res.clearCookie('refreshToken', cookieOptions);
+  // No cookie clearing needed for Bearer-only auth
   res.json({ success: true, message: 'Logged out successfully' });
-});
-
-// Test endpoint to check if cookies are being received
-router.get('/test-cookies', (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    cookies: req.cookies,
-    headers: {
-      cookie: req.headers.cookie,
-      origin: req.headers.origin,
-      referer: req.headers.referer,
-    },
-    env: {
-      nodeEnv: process.env.NODE_ENV,
-      isProduction: process.env.NODE_ENV === 'production',
-    },
-  });
 });
 
 router.get('/me', authMiddleware, async (req: Request, res: Response, next) => {

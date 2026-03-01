@@ -46,6 +46,17 @@ export default function LoginPage() {
 
     try {
       await authApi.login(data);
+      
+      // Verify token was stored before redirecting
+      const { tokenStorage } = await import('@/lib/api/token');
+      const token = tokenStorage.getToken();
+      
+      if (!token) {
+        setError('Login succeeded but token was not stored. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed');

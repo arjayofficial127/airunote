@@ -53,15 +53,67 @@ export interface AuthFullResponse {
   installedApps: never[];
 }
 
+import { tokenStorage } from './token';
+
+const DEBUG_AUTH = true;
+
 export const authApi = {
-  login: async (input: LoginInput): Promise<{ success: boolean; data: { user: User } }> => {
+  login: async (input: LoginInput): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {
     const response = await apiClient.post('/auth/login', input);
-    return response.data;
+    const data = response.data;
+    
+    if (DEBUG_AUTH) {
+      console.log('[AuthAPI] Login response:', data);
+      console.log('[AuthAPI] AccessToken present:', !!data.data?.accessToken);
+    }
+    
+    // Store accessToken from response
+    if (data.success && data.data?.accessToken) {
+      tokenStorage.setToken(data.data.accessToken);
+      
+      if (DEBUG_AUTH) {
+        const storedToken = tokenStorage.getToken();
+        console.log('[AuthAPI] Token stored successfully:', !!storedToken);
+        console.log('[AuthAPI] Token length:', storedToken?.length || 0);
+      }
+    } else {
+      if (DEBUG_AUTH) {
+        console.error('[AuthAPI] Token NOT stored - response structure issue');
+        console.error('[AuthAPI] Response structure:', {
+          success: data.success,
+          hasData: !!data.data,
+          hasAccessToken: !!data.data?.accessToken,
+        });
+      }
+    }
+    
+    return data;
   },
 
-  register: async (input: RegisterInput, secret: string): Promise<{ success: boolean; data: { user: User } }> => {
+  register: async (input: RegisterInput, secret: string): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {
     const response = await apiClient.post(`/auth/register?secret=${encodeURIComponent(secret)}`, input);
-    return response.data;
+    const data = response.data;
+    
+    if (DEBUG_AUTH) {
+      console.log('[AuthAPI] Register response:', data);
+      console.log('[AuthAPI] AccessToken present:', !!data.data?.accessToken);
+    }
+    
+    // Store accessToken from response
+    if (data.success && data.data?.accessToken) {
+      tokenStorage.setToken(data.data.accessToken);
+      
+      if (DEBUG_AUTH) {
+        const storedToken = tokenStorage.getToken();
+        console.log('[AuthAPI] Token stored successfully:', !!storedToken);
+      }
+    } else {
+      if (DEBUG_AUTH) {
+        console.error('[AuthAPI] Token NOT stored - response structure issue');
+      }
+    }
+    
+    return data;
   },
 
   getMe: async (): Promise<{ success: boolean; data: User }> => {
@@ -81,11 +133,18 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    await apiClient.post('/auth/logout');
+    // Clear token first
+    tokenStorage.clearToken();
+    // Call logout endpoint (non-blocking)
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (err) {
+      // Ignore errors - token is already cleared
+    }
   },
 
   refresh: async (): Promise<{ success: boolean; data: { user: User } }> => {
-      const response = await apiClient.post('/auth/refresh');
-      return response.data;
+    // Refresh disabled for MVP
+    throw new Error('Token refresh not implemented');
   },
 };

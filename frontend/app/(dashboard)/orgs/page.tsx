@@ -96,20 +96,7 @@ export default function OrgsPage() {
 
   const loadOrgs = async () => {
     try {
-      // Use a custom axios instance without interceptors to avoid refresh loops
-      const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-      const API_BASE_URL = isProduction 
-        ? '/api/proxy'
-        : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api');
-      
-      const axios = (await import('axios')).default;
-      const directClient = axios.create({
-        baseURL: API_BASE_URL,
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      const res = await directClient.get('/orgs');
+      const res = await apiClient.get('/orgs');
       setOrgs(res.data.data);
     } catch (err: any) {
       const status = err.response?.status;
@@ -134,20 +121,7 @@ export default function OrgsPage() {
 
   const loadOrgLimit = async () => {
     try {
-      // Use a custom axios instance without interceptors to avoid refresh loops
-      const isProduction = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
-      const API_BASE_URL = isProduction 
-        ? '/api/proxy'
-        : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api');
-      
-      const axios = (await import('axios')).default;
-      const directClient = axios.create({
-        baseURL: API_BASE_URL,
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      const res = await directClient.get('/orgs/limit');
+      const res = await apiClient.get('/orgs/limit');
       setOrgLimit(res.data.data);
       setCanCreateOrg(res.data.data.canCreate);
     } catch (err: any) {
