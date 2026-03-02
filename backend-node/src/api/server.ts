@@ -17,7 +17,6 @@ import attachmentsRoutes from './routes/attachments.routes';
 import membersRoutes from './routes/members.routes';
 import healthRoutes from './routes/health.routes';
 import dashboardRoutes from './routes/dashboard.routes';
-import airunoteInternalRoutes from '../modules/airunote/airunote.internal.routes';
 import airunoteLensesRoutes from './routes/airunote.lenses.routes';
 import airunoteRoutes from './routes/airunote.routes';
 
@@ -232,9 +231,6 @@ export function createApp(): Express {
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/orgs/:orgId/airunote', airunoteRoutes);
   app.use('/api/orgs/:orgId/airunote/lenses', airunoteLensesRoutes);
-
-  // Internal routes (temporary, no auth)
-  app.use('/api/internal/airunote', airunoteInternalRoutes);
 
   // Error handling (must be last)
   app.use(errorMiddleware);
