@@ -19,6 +19,7 @@ import healthRoutes from './routes/health.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import airunoteInternalRoutes from '../modules/airunote/airunote.internal.routes';
 import airunoteLensesRoutes from './routes/airunote.lenses.routes';
+import airunoteRoutes from './routes/airunote.routes';
 
 // Register services in DI container
 import '../core/di/container';
@@ -229,6 +230,7 @@ export function createApp(): Express {
   app.use('/api/orgs/:orgId/posts/:postId/attachments', attachmentsRoutes);
   app.use('/api/orgs/:orgId/members', membersRoutes);
   app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/orgs/:orgId/airunote', airunoteRoutes);
   app.use('/api/orgs/:orgId/airunote/lenses', airunoteLensesRoutes);
 
   // Internal routes (temporary, no auth)

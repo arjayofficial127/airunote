@@ -22,11 +22,12 @@ import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
 /**
  * Airunote API client
- * All endpoints are under /internal/airunote
+ * Production endpoints under /orgs/:orgId/airunote
  */
 export const airunoteApi = {
   /**
    * Provision user root (idempotent)
+   * NOTE: Still using internal route - no production route exists yet
    */
   provision: async (
     orgId: string,
@@ -47,7 +48,8 @@ export const airunoteApi = {
   createFolder: async (
     request: CreateFolderRequest
   ): Promise<AirunoteApiResponse<{ folder: AiruFolder }>> => {
-    const response = await apiClient.post('/internal/airunote/folder', request);
+    const { orgId, userId, ...body } = request;
+    const response = await apiClient.post(`/orgs/${orgId}/airunote/folders`, body);
     return response.data;
   },
 
@@ -58,7 +60,8 @@ export const airunoteApi = {
     folderId: string,
     request: UpdateFolderRequest
   ): Promise<AirunoteApiResponse<{ folder: AiruFolder }>> => {
-    const response = await apiClient.put(`/internal/airunote/folder/${folderId}`, request);
+    const { orgId, userId, ...body } = request;
+    const response = await apiClient.put(`/orgs/${orgId}/airunote/folders/${folderId}`, body);
     return response.data;
   },
 
@@ -70,9 +73,7 @@ export const airunoteApi = {
     orgId: string,
     userId: string
   ): Promise<AirunoteApiResponse<{}>> => {
-    const response = await apiClient.delete(`/internal/airunote/folder/${folderId}`, {
-      params: { orgId, userId },
-    });
+    const response = await apiClient.delete(`/orgs/${orgId}/airunote/folders/${folderId}`);
     return response.data;
   },
 
@@ -84,16 +85,17 @@ export const airunoteApi = {
     userId: string,
     parentFolderId?: string
   ): Promise<AirunoteApiResponse<FolderTreeResponse>> => {
-    const params: Record<string, string> = { orgId, userId };
+    const params: Record<string, string> = {};
     if (parentFolderId) {
       params.parentFolderId = parentFolderId;
     }
-    const response = await apiClient.get('/internal/airunote/tree', { params });
+    const response = await apiClient.get(`/orgs/${orgId}/airunote/tree`, { params });
     return response.data;
   },
 
   /**
    * Get full metadata (all folders and documents metadata, no content)
+   * NOTE: Still using internal route - no production route exists yet
    */
   getFullMetadata: async (
     orgId: string,
@@ -111,7 +113,8 @@ export const airunoteApi = {
   createDocument: async (
     request: CreateDocumentRequest
   ): Promise<AirunoteApiResponse<{ document: AiruDocument }>> => {
-    const response = await apiClient.post('/internal/airunote/document', request);
+    const { orgId, userId, ...body } = request;
+    const response = await apiClient.post(`/orgs/${orgId}/airunote/documents`, body);
     return response.data;
   },
 
@@ -123,9 +126,7 @@ export const airunoteApi = {
     orgId: string,
     userId: string
   ): Promise<AirunoteApiResponse<{ document: AiruDocument }>> => {
-    const response = await apiClient.get(`/internal/airunote/document/${documentId}`, {
-      params: { orgId, userId },
-    });
+    const response = await apiClient.get(`/orgs/${orgId}/airunote/documents/${documentId}`);
     return response.data;
   },
 
@@ -136,7 +137,8 @@ export const airunoteApi = {
     documentId: string,
     request: UpdateDocumentRequest
   ): Promise<AirunoteApiResponse<{ document: AiruDocument }>> => {
-    const response = await apiClient.put(`/internal/airunote/document/${documentId}`, request);
+    const { orgId, userId, ...body } = request;
+    const response = await apiClient.put(`/orgs/${orgId}/airunote/documents/${documentId}`, body);
     return response.data;
   },
 
@@ -148,9 +150,7 @@ export const airunoteApi = {
     orgId: string,
     userId: string
   ): Promise<AirunoteApiResponse<{}>> => {
-    const response = await apiClient.delete(`/internal/airunote/document/${documentId}`, {
-      params: { orgId, userId },
-    });
+    const response = await apiClient.delete(`/orgs/${orgId}/airunote/documents/${documentId}`);
     return response.data;
   },
 
@@ -162,14 +162,13 @@ export const airunoteApi = {
     orgId: string,
     userId: string
   ): Promise<AirunoteApiResponse<{ documents: AiruDocument[] }>> => {
-    const response = await apiClient.get(`/internal/airunote/folder/${folderId}/documents`, {
-      params: { orgId, userId },
-    });
+    const response = await apiClient.get(`/orgs/${orgId}/airunote/folders/${folderId}/documents`);
     return response.data;
   },
 
   /**
    * Delete user vault (hard delete)
+   * NOTE: Still using internal route - no production route exists yet
    */
   deleteVault: async (
     orgId: string,
@@ -194,6 +193,7 @@ export const airunoteApi = {
 
   /**
    * Get folder by ID (with lens projection)
+   * NOTE: Still using internal route - no production route exists yet
    */
   getFolder: async (
     folderId: string,
@@ -214,14 +214,13 @@ export const airunoteApi = {
     orgId: string,
     userId: string
   ): Promise<AirunoteApiResponse<{ lenses: AiruLens[] }>> => {
-    const response = await apiClient.get(`/internal/airunote/folders/${folderId}/lenses`, {
-      params: { orgId, userId },
-    });
+    const response = await apiClient.get(`/orgs/${orgId}/airunote/lenses/folders/${folderId}/lenses`);
     return response.data;
   },
 
   /**
    * Update canvas positions for a lens
+   * NOTE: Still using internal route - no production route exists yet
    */
   updateCanvasPositions: async (
     lensId: string,
@@ -233,6 +232,7 @@ export const airunoteApi = {
 
   /**
    * Update board card position (fractional order)
+   * NOTE: Still using internal route - no production route exists yet
    */
   updateBoardCard: async (
     lensId: string,
@@ -244,6 +244,7 @@ export const airunoteApi = {
 
   /**
    * Update board lanes
+   * NOTE: Still using internal route - no production route exists yet
    */
   updateBoardLanes: async (
     lensId: string,
@@ -256,6 +257,7 @@ export const airunoteApi = {
   /**
    * Batch update lens layout (canvas and/or board positions)
    * Phase 8.1 — Batch Layout Updates
+   * NOTE: Still using internal route - no production route exists yet
    */
   updateBatchLayout: async (
     lensId: string,
@@ -271,6 +273,7 @@ export const airunoteApi = {
   /**
    * Create desktop lens (Phase 5)
    * Phase 6 — Also supports "saved" type
+   * NOTE: Still using internal route - no production route exists yet
    */
   createDesktopLens: async (
     orgId: string,
@@ -299,14 +302,13 @@ export const airunoteApi = {
     orgId: string,
     userId: string
   ): Promise<AirunoteApiResponse<{ lens: AiruLens; documents: AiruDocument[] }>> => {
-    const response = await apiClient.get(`/internal/airunote/lenses/${lensId}`, {
-      params: { orgId, userId },
-    });
+    const response = await apiClient.get(`/orgs/${orgId}/airunote/lenses/${lensId}`);
     return response.data;
   },
 
   /**
    * Update desktop/saved lens (Phase 6)
+   * NOTE: Still using internal route - no production route exists yet
    */
   updateDesktopLens: async (
     lensId: string,
@@ -345,17 +347,15 @@ export const airunoteApi = {
     }
   ): Promise<AirunoteApiResponse<{ lens: AiruLens }>> => {
     const response = await apiClient.post(
-      `/internal/airunote/folders/${folderId}/lenses`,
-      payload,
-      {
-        params: { orgId, userId },
-      }
+      `/orgs/${orgId}/airunote/lenses/folders/${folderId}/lenses`,
+      payload
     );
     return response.data;
   },
 
   /**
    * Update folder lens
+   * NOTE: Still using internal route - no production route exists yet
    */
   updateFolderLens: async (
     folderId: string,
