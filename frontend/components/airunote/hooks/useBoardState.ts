@@ -18,9 +18,10 @@ interface UseBoardStateOptions {
   lensId: string | null;
   lens: AiruLens | null;
   documents: AiruDocumentMetadata[];
+  orgId: string;
 }
 
-export function useBoardState({ lensId, lens, documents }: UseBoardStateOptions) {
+export function useBoardState({ lensId, lens, documents, orgId }: UseBoardStateOptions) {
   const queryClient = useQueryClient();
   
   // Local board state
@@ -98,7 +99,7 @@ export function useBoardState({ lensId, lens, documents }: UseBoardStateOptions)
         };
       }
 
-      const response = await airunoteApi.updateBatchLayout(lensId, {
+      const response = await airunoteApi.updateBatchLayout(lensId, orgId, {
         boardPositions,
       });
 
@@ -141,7 +142,7 @@ export function useBoardState({ lensId, lens, documents }: UseBoardStateOptions)
         throw new Error('No lens ID available');
       }
 
-      const response = await airunoteApi.updateBoardLanes(lensId, {
+      const response = await airunoteApi.updateBoardLanes(lensId, orgId, {
         lanes: newLanes,
       });
 

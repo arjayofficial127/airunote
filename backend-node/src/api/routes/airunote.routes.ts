@@ -549,4 +549,188 @@ router.get('/folders/:id/documents', async (req: Request, res: Response, next: N
   }
 });
 
+/**
+ * GET /metadata
+ * Get full metadata (all folders and documents metadata, no content)
+ */
+router.get('/metadata', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orgId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      });
+    }
+
+    if (!isUuidLike(orgId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const domainService = container.resolve(AirunoteDomainService);
+    const metadata = await domainService.getFullMetadata(orgId, userId);
+
+    res.status(200).json({
+      success: true,
+      data: metadata,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /provision
+ * Provision user root (idempotent)
+ */
+router.post('/provision', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orgId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      });
+    }
+
+    if (!isUuidLike(orgId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const body = req.body as {
+      orgOwnerUserId?: string;
+    };
+
+    // Use userId as orgOwnerUserId if not provided
+    const orgOwnerUserId = body.orgOwnerUserId || userId;
+
+    if (!isUuidLike(orgOwnerUserId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgOwnerUserId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const domainService = container.resolve(AirunoteDomainService);
+    const rootFolder = await domainService.ensureUserRootExists(orgId, userId, orgOwnerUserId);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        rootFolder: {
+          id: rootFolder.id,
+          orgId: rootFolder.orgId,
+          ownerUserId: rootFolder.ownerUserId,
+          parentFolderId: rootFolder.parentFolderId,
+          humanId: rootFolder.humanId,
+          visibility: rootFolder.visibility,
+          createdAt: rootFolder.createdAt,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /folders/:id
+ * Get folder by ID (with lens projection)
+ */
+router.get('/folders/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orgId, id: folderId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      });
+    }
+
+    if (!isUuidLike(orgId) || !isUuidLike(folderId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgId or folderId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const domainService = container.resolve(AirunoteDomainService);
+    const { folder } = await domainService.resolveFolderProjection(folderId);
+
+    res.status(200).json({
+      success: true,
+      data: { folder },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /vault
+ * Delete user vault (hard delete)
+ */
+router.delete('/vault', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orgId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      });
+    }
+
+    if (!isUuidLike(orgId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const body = req.body as {
+      confirmation?: string;
+    };
+
+    // Constitution: Explicit confirmation string required
+    if (body.confirmation !== 'DELETE_VAULT_PERMANENTLY') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Confirmation string must exactly match "DELETE_VAULT_PERMANENTLY"',
+          code: 'VALIDATION_ERROR',
+        },
+      });
+    }
+
+    const domainService = container.resolve(AirunoteDomainService);
+    const result = await domainService.deleteUserVault(orgId, userId, userId);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        deletedFolders: result.deletedFolders,
+        deletedDocuments: result.deletedDocuments,
+        deletedShares: result.deletedShares,
+        deletedLinks: result.deletedLinks,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

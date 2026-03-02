@@ -44,6 +44,7 @@ export function BoardView({ documents, lens, lensId, orgId }: BoardViewProps) {
     lensId,
     lens,
     documents,
+    orgId,
   });
 
   // Compute fractional order for a card in a lane

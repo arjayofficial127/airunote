@@ -34,6 +34,7 @@ export function CanvasView({ documents, lens, lensId, orgId }: CanvasViewProps) 
     lensId,
     lens,
     documents,
+    orgId,
   });
 
   const handleMouseDown = useCallback(

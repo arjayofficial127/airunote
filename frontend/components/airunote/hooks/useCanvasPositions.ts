@@ -18,9 +18,10 @@ interface UseCanvasPositionsOptions {
   lensId: string | null;
   lens: AiruLens | null;
   documents: AiruDocumentMetadata[];
+  orgId: string;
 }
 
-export function useCanvasPositions({ lensId, lens, documents }: UseCanvasPositionsOptions) {
+export function useCanvasPositions({ lensId, lens, documents, orgId }: UseCanvasPositionsOptions) {
   // Local canvas state - positions for each document
   const [localPositions, setLocalPositions] = useState<Record<string, CanvasPosition>>({});
   // Track original positions from lens (for change detection)
@@ -96,7 +97,7 @@ export function useCanvasPositions({ lensId, lens, documents }: UseCanvasPositio
       }
 
       // Phase 8.1: Use batch-layout endpoint
-      const response = await airunoteApi.updateBatchLayout(lensId, {
+      const response = await airunoteApi.updateBatchLayout(lensId, orgId, {
         canvasPositions: changedPositions,
       });
 
