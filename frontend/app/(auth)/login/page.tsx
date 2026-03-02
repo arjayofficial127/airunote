@@ -158,9 +158,9 @@ export default function LoginPage() {
                     }}
                   />
                   <h1 className="text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                    Write clearly.
+                    Let your brain write clearly.
                     <br />
-                    <span className="text-blue-600">Organize deeply.</span>
+                    <span className="text-blue-600">Organize your way.</span>
                   </h1>
                   <p className="mt-6 text-lg leading-8 text-gray-600">
                     A calm, structured workspace for your ideas.

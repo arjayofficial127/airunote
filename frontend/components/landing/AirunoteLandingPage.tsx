@@ -66,9 +66,9 @@ export function AirunoteLandingPage() {
             />
             
             <h1 className="text-6xl font-bold tracking-tight text-gray-900 sm:text-7xl md:text-8xl">
-              Write clearly.
-              <br />
-              <span className="text-blue-600">Organize deeply.</span>
+              Let your brain write clearly.
+            <br />
+              <span className="text-blue-600">Organize your way.</span>
             </h1>
             
             <p className="mt-8 text-xl leading-8 text-gray-600 sm:text-2xl">
