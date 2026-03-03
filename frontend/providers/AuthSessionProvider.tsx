@@ -178,7 +178,36 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
       return;
     }
 
-    // Create new request promise
+    // If bootstrap user data is available (set during login), use it to
+    // prime the auth session without issuing an immediate /auth/me call.
+    if (typeof window !== 'undefined') {
+      try {
+        const bootstrapUserRaw = window.sessionStorage.getItem('airunote_bootstrap_user');
+        if (bootstrapUserRaw) {
+          const bootstrapUser = JSON.parse(bootstrapUserRaw) as User | null;
+          if (bootstrapUser && (bootstrapUser.id || bootstrapUser.email)) {
+            setStatus('ready');
+            setError(null);
+            setIsOfflineLimited(false);
+            setUser({
+              id: bootstrapUser.id,
+              email: bootstrapUser.email,
+              name: bootstrapUser.name || '',
+            });
+            setSystemRole(null);
+            // Clear bootstrap user once consumed to prevent stale reuse
+            window.sessionStorage.removeItem('airunote_bootstrap_user');
+            inFlightRequestRef.current = null;
+            return;
+          }
+        }
+      } catch (e) {
+        // If bootstrap parsing fails, fall back to normal auth check
+        console.error('[AuthSessionProvider] Failed to parse bootstrap user:', e);
+      }
+    }
+
+    // Create new request promise (fallback path)
     const requestPromise = (async () => {
       try {
         setStatus('loading');

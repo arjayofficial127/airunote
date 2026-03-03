@@ -323,7 +323,68 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    // User is authenticated, load orgs
+    // If bootstrap org data is available (set during login), use it to
+    // prime the org session without issuing an immediate /orgs call.
+    try {
+      const bootstrapOrgRaw = window.sessionStorage.getItem('airunote_bootstrap_orgs');
+      if (bootstrapOrgRaw) {
+        const parsed = JSON.parse(bootstrapOrgRaw) as {
+          orgs: Org[];
+          activeOrgId: string | null;
+        };
+
+        const orgsList = parsed.orgs || [];
+        const bootstrapActiveOrgId = parsed.activeOrgId ?? null;
+
+        setOrgs(orgsList);
+
+        if (orgsList.length === 0) {
+          setActiveOrgId(null);
+          setActiveOrg(null);
+          setOrgUser(null);
+          setRoles([]);
+        } else if (bootstrapActiveOrgId) {
+          const activeOrg = orgsList.find((o) => o.id === bootstrapActiveOrgId) ?? orgsList[0];
+          setActiveOrgId(activeOrg.id);
+          setActiveOrg(activeOrg);
+          setOrgUser({
+            orgId: activeOrg.id,
+            userId: authSession.user.id,
+            roles: activeOrg.roles || [],
+          });
+          setRoles(activeOrg.roles || []);
+        } else if (orgsList.length === 1) {
+          const singleOrg = orgsList[0];
+          setActiveOrgId(singleOrg.id);
+          setActiveOrg(singleOrg);
+          setOrgUser({
+            orgId: singleOrg.id,
+            userId: authSession.user.id,
+            roles: singleOrg.roles || [],
+          });
+          setRoles(singleOrg.roles || []);
+        } else {
+          // Multiple orgs, no explicit activeOrgId – let UI prompt selection
+          setActiveOrgId(null);
+          setActiveOrg(null);
+          setOrgUser(null);
+          setRoles([]);
+        }
+
+        setStatus('ready');
+        setError(null);
+
+        // Clear bootstrap data once consumed to avoid stale reuse
+        window.sessionStorage.removeItem('airunote_bootstrap_orgs');
+
+        return;
+      }
+    } catch (e) {
+      console.error('[OrgSessionProvider] Failed to parse bootstrap orgs:', e);
+      // Fall through to normal loadOrgs behaviour
+    }
+
+    // User is authenticated and no bootstrap data is available, load orgs from API
     loadOrgs();
   }, [authSession.status, authSession.user, loadOrgs]);
 

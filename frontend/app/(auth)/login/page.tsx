@@ -11,7 +11,7 @@ import { AmbientBackground } from '@/components/ui/AmbientBackground';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, refetch } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -56,8 +56,39 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      
-      router.push('/dashboard');
+
+      // Fetch bootstrap data (user + orgs + activeOrgId) in a single lightweight call
+      try {
+        const bootstrapResponse = await authApi.bootstrap();
+        if (bootstrapResponse.success && typeof window !== 'undefined') {
+          const { user, orgs, activeOrgId } = bootstrapResponse.data;
+
+          // Persist bootstrap data for providers to consume on next load cycle
+          window.sessionStorage.setItem('airunote_bootstrap_user', JSON.stringify(user));
+          window.sessionStorage.setItem(
+            'airunote_bootstrap_orgs',
+            JSON.stringify({ orgs, activeOrgId })
+          );
+
+          // Prime AuthSessionProvider from bootstrap without hitting /auth/me
+          await refetch();
+
+          // Redirect directly to Airunote if we have an active org,
+          // otherwise go to org selector.
+          if (activeOrgId) {
+            router.push(`/orgs/${activeOrgId}/airunote`);
+          } else {
+            router.push('/orgs');
+          }
+        } else {
+          // Fallback: if bootstrap fails, keep existing behavior
+          router.push('/dashboard');
+        }
+      } catch (bootstrapError) {
+        // Bootstrap is an optimization - log and fallback gracefully
+        console.error('[LoginPage] Bootstrap failed, falling back to /dashboard:', bootstrapError);
+        router.push('/dashboard');
+      }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed');
     } finally {

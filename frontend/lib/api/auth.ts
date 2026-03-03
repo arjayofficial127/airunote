@@ -30,8 +30,8 @@ export interface AuthFullResponse {
   user: User;
   isSuperAdmin: boolean;
   org: {
-  id: string;
-  name: string;
+    id: string;
+    name: string;
     slug: string;
     description: string | null;
     isActive: boolean;
@@ -51,6 +51,22 @@ export interface AuthFullResponse {
     roles: string[];
   } | null;
   installedApps: never[];
+}
+
+export interface AuthBootstrapOrg {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  roles: string[];
+}
+
+export interface AuthBootstrapResponse {
+  user: User;
+  orgs: AuthBootstrapOrg[];
+  activeOrgId: string | null;
 }
 
 import { tokenStorage } from './token';
@@ -88,6 +104,17 @@ export const authApi = {
     }
     
     return data;
+  },
+
+  /**
+   * Bootstrap authenticated session (user + orgs + activeOrgId).
+   * 
+   * Used immediately after login to prime AuthSessionProvider and OrgSessionProvider
+   * without issuing separate /auth/me and /orgs calls on the critical path.
+   */
+  bootstrap: async (): Promise<{ success: boolean; data: AuthBootstrapResponse }> => {
+    const response = await apiClient.get('/auth/bootstrap');
+    return response.data;
   },
 
   register: async (input: RegisterInput, secret: string): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {

@@ -211,7 +211,11 @@ export default function DashboardLayout({
   return (
     <SessionBoundary
       states={providerStates}
-      loadingMessage={isInOrgContext ? 'Preparing workspace…' : 'Loading…'}
+      loadingMessage={
+        isInOrgContext
+          ? 'Preparing your Base — loading containers for folders, documents, and lenses…'
+          : 'Loading…'
+      }
       onRetry={() => {
         // Retry all providers
         if (authSession.status === 'error') authSession.refetch();
@@ -221,8 +225,33 @@ export default function DashboardLayout({
     >
       {/* Inner content - only renders when all providers are ready */}
       {isRedirecting ? (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-gray-600">Redirecting...</div>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="max-w-md w-full px-6">
+            <div className="mb-4">
+              <h1 className="text-lg font-semibold text-gray-900">Preparing your Base…</h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Connecting to your organization and loading containers for Home, Folders, and Recent
+                work.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <p className="text-sm font-medium text-gray-900">Home</p>
+                <p className="mt-1 text-xs text-gray-500">Restoring your workspace overview.</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <p className="text-sm font-medium text-gray-900">Folders</p>
+                <p className="mt-1 text-xs text-gray-500">Linking your Bases and collections.</p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <p className="text-sm font-medium text-gray-900">Recent documents</p>
+                <p className="mt-1 text-xs text-gray-500">Finding where you left off.</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+          </div>
         </div>
       ) : (
         <SessionAppStoreProvider>

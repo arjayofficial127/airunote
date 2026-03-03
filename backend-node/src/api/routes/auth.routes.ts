@@ -112,6 +112,75 @@ router.post('/login', authRateLimit, async (req: Request, res: Response, next) =
   }
 });
 
+/**
+ * GET /auth/bootstrap
+ * 
+ * Lightweight bootstrap endpoint used immediately after login.
+ * Returns:
+ * - user profile (id, email, name)
+ * - minimal org list for the authenticated user
+ * - activeOrgId heuristic based on org count
+ * 
+ * This allows the frontend to prime AuthSessionProvider and OrgSessionProvider
+ * without issuing separate /auth/me and /orgs calls on the critical post-login path.
+ */
+router.get('/bootstrap', authMiddleware, async (req: Request, res: Response, next) => {
+  try {
+    const userRepository = container.resolve<IUserRepository>(TYPES.IUserRepository);
+    const orgUseCase = container.resolve<IOrgUseCase>(TYPES.IOrgUseCase);
+
+    const dbUser = await userRepository.findById(req.user!.userId);
+
+    if (!dbUser) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'User not found', code: 'NOT_FOUND' },
+      });
+    }
+
+    const orgResult = await orgUseCase.findByUserId(dbUser.id);
+    if (orgResult.isErr()) {
+      return next(orgResult.unwrap());
+    }
+
+    const orgs = orgResult.unwrap().map((org) => ({
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      description: org.description,
+      isActive: org.isActive,
+      createdAt: org.createdAt.toISOString(),
+      // Roles are resolved separately in orgsApi.list; for bootstrap we keep
+      // this minimal and allow OrgSessionProvider to refresh later.
+      roles: [] as string[],
+    }));
+
+    // Heuristic for activeOrgId:
+    // - 0 orgs  -> null  (user will land on /orgs onboarding)
+    // - 1 org   -> that org
+    // - >1 org  -> null (let OrgSessionProvider / UI ask user to choose)
+    let activeOrgId: string | null = null;
+    if (orgs.length === 1) {
+      activeOrgId = orgs[0].id;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: dbUser.id,
+          email: dbUser.email,
+          name: dbUser.name,
+        },
+        orgs,
+        activeOrgId,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Refresh token endpoint - disabled for MVP (Bearer-only)
 // TODO: Re-enable with refreshToken in request body when needed
 router.post('/refresh', async (req: Request, res: Response) => {
