@@ -384,6 +384,23 @@ export function FolderViewLayout({
           onAction={onCreateFolder}
         />
       )}
+
+      {/* Create Folder Lens Modal */}
+      {folderId && (
+        <CreateFolderLensModal
+          isOpen={isCreateLensModalOpen}
+          onClose={() => setIsCreateLensModalOpen(false)}
+          onSuccess={(lens) => {
+            if (onLensCreated) {
+              onLensCreated(lens);
+            }
+            setIsCreateLensModalOpen(false);
+          }}
+          folderId={folderId}
+          orgId={orgId}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }
