@@ -9,7 +9,7 @@
  * - Org boundary enforced in all queries
  */
 import { injectable } from 'tsyringe';
-import { eq, and, sql, ne, or, desc, isNull, gt, lt, inArray, ilike } from 'drizzle-orm';
+import { eq, and, sql, ne, or, desc, isNull, isNotNull, gt, lt, inArray, ilike } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   airuFoldersTable,
@@ -148,6 +148,7 @@ export interface AiruLensItem {
   order: number | null;
   x: number | null;
   y: number | null;
+  viewMode: 'list' | 'icon' | 'preview' | 'full' | null;
   metadata: AiruLensItemMetadata;
   createdAt: string;
   updatedAt: string;
@@ -235,6 +236,7 @@ function mapLensItemRow(row: typeof airuLensItemsTable.$inferSelect): AiruLensIt
     order: row.order ? parseFloat(row.order) : null,
     x: row.x ? parseFloat(row.x) : null,
     y: row.y ? parseFloat(row.y) : null,
+    viewMode: (row.viewMode as 'list' | 'icon' | 'preview' | 'full' | null) ?? null,
     metadata: (row.metadata ?? {}) as AiruLensItemMetadata,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -330,6 +332,7 @@ export interface AiruDocumentMetadata {
 export interface FullMetadataResponse {
   folders: AiruFolder[];
   documents: AiruDocumentMetadata[];
+  lensCounts: Record<string, number>; // folderId -> lens count
 }
 
 @injectable()
@@ -2441,9 +2444,11 @@ export class AirunoteRepository {
 
     // If no folders, return empty documents array
     if (folderIdList.length === 0) {
+      const lensCounts: Record<string, number> = {};
       return {
         folders: mappedFolders,
         documents: [],
+        lensCounts,
       };
     }
 
@@ -2492,9 +2497,43 @@ export class AirunoteRepository {
       size: doc.size ?? undefined,
     }));
 
+    // Query lens counts per folder
+    // Build lensCounts map: folderId -> count
+    const lensCountsMap: Record<string, number> = {};
+    
+    // Initialize all folders with 0 lens count
+    mappedFolders.forEach((folder) => {
+      lensCountsMap[folder.id] = 0;
+    });
+    
+    // Only query if we have folders
+    if (folderIdList.length > 0) {
+      const lensCounts = await dbInstance
+        .select({
+          folderId: airuLensesTable.folderId,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(airuLensesTable)
+        .where(
+          and(
+            inArray(airuLensesTable.folderId, folderIdList),
+            isNotNull(airuLensesTable.folderId) // Only count folder lenses, not desktop/saved lenses
+          )
+        )
+        .groupBy(airuLensesTable.folderId);
+
+      // Update lensCounts map with actual counts
+      lensCounts.forEach((row) => {
+        if (row.folderId) {
+          lensCountsMap[row.folderId] = row.count;
+        }
+      });
+    }
+
     return {
       folders: mappedFolders,
       documents: mappedDocuments,
+      lensCounts: lensCountsMap,
     };
   }
 
@@ -2829,6 +2868,7 @@ export class AirunoteRepository {
       order?: number | null;
       x?: number | null;
       y?: number | null;
+      viewMode?: 'list' | 'icon' | 'preview' | 'full' | null;
       metadata?: AiruLensItemMetadata;
     },
     tx?: Transaction
@@ -2854,6 +2894,7 @@ export class AirunoteRepository {
           order: input.order !== null && input.order !== undefined ? String(input.order) : null,
           x: input.x !== null && input.x !== undefined ? String(input.x) : null,
           y: input.y !== null && input.y !== undefined ? String(input.y) : null,
+          viewMode: input.viewMode ?? null,
           metadata: input.metadata ?? {},
           updatedAt: new Date(),
         })
@@ -2867,6 +2908,7 @@ export class AirunoteRepository {
         order: input.order !== null && input.order !== undefined ? String(input.order) : null,
         x: input.x !== null && input.x !== undefined ? String(input.x) : null,
         y: input.y !== null && input.y !== undefined ? String(input.y) : null,
+        viewMode: input.viewMode ?? null,
         metadata: input.metadata ?? {},
       });
     }
@@ -2885,6 +2927,7 @@ export class AirunoteRepository {
       order?: number | null;
       x?: number | null;
       y?: number | null;
+      viewMode?: 'list' | 'icon' | 'preview' | 'full' | null;
       metadata?: AiruLensItemMetadata;
     }>,
     tx?: Transaction
@@ -2912,6 +2955,7 @@ export class AirunoteRepository {
               order: item.order !== null && item.order !== undefined ? String(item.order) : null,
               x: item.x !== null && item.x !== undefined ? String(item.x) : null,
               y: item.y !== null && item.y !== undefined ? String(item.y) : null,
+              viewMode: item.viewMode ?? null,
               metadata: item.metadata ?? {},
               updatedAt: new Date(),
             })
@@ -2925,6 +2969,7 @@ export class AirunoteRepository {
             order: item.order !== null && item.order !== undefined ? String(item.order) : null,
             x: item.x !== null && item.x !== undefined ? String(item.x) : null,
             y: item.y !== null && item.y !== undefined ? String(item.y) : null,
+            viewMode: item.viewMode ?? null,
             metadata: item.metadata ?? {},
           });
         }

@@ -52,29 +52,30 @@ export function DocumentList({ documents, orgId, onMove, onDelete }: DocumentLis
   }
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       {documents.map((doc) => {
         const documentPath = `/orgs/${orgIdFromParams}/airunote/document/${doc.id}`;
         return (
-          <div key={doc.id} className="group relative">
+          <div key={doc.id} className="group relative p-4 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150">
             <Link
               href={documentPath}
-              className="block p-3 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150 cursor-pointer"
+              className="flex flex-col h-full cursor-pointer"
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3 flex-1">
-                  <span className="text-2xl">{getDocumentIcon(doc.type)}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-medium text-gray-900 truncate">
-                      {doc.name}
-                    </h3>
-                    <div className="mt-1 flex items-center space-x-3 text-sm text-gray-500">
-                      <FileTypeChip type={doc.type} />
-                      <span>•</span>
-                      <span>Updated {formatDate(doc.updatedAt)}</span>
-                    </div>
-                  </div>
+              <div className="flex items-center space-x-3 flex-1 min-w-0 mb-3">
+                <span className="text-2xl flex-shrink-0">{getDocumentIcon(doc.type)}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-gray-900 truncate">
+                    {doc.name}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formatDate(doc.updatedAt)}
+                  </p>
                 </div>
+              </div>
+              <div className="mt-auto flex items-center gap-2">
+                <FileTypeChip type={doc.type} />
+                <span className="text-sm text-gray-500">•</span>
+                <span className="text-sm text-gray-500">Updated {formatDate(doc.updatedAt)}</span>
               </div>
             </Link>
             {(onMove || onDelete) && (

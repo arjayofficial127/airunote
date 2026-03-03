@@ -10,6 +10,7 @@ interface FolderCountBadgeProps {
   directFiles: number;
   subFolders: number;
   subFiles: number;
+  lensCount?: number;
   compact?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function FolderCountBadge({
   directFiles,
   subFolders,
   subFiles,
+  lensCount = 0,
   compact = false,
 }: FolderCountBadgeProps) {
   // Calculate totals
@@ -38,7 +40,7 @@ export function FolderCountBadge({
   }
 
   // Full version: Show direct by default, total on hover (premium polish)
-  const formatCounts = (folders: number, files: number) => {
+  const formatCounts = (folders: number, files: number, lenses: number = 0) => {
     const parts: string[] = [];
     if (folders > 0) {
       parts.push(`${folders} ${folders === 1 ? 'folder' : 'folders'}`);
@@ -46,11 +48,14 @@ export function FolderCountBadge({
     if (files > 0) {
       parts.push(`${files} ${files === 1 ? 'file' : 'files'}`);
     }
+    if (lenses > 0) {
+      parts.push(`${lenses} ${lenses === 1 ? 'lens' : 'lenses'}`);
+    }
     return parts.length > 0 ? parts.join(' • ') : '0 items';
   };
 
-  const directText = formatCounts(directFolders, directFiles);
-  const totalText = formatCounts(totalFolders, totalFiles);
+  const directText = formatCounts(directFolders, directFiles, lensCount);
+  const totalText = formatCounts(totalFolders, totalFiles, lensCount);
   const hasSubItems = subFolders > 0 || subFiles > 0;
 
   return (

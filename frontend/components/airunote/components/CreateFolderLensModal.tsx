@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { airunoteApi } from '../services/airunoteApi';
+import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
 import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 
@@ -39,6 +40,7 @@ export function CreateFolderLensModal({
   const [name, setName] = useState('');
   const [type, setType] = useState<LensType>('board');
   const [isCreating, setIsCreating] = useState(false);
+  const store = useAirunoteStore.getState();
 
   if (!isOpen) return null;
 
@@ -67,6 +69,8 @@ export function CreateFolderLensModal({
       });
 
       if (response.success) {
+        // Update store: increment lens count for this folder
+        store.incrementLensCount(folderId);
         toast('Lens created successfully', 'success');
         onSuccess(response.data.lens);
         setName('');

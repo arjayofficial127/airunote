@@ -618,6 +618,7 @@ export const airuLensItemsTable = pgTable('airu_lens_items', {
   order: numeric('order'),
   x: numeric('x'),
   y: numeric('y'),
+  viewMode: varchar('view_mode', { length: 20 }), // 'list' | 'icon' | 'preview' | 'full' | null
   metadata: jsonb('metadata').notNull().default('{}'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

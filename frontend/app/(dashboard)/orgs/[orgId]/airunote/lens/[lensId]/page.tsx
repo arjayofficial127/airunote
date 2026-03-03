@@ -8,22 +8,21 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
-import { useLens } from '@/hooks/useAirunoteLenses';
-import { FolderViewLayout } from '@/components/airunote/components/FolderViewLayout';
-import { CanvasView } from '@/components/airunote/components/CanvasView';
-import { BoardView } from '@/components/airunote/components/BoardView';
+import { useLens, useUpdateLensItems } from '@/hooks/useAirunoteLenses';
+import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
+import { BoardLens } from '@/components/airunote/lenses/BoardLens';
 import { DocumentList } from '@/components/airunote/components/DocumentList';
 import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { EditSavedViewModal } from '@/components/airunote/components/EditSavedViewModal';
 import type { AiruDocumentMetadata } from '@/components/airunote/types';
-import type { AiruLens } from '@/lib/api/airunoteLensesApi';
+import type { AiruLens, LensItemInput } from '@/lib/api/airunoteLensesApi';
 
 export default function LensViewPage() {
   const params = useParams();
@@ -47,21 +46,32 @@ export default function LensViewPage() {
   );
 
   const lens = lensData?.lens || null;
-  const documents: AiruDocumentMetadata[] = [];
+  const lensItems = lensData?.items || [];
 
-  // Convert documents to metadata format for display
-  const documentMetadata: AiruDocumentMetadata[] = documents.map((doc) => ({
-    id: doc.id,
-    folderId: doc.folderId,
-    ownerUserId: doc.ownerUserId,
-    type: doc.type,
-    name: doc.name,
-    visibility: doc.visibility,
-    state: doc.state,
-    createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
-    attributes: doc.attributes || {},
-  }));
+  // Hook for updating lens items
+  const updateLensItems = useUpdateLensItems(orgId || orgIdFromParams, lensId || undefined);
+
+  // Transform documents to items format for CanvasLens/BoardLens
+  // Note: Desktop/saved lenses currently don't return documents in lensData
+  // This is a placeholder for when documents are added to the lens response
+  const items = useMemo(() => {
+    // For now, return empty array - documents will come from lens query results
+    // TODO: When lens query returns documents, transform them here
+    return [];
+  }, []);
+
+  // Handle persist for lens items
+  const handlePersist = useCallback(
+    async (items: LensItemInput[]) => {
+      if (!updateLensItems.mutateAsync) return;
+      await updateLensItems.mutateAsync({ items });
+    },
+    [updateLensItems]
+  );
+
+  // For fallback DocumentList, we still need documentMetadata
+  // This will be populated when lens query returns documents
+  const documentMetadata: AiruDocumentMetadata[] = [];
 
   if (!orgId || !userId || !lensId) {
     return (
@@ -139,7 +149,7 @@ export default function LensViewPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{lens.name}</h1>
             <p className="text-sm text-gray-600 mt-1">
-              {documentMetadata.length} {documentMetadata.length === 1 ? 'document' : 'documents'}
+              {items.length > 0 ? items.length : documentMetadata.length} {items.length > 0 ? 'item' : 'document'}{items.length !== 1 && documentMetadata.length !== 1 ? 's' : ''}
               {lens.folderId === null && lens.type === 'desktop' && ' (Desktop Lens)'}
               {lens.folderId === null && lens.type === 'saved' && ' (Saved View)'}
             </p>
@@ -158,7 +168,7 @@ export default function LensViewPage() {
       {/* Documents Section */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Documents</h2>
-        {documentMetadata.length === 0 ? (
+        {items.length === 0 && documentMetadata.length === 0 ? (
           <EmptyState
             title="No documents match this query"
             description="Try adjusting your query to find documents."
@@ -169,22 +179,29 @@ export default function LensViewPage() {
             }
           />
         ) : lens.type === 'canvas' && lens.id ? (
-          // Phase 3: Canvas view - positions stored in lens metadata
-          <CanvasView
-            documents={documentMetadata}
-            lens={lens}
-            lensId={lens.id}
-            orgId={orgId}
-          />
+          // Unified: Canvas view using CanvasLens (same as folder pages)
+          <div className="h-screen overflow-hidden">
+            <CanvasLens
+              orgId={orgId}
+              lens={lens}
+              items={items}
+              lensItems={lensItems}
+              onPersist={handlePersist}
+            />
+          </div>
         ) : lens.type === 'board' && lens.id ? (
-          // Phase 4: Board view - lanes and card positions stored in lens metadata
-          <BoardView
-            documents={documentMetadata}
-            lens={lens}
-            lensId={lens.id}
-            orgId={orgId}
-          />
+          // Unified: Board view using BoardLens (same as folder pages)
+          <div className="p-8">
+            <BoardLens
+              orgId={orgId}
+              lens={lens}
+              items={items}
+              lensItems={lensItems}
+              onPersist={handlePersist}
+            />
+          </div>
         ) : (
+          // Fallback: DocumentList for box/book types
           <DocumentList 
             documents={documentMetadata} 
             orgId={orgId}

@@ -98,7 +98,7 @@ export function AirunoteDataProvider({ children }: AirunoteDataProviderProps) {
         try {
           const response = await airunoteApi.getFullMetadata(orgId, userId);
           if (response.success) {
-            setMetadata(response.data.folders, response.data.documents);
+            setMetadata(response.data.folders, response.data.documents, response.data.lensCounts || {});
           } else {
             setError(new Error(response.error?.message || 'Failed to load metadata'));
           }

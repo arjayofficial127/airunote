@@ -14,11 +14,17 @@ export interface AiruLens {
   name: string;
   type: AiruLensType;
   isDefault: boolean;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, unknown> & {
+    presentation?: {
+      defaultView?: ViewMode;
+    };
+  };
   query: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type ViewMode = 'list' | 'icon' | 'preview' | 'full';
 
 export interface AiruLensItem {
   id: string;
@@ -29,9 +35,8 @@ export interface AiruLensItem {
   order: number | null;
   x: number | null;
   y: number | null;
-  metadata: {
-    viewMode?: 'icon' | 'preview' | 'full' | 'scroll';
-  };
+  viewMode: ViewMode | null;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,9 +48,8 @@ export type LensItemInput = {
   order?: number | null;
   x?: number | null;
   y?: number | null;
-  metadata?: {
-    viewMode?: 'icon' | 'preview' | 'full' | 'scroll';
-  };
+  viewMode?: ViewMode | null;
+  metadata?: Record<string, unknown>;
 };
 
 /**
@@ -83,5 +87,53 @@ export async function patchLensItems(
   const response = await apiClient.patch(`/orgs/${orgId}/airunote/lenses/${lensId}/items`, {
     items,
   });
+  return response.data;
+}
+
+/**
+ * Update a folder lens
+ */
+export async function updateFolderLens(
+  orgId: string,
+  folderId: string,
+  lensId: string,
+  data: {
+    name?: string;
+    type?: AiruLensType;
+    metadata?: Record<string, unknown>;
+    query?: Record<string, unknown> | null;
+  }
+): Promise<AirunoteApiResponse<{ lens: AiruLens }>> {
+  const response = await apiClient.patch(
+    `/orgs/${orgId}/airunote/lenses/folders/${folderId}/lenses/${lensId}`,
+    data
+  );
+  return response.data;
+}
+
+/**
+ * Update a desktop or saved lens
+ */
+export async function updateDesktopLens(
+  orgId: string,
+  lensId: string,
+  data: {
+    name?: string;
+    query?: Record<string, unknown> | null;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<AirunoteApiResponse<{ lens: AiruLens }>> {
+  const response = await apiClient.patch(`/orgs/${orgId}/airunote/lenses/${lensId}`, data);
+  return response.data;
+}
+
+/**
+ * Delete a lens
+ */
+export async function deleteLens(
+  orgId: string,
+  lensId: string
+): Promise<AirunoteApiResponse<{ message: string }>> {
+  const response = await apiClient.delete(`/orgs/${orgId}/airunote/lenses/${lensId}`);
   return response.data;
 }

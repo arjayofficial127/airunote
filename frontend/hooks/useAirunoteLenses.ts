@@ -9,9 +9,13 @@ import {
   fetchFolderLenses,
   fetchLens,
   patchLensItems,
+  updateFolderLens,
+  updateDesktopLens,
+  deleteLens,
   type AiruLens,
   type AiruLensItem,
   type LensItemInput,
+  type AiruLensType,
 } from '@/lib/api/airunoteLensesApi';
 
 /**
@@ -83,6 +87,100 @@ export function useUpdateLensItems(orgId?: string, lensId?: string) {
       // Invalidate lens query to refetch updated items
       if (orgId && lensId) {
         queryClient.invalidateQueries({ queryKey: ['lens', orgId, lensId] });
+      }
+    },
+  });
+}
+
+/**
+ * Hook for updating a folder lens
+ */
+export function useUpdateFolderLens(orgId?: string, folderId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { lens: AiruLens },
+    Error,
+    { lensId: string; data: { name?: string; type?: AiruLensType; metadata?: Record<string, unknown>; query?: Record<string, unknown> | null } }
+  >({
+    mutationFn: async ({ lensId, data }) => {
+      if (!orgId || !folderId) {
+        throw new Error('orgId and folderId are required');
+      }
+      const response = await updateFolderLens(orgId, folderId, lensId, data);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update lens');
+      }
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate folder lenses and lens queries
+      if (orgId && folderId) {
+        queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });
+        queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
+      }
+    },
+  });
+}
+
+/**
+ * Hook for updating a desktop or saved lens
+ */
+export function useUpdateDesktopLens(orgId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { lens: AiruLens },
+    Error,
+    { lensId: string; data: { name?: string; query?: Record<string, unknown> | null; metadata?: Record<string, unknown> } }
+  >({
+    mutationFn: async ({ lensId, data }) => {
+      if (!orgId) {
+        throw new Error('orgId is required');
+      }
+      const response = await updateDesktopLens(orgId, lensId, data);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to update lens');
+      }
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate lens query
+      if (orgId) {
+        queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
+      }
+    },
+  });
+}
+
+/**
+ * Hook for deleting a lens
+ */
+export function useDeleteLens(orgId?: string, folderId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { message: string },
+    Error,
+    { lensId: string }
+  >({
+    mutationFn: async ({ lensId }) => {
+      if (!orgId) {
+        throw new Error('orgId is required');
+      }
+      const response = await deleteLens(orgId, lensId);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to delete lens');
+      }
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate folder lenses and lens queries
+      if (orgId) {
+        queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
+        if (folderId) {
+          queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });
+        }
       }
     },
   });

@@ -53,6 +53,7 @@ export interface AiruDocumentMetadata {
 export interface FullMetadataResponse {
   folders: AiruFolder[];
   documents: AiruDocumentMetadata[];
+  lensCounts: Record<string, number>; // folderId -> lens count
 }
 
 export interface FolderTreeResponse {

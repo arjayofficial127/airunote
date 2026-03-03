@@ -16,6 +16,7 @@ interface MetadataStoreState {
   foldersById: Map<string, AiruFolder>;
   documentsById: Map<string, AiruDocumentMetadata>;
   childrenByParentId: Map<string | null, string[]>; // folder IDs by parent (null = root)
+  lensCounts: Record<string, number>; // folderId -> lens count
 
   // Loading state
   isLoading: boolean;
@@ -26,13 +27,15 @@ interface MetadataStoreState {
   searchQuery: string;
 
   // Actions
-  setMetadata: (folders: AiruFolder[], documents: AiruDocumentMetadata[]) => void;
+  setMetadata: (folders: AiruFolder[], documents: AiruDocumentMetadata[], lensCounts: Record<string, number>) => void;
   addFolder: (folder: AiruFolder) => void;
   updateFolder: (folder: AiruFolder) => void;
   removeFolder: (folderId: string) => void;
   addDocument: (document: AiruDocumentMetadata) => void;
   updateDocumentMetadata: (document: AiruDocumentMetadata) => void;
   removeDocument: (documentId: string) => void;
+  incrementLensCount: (folderId: string) => void;
+  decrementLensCount: (folderId: string) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: Error | null) => void;
   setSearchQuery: (query: string) => void;
@@ -68,6 +71,7 @@ interface AirunoteStore extends MetadataStoreState, ContentStoreState {
     directFiles: number;
     subFolders: number;
     subFiles: number;
+    lensCount: number;
   };
   getFilteredFolders: (parentFolderId: string | null) => AiruFolder[];
   getFilteredDocuments: (folderId: string) => AiruDocumentMetadata[];
@@ -83,6 +87,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   foldersById: new Map(),
   documentsById: new Map(),
   childrenByParentId: new Map(),
+  lensCounts: {},
   isLoading: false,
   error: null,
   lastFetched: null,
@@ -97,7 +102,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   // =====================================================
   // Metadata Store Actions
   // =====================================================
-  setMetadata: (folders, documents) => {
+  setMetadata: (folders, documents, lensCounts) => {
     const foldersById = new Map<string, AiruFolder>();
     const documentsById = new Map<string, AiruDocumentMetadata>();
     const childrenByParentId = new Map<string | null, string[]>();
@@ -126,6 +131,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
       foldersById,
       documentsById,
       childrenByParentId,
+      lensCounts: lensCounts || {},
       lastFetched: new Date(),
       isLoading: false,
       error: null,
@@ -250,6 +256,29 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
     });
   },
 
+  incrementLensCount: (folderId) => {
+    const { lensCounts } = get();
+    set({
+      lensCounts: {
+        ...lensCounts,
+        [folderId]: (lensCounts[folderId] || 0) + 1,
+      },
+    });
+  },
+
+  decrementLensCount: (folderId) => {
+    const { lensCounts } = get();
+    const currentCount = lensCounts[folderId] || 0;
+    if (currentCount > 0) {
+      set({
+        lensCounts: {
+          ...lensCounts,
+          [folderId]: currentCount - 1,
+        },
+      });
+    }
+  },
+
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -258,6 +287,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
       foldersById: new Map(),
       documentsById: new Map(),
       childrenByParentId: new Map(),
+      lensCounts: {},
       documentContentById: new Map(),
       loadingDocumentIds: new Set(),
       isLoading: false,
@@ -359,11 +389,14 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   },
 
   getFolderCounts: (folderId) => {
-    const { getFoldersByParent, getDocumentsByFolder } = get();
+    const { getFoldersByParent, getDocumentsByFolder, lensCounts } = get();
     
     // Direct counts
     const directFolders = getFoldersByParent(folderId);
     const directFiles = getDocumentsByFolder(folderId);
+    
+    // Get lens count for this folder
+    const lensCount = lensCounts[folderId] || 0;
     
     // Recursive counts (sub folders and files)
     const countRecursive = (parentId: string): { folders: number; files: number } => {
@@ -390,6 +423,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
       directFiles: directFiles.length,
       subFolders: subCounts.folders - directFolders.length, // Exclude direct folders
       subFiles: subCounts.files - directFiles.length, // Exclude direct files
+      lensCount,
     };
   },
 

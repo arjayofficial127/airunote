@@ -14,6 +14,7 @@ import { FolderViewLayout } from '@/components/airunote/components/FolderViewLay
 import { CreateFolderModal } from '@/components/airunote/components/CreateFolderModal';
 import { CreateDocumentModal } from '@/components/airunote/components/CreateDocumentModal';
 import { CreateFolderLensModal } from '@/components/airunote/components/CreateFolderLensModal';
+import { EditLensModal } from '@/components/airunote/components/EditLensModal';
 import { MoveFolderModal } from '@/components/airunote/components/MoveFolderModal';
 import { MoveDocumentModal } from '@/components/airunote/components/MoveDocumentModal';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
@@ -23,12 +24,13 @@ import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useDeleteFolder } from '@/components/airunote/hooks/useDeleteFolder';
 import { useDeleteDocument } from '@/components/airunote/hooks/useDeleteDocument';
-import { useFolderLenses, useLens, useUpdateLensItems } from '@/hooks/useAirunoteLenses';
+import { useFolderLenses, useLens, useUpdateLensItems, useUpdateFolderLens, useDeleteLens } from '@/hooks/useAirunoteLenses';
 import { buildLensProjection } from '@/components/airunote/utils/lensProjection';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
 import Link from 'next/link';
 import type { AiruFolder, AiruDocument } from '@/components/airunote/types';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 import type { LensItemInput } from '@/lib/api/airunoteLensesApi';
 
 export default function FolderViewPage() {
@@ -47,6 +49,9 @@ export default function FolderViewPage() {
   const [isCreateFolderModalOpen, setIsCreateFolderModalOpen] = useState(false);
   const [isCreateDocumentModalOpen, setIsCreateDocumentModalOpen] = useState(false);
   const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
+  const [isEditLensModalOpen, setIsEditLensModalOpen] = useState(false);
+  const [editingLens, setEditingLens] = useState<AiruLens | null>(null);
+  const [deleteLensModal, setDeleteLensModal] = useState<AiruLens | null>(null);
   const [isPasteDockOpen, setIsPasteDockOpen] = useState(false);
   const [moveFolderModal, setMoveFolderModal] = useState<AiruFolder | null>(null);
   const [moveDocumentModal, setMoveDocumentModal] = useState<AiruDocument | null>(null);
@@ -117,6 +122,12 @@ export default function FolderViewPage() {
 
   // Hook for updating lens items
   const updateLensItems = useUpdateLensItems(orgId || undefined, selectedLensId || undefined);
+  
+  // Hook for updating folder lens
+  const updateFolderLens = useUpdateFolderLens(orgId || undefined, folderId || undefined);
+  
+  // Hook for deleting lens
+  const deleteLens = useDeleteLens(orgId || undefined, folderId || undefined);
 
   // Build lens projection when lens data is available
   const lensProjection = useMemo(() => {
@@ -182,12 +193,7 @@ export default function FolderViewPage() {
     [updateLensItems]
   );
 
-  // Filter lenses for switcher (show ALL lenses, not just one per type)
-  const availableLenses = useMemo(() => {
-    return folderLenses.filter((lens) => 
-      ['box', 'board', 'canvas', 'book'].includes(lens.type)
-    );
-  }, [folderLenses]);
+  // availableLenses removed - now handled by ViewSwitcher in FolderViewLayout
 
   // Build breadcrumb path from store (for clickable navigation)
   const breadcrumbPath: Array<{ id: string; name: string }> = [];
@@ -309,54 +315,12 @@ export default function FolderViewPage() {
     lensData.lens.type === 'canvas' &&
     !isLoadingLens;
 
+  // Determine current view mode based on selected lens
+  const currentViewMode: 'grid' | 'tree' | 'lens' = 
+    selectedLensId && shouldRenderBoardLens || shouldRenderCanvasLens ? 'lens' : 'grid';
+
   return (
     <>
-      {/* Lens Switcher UI - Shows ALL lenses */}
-      <div className="px-8 pt-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-2 flex-wrap">
-          {availableLenses.map((lens) => {
-            const isActive = selectedLensId === lens.id;
-            const typeLabels: Record<string, string> = {
-              box: 'Box',
-              board: 'Board',
-              canvas: 'Canvas',
-              book: 'Book',
-            };
-
-            return (
-              <button
-                key={lens.id}
-                onClick={() => setSelectedLensId(lens.id)}
-                className={`
-                  px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2
-                  ${isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                  }
-                `}
-                title={lens.name}
-              >
-                <span className="text-xs opacity-75">
-                  {typeLabels[lens.type] || lens.type}
-                </span>
-                <span>{lens.name}</span>
-              </button>
-            );
-          })}
-          {/* Always show + Lens button */}
-          <button
-            onClick={() => setIsCreateLensModalOpen(true)}
-            className="px-4 py-2 rounded-md text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1 border-2 border-dashed border-gray-300 dark:border-gray-600"
-            title="Create new lens"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>+ Lens</span>
-          </button>
-        </div>
-      </div>
-
       {/* Render Board Lens if active */}
       {shouldRenderBoardLens ? (
         <div className="p-8">
@@ -403,6 +367,10 @@ export default function FolderViewPage() {
           await refetchFolderLenses();
           // Auto-select the new lens
           setSelectedLensId(lens.id);
+        }}
+        selectedLensId={selectedLensId}
+        onLensSelected={(lensId: string | null) => {
+          setSelectedLensId(lensId);
         }}
         />
       )}
@@ -511,6 +479,52 @@ export default function FolderViewPage() {
           folderId={folderId}
           orgId={orgId || orgIdFromParams}
           userId={userId || ''}
+        />
+      )}
+
+      {/* Edit Lens Modal */}
+      {editingLens && (
+        <EditLensModal
+          isOpen={isEditLensModalOpen}
+          onClose={() => {
+            setIsEditLensModalOpen(false);
+            setEditingLens(null);
+          }}
+          onSuccess={async (updatedLens) => {
+            // Refetch folder lenses to get the updated lens
+            await refetchFolderLenses();
+            setIsEditLensModalOpen(false);
+            setEditingLens(null);
+          }}
+          lens={editingLens}
+          orgId={orgId || orgIdFromParams}
+          folderId={folderId}
+        />
+      )}
+
+      {/* Delete Lens Modal */}
+      {deleteLensModal && (
+        <DeleteConfirmationModal
+          isOpen={!!deleteLensModal}
+          onClose={() => setDeleteLensModal(null)}
+          onConfirm={async () => {
+            if (!orgId) return;
+            await deleteLens.mutateAsync({ lensId: deleteLensModal.id });
+            // If deleted lens was selected, switch to first available lens or null
+            if (selectedLensId === deleteLensModal.id) {
+              const remainingLenses = folderLenses.filter((l) => l.id !== deleteLensModal.id);
+              if (remainingLenses.length > 0) {
+                setSelectedLensId(remainingLenses[0].id);
+              } else {
+                setSelectedLensId(null);
+              }
+            }
+            setDeleteLensModal(null);
+          }}
+          title="Delete Lens"
+          message="Are you sure you want to delete this lens? This action cannot be undone."
+          itemName={deleteLensModal.name}
+          isDeleting={deleteLens.isPending}
         />
       )}
     </>

@@ -27,10 +27,12 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import type { AiruLens } from '@/lib/api/airunoteLensesApi';
+import type { AiruLens, AiruLensItem, ViewMode } from '@/lib/api/airunoteLensesApi';
 import type { LensItemInput } from '@/lib/api/airunoteLensesApi';
 import { FileTypeChip } from '../components/FileTypeChip';
 import { getFolderTypeIcon } from '../utils/folderTypeIcon';
+import { resolveDocumentViewMode } from '../utils/resolveDocumentViewMode';
+import { useDocumentViewPreferences } from '../stores/useDocumentViewPreferences';
 
 interface BoardColumn {
   id: string;
@@ -49,21 +51,7 @@ interface BoardLensProps {
     name?: string;
     humanId?: string;
   }>;
-  lensItems: Array<{
-    id: string;
-    lensId: string;
-    entityId: string;
-    entityType: 'document' | 'folder';
-    columnId: string | null;
-    order: number | null;
-    x: number | null;
-    y: number | null;
-    metadata: {
-      viewMode?: 'icon' | 'preview' | 'full' | 'scroll';
-    };
-    createdAt: string;
-    updatedAt: string;
-  }>;
+  lensItems: AiruLensItem[];
   onPersist: (items: LensItemInput[]) => Promise<void>;
 }
 
@@ -71,10 +59,12 @@ interface BoardCardProps {
   id: string;
   type: 'document' | 'folder';
   title: string;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode | null) => void;
   isDragging?: boolean;
 }
 
-function BoardCard({ id, type, title, isDragging }: BoardCardProps) {
+function BoardCard({ id, type, title, viewMode, onViewModeChange, isDragging }: BoardCardProps) {
   const params = useParams();
   const orgIdFromParams = params.orgId as string;
   const {
@@ -142,9 +132,13 @@ interface BoardColumnProps {
     humanId?: string;
   }>;
   columnId: string;
+  itemsMap: Map<string, AiruLensItem>;
+  lens: AiruLens;
+  globalDefaultView: ViewMode;
+  onViewModeChange: (entityId: string, mode: ViewMode | null) => void;
 }
 
-function BoardColumnComponent({ column, items, columnId }: BoardColumnProps) {
+function BoardColumnComponent({ column, items, columnId, itemsMap, lens, globalDefaultView, onViewModeChange }: BoardColumnProps) {
   const itemIds = items.map((item) => item.id);
   const { setNodeRef, isOver } = useDroppable({
     id: columnId,
@@ -176,14 +170,24 @@ function BoardColumnComponent({ column, items, columnId }: BoardColumnProps) {
               No items
             </div>
           ) : (
-            items.map((item) => (
-              <BoardCard
-                key={item.id}
-                id={item.id}
-                type={item.type}
-                title={item.title}
-              />
-            ))
+            items.map((item) => {
+              const lensItem = itemsMap.get(item.id);
+              const resolvedViewMode = resolveDocumentViewMode({
+                lensItemViewMode: lensItem?.viewMode ?? null,
+                lensDefaultView: (lens.metadata as { presentation?: { defaultView?: ViewMode } })?.presentation?.defaultView,
+                globalDefaultView,
+              });
+              return (
+                <BoardCard
+                  key={item.id}
+                  id={item.id}
+                  type={item.type}
+                  title={item.title}
+                  viewMode={resolvedViewMode}
+                  onViewModeChange={(mode) => onViewModeChange(item.id, mode)}
+                />
+              );
+            })
           )}
         </div>
       </SortableContext>
@@ -200,6 +204,7 @@ export function BoardLens({
 }: BoardLensProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [localItems, setLocalItems] = useState(lensItems);
+  const globalDefaultView = useDocumentViewPreferences((state) => state.globalDefaultView);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -332,6 +337,7 @@ export function BoardLens({
           order: null,
           x: null,
           y: null,
+          viewMode: null,
           metadata: {},
           createdAt: '',
           updatedAt: '',
@@ -394,20 +400,81 @@ export function BoardLens({
               column={column}
               items={items}
               columnId={column.id}
+              itemsMap={itemsMap}
+              lens={lens}
+              globalDefaultView={globalDefaultView}
+              onViewModeChange={async (entityId, mode) => {
+                const item = children.find((c) => c.id === entityId);
+                if (!item) return;
+
+                // Update local state
+                setLocalItems((prev) => {
+                  const existing = prev.find((li) => li.entityId === entityId);
+                  if (existing) {
+                    return prev.map((li) =>
+                      li.entityId === entityId ? { ...li, viewMode: mode } : li
+                    );
+                  } else {
+                    return [
+                      ...prev,
+                      {
+                        id: '',
+                        lensId: lens.id,
+                        entityId,
+                        entityType: item.type,
+                        columnId: null,
+                        order: null,
+                        x: null,
+                        y: null,
+                        viewMode: mode,
+                        metadata: {},
+                        createdAt: '',
+                        updatedAt: '',
+                      },
+                    ];
+                  }
+                });
+
+                // Persist to server
+                try {
+                  await onPersist([
+                    {
+                      entityId,
+                      entityType: item.type,
+                      viewMode: mode,
+                    },
+                  ]);
+                } catch (error) {
+                  console.error('Failed to persist view mode:', error);
+                  // Revert on error
+                  setLocalItems(lensItems);
+                }
+              }}
             />
           );
         })}
       </div>
 
       <DragOverlay>
-        {activeItem ? (
-          <BoardCard
-            id={activeItem.id}
-            type={activeItem.type}
-            title={activeItem.title}
-            isDragging={true}
-          />
-        ) : null}
+        {activeItem ? (() => {
+          const lensItem = itemsMap.get(activeItem.id);
+          const resolvedViewMode = resolveDocumentViewMode({
+            lensItemViewMode: lensItem?.viewMode ?? null,
+            lensDefaultView: (lens.metadata as { presentation?: { defaultView?: ViewMode } })?.presentation?.defaultView,
+            globalDefaultView,
+          });
+          return (
+            <BoardCard
+              key={activeItem.id}
+              id={activeItem.id}
+              type={activeItem.type}
+              title={activeItem.title}
+              viewMode={resolvedViewMode}
+              onViewModeChange={() => {}}
+              isDragging={true}
+            />
+          );
+        })() : null}
       </DragOverlay>
     </DndContext>
   );
