@@ -7,6 +7,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchFolderLenses,
+  fetchDesktopLenses,
   fetchLens,
   patchLensItems,
   updateFolderLens,
@@ -35,6 +36,28 @@ export function useFolderLenses(orgId?: string, folderId?: string) {
       return response.data.lenses;
     },
     enabled: !!orgId && !!folderId,
+    staleTime: 60 * 1000, // 60 seconds minimum
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Hook for fetching all desktop/saved lenses for an org
+ */
+export function useDesktopLenses(orgId?: string) {
+  return useQuery<AiruLens[]>({
+    queryKey: ['desktop-lenses', orgId],
+    queryFn: async () => {
+      if (!orgId) {
+        throw new Error('orgId is required');
+      }
+      const response = await fetchDesktopLenses(orgId);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to fetch desktop lenses');
+      }
+      return response.data.lenses;
+    },
+    enabled: !!orgId,
     staleTime: 60 * 1000, // 60 seconds minimum
     refetchOnWindowFocus: false,
   });

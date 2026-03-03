@@ -163,24 +163,29 @@ export function ViewSwitcher({
                   </button>
                 );
               })}
+
+              {/* Create New Lens Option - Inside dropdown for better UX */}
+              {folderId && (
+                <>
+                  <div className="border-t border-gray-200 my-1" />
+                  <button
+                    onClick={() => {
+                      onCreateLens();
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm transition-colors text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Create New Lens...</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
       </div>
-
-      {/* + Lens Button - Always show if folderId exists */}
-      {folderId && (
-        <button
-          onClick={onCreateLens}
-          className="px-3 py-1 text-sm rounded-md transition-colors duration-150 bg-gray-200 text-gray-700 hover:bg-gray-300 flex items-center gap-1"
-          title="Create Lens"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Lens
-        </button>
-      )}
     </div>
   );
 }

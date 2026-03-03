@@ -53,6 +53,16 @@ export type LensItemInput = {
 };
 
 /**
+ * Fetch all desktop/saved lenses for an org
+ */
+export async function fetchDesktopLenses(
+  orgId: string
+): Promise<AirunoteApiResponse<{ lenses: AiruLens[] }>> {
+  const response = await apiClient.get(`/orgs/${orgId}/airunote/lenses`);
+  return response.data;
+}
+
+/**
  * Fetch all lenses for a folder
  */
 export async function fetchFolderLenses(

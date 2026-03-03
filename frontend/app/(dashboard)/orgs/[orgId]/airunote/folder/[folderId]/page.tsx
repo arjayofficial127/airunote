@@ -28,6 +28,7 @@ import { useFolderLenses, useLens, useUpdateLensItems, useUpdateFolderLens, useD
 import { buildLensProjection } from '@/components/airunote/utils/lensProjection';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
+import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import Link from 'next/link';
 import type { AiruFolder, AiruDocument } from '@/components/airunote/types';
 import type { AiruLens } from '@/lib/api/airunoteLensesApi';
@@ -106,6 +107,7 @@ export default function FolderViewPage() {
 
   // Local state for lens switching
   const [selectedLensId, setSelectedLensId] = useState<string | null>(activeLensId);
+  const [desiredViewMode, setDesiredViewMode] = useState<'grid' | 'tree' | null>(null);
 
   // Update selected lens when active lens changes
   useEffect(() => {
@@ -315,38 +317,100 @@ export default function FolderViewPage() {
     lensData.lens.type === 'canvas' &&
     !isLoadingLens;
 
+  // Debug logging
+  console.log('[FolderPage] View rendering decision:', {
+    selectedLensId,
+    lensDataExists: !!lensData,
+    lensType: lensData?.lens.type,
+    isLoadingLens,
+    shouldRenderBoardLens,
+    shouldRenderCanvasLens,
+    boardChildrenCount: boardChildren.length,
+  });
+
   // Determine current view mode based on selected lens
   const currentViewMode: 'grid' | 'tree' | 'lens' = 
-    selectedLensId && shouldRenderBoardLens || shouldRenderCanvasLens ? 'lens' : 'grid';
+    (selectedLensId && (shouldRenderBoardLens || shouldRenderCanvasLens)) ? 'lens' : 'grid';
+
+  // Handle view change from LensToolbar
+  const handleViewChangeFromToolbar = useCallback((view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
+    if (view === 'grid' || view === 'tree') {
+      // Clear lens selection and set desired view mode
+      setSelectedLensId(null);
+      setDesiredViewMode(view);
+    } else {
+      // Set lens selection and clear desired view mode
+      setSelectedLensId(lensId || null);
+      setDesiredViewMode(null);
+    }
+  }, []);
 
   return (
     <>
       {/* Render Board Lens if active */}
-      {shouldRenderBoardLens ? (
+      {selectedLensId && isLoadingLens ? (
         <div className="p-8">
-          <BoardLens
-            orgId={orgId || orgIdFromParams}
-            lens={lensData.lens}
-            items={boardChildren}
-            lensItems={lensData.items}
-            onPersist={handleBoardPersist}
-          />
+          <div className="flex items-center justify-center h-64">
+            <div className="text-gray-500">Loading lens...</div>
+          </div>
         </div>
-      ) : shouldRenderCanvasLens ? (
-        <div className="h-screen overflow-hidden">
-          {isLoadingLens ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-gray-500">Loading canvas...</div>
-            </div>
-          ) : (
-            <CanvasLens
+      ) : shouldRenderBoardLens && lensData ? (
+        <div className="h-screen overflow-hidden relative">
+          <LensToolbar
+            viewMode="lens"
+            selectedLensId={selectedLensId}
+            currentLens={lensData.lens}
+            lenses={folderLenses}
+            folderId={folderId}
+            orgId={orgId || orgIdFromParams}
+            onViewChange={handleViewChangeFromToolbar}
+            onCreateLens={() => setIsCreateLensModalOpen(true)}
+            onEditLens={(lens) => {
+              // TODO: Implement edit lens
+              console.log('Edit lens:', lens);
+            }}
+            onDeleteLens={(lens) => {
+              // TODO: Implement delete lens
+              console.log('Delete lens:', lens);
+            }}
+          />
+          <div className="p-8">
+            <BoardLens
               orgId={orgId || orgIdFromParams}
               lens={lensData.lens}
               items={boardChildren}
-              lensItems={lensData.items || []}
+              lensItems={lensData.items}
               onPersist={handleBoardPersist}
             />
-          )}
+          </div>
+        </div>
+      ) : shouldRenderCanvasLens && lensData ? (
+        <div className="h-screen overflow-hidden relative">
+          <LensToolbar
+            viewMode="lens"
+            selectedLensId={selectedLensId}
+            currentLens={lensData.lens}
+            lenses={folderLenses}
+            folderId={folderId}
+            orgId={orgId || orgIdFromParams}
+            onViewChange={handleViewChangeFromToolbar}
+            onCreateLens={() => setIsCreateLensModalOpen(true)}
+            onEditLens={(lens) => {
+              // TODO: Implement edit lens
+              console.log('Edit lens:', lens);
+            }}
+            onDeleteLens={(lens) => {
+              // TODO: Implement delete lens
+              console.log('Delete lens:', lens);
+            }}
+          />
+          <CanvasLens
+            orgId={orgId || orgIdFromParams}
+            lens={lensData.lens}
+            items={boardChildren}
+            lensItems={lensData.items || []}
+            onPersist={handleBoardPersist}
+          />
         </div>
       ) : (
         <FolderViewLayout
@@ -372,6 +436,7 @@ export default function FolderViewPage() {
         onLensSelected={(lensId: string | null) => {
           setSelectedLensId(lensId);
         }}
+        defaultViewMode={desiredViewMode || undefined}
         />
       )}
 

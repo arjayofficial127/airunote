@@ -42,6 +42,41 @@ function isValidViewMode(mode: unknown): boolean {
 }
 
 /**
+ * GET /
+ * Get all desktop/saved lenses for the org
+ */
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orgId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      });
+    }
+
+    if (!isUuidLike(orgId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const repository = container.resolve(AirunoteRepository);
+    const lenses = await repository.getDesktopLenses(orgId);
+
+    res.status(200).json({
+      success: true,
+      data: { lenses },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * GET /folders/:folderId/lenses
  * Get all lenses for a folder
  */

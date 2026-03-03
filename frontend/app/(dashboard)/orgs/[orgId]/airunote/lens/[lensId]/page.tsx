@@ -8,14 +8,15 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
-import { useLens, useUpdateLensItems } from '@/hooks/useAirunoteLenses';
+import { useLens, useUpdateLensItems, useDesktopLenses } from '@/hooks/useAirunoteLenses';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
+import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import { DocumentList } from '@/components/airunote/components/DocumentList';
 import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
@@ -38,6 +39,8 @@ export default function LensViewPage() {
   const userId = authSession.user?.id;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isLensSwitcherOpen, setIsLensSwitcherOpen] = useState(false);
+  const lensSwitcherRef = useRef<HTMLDivElement>(null);
 
   // Fetch lens and documents via GET /lenses/:id
   const { data: lensData, isLoading, error } = useLens(
@@ -45,8 +48,30 @@ export default function LensViewPage() {
     lensId || undefined
   );
 
+  // Fetch all desktop/saved lenses for switching
+  const { data: desktopLenses = [] } = useDesktopLenses(orgId || orgIdFromParams);
+
   const lens = lensData?.lens || null;
   const lensItems = lensData?.items || [];
+
+  // Close lens switcher when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (lensSwitcherRef.current && !lensSwitcherRef.current.contains(event.target as Node)) {
+        setIsLensSwitcherOpen(false);
+      }
+    };
+
+    if (isLensSwitcherOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isLensSwitcherOpen]);
+
+  // Filter to only canvas/board desktop/saved lenses
+  const availableLenses = desktopLenses.filter(
+    (l) => (l.type === 'canvas' || l.type === 'board') && l.folderId === null
+  );
 
   // Hook for updating lens items
   const updateLensItems = useUpdateLensItems(orgId || orgIdFromParams, lensId || undefined);
@@ -146,22 +171,79 @@ export default function LensViewPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{lens.name}</h1>
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-900">{lens.name}</h1>
+              {/* Lens Switcher - Only show if there are other lenses */}
+              {availableLenses.length > 1 && (
+                <div className="relative" ref={lensSwitcherRef}>
+                  <button
+                    onClick={() => setIsLensSwitcherOpen(!isLensSwitcherOpen)}
+                    className="px-3 py-1 text-sm rounded-md transition-colors duration-150 flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                    title="Switch lens"
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        isLensSwitcherOpen ? 'transform rotate-180' : ''
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Switch
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isLensSwitcherOpen && (
+                    <div className="absolute left-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                      <div className="py-1">
+                        {availableLenses.map((l) => {
+                          const isActive = l.id === lensId;
+                          const typeLabel = l.type === 'canvas' ? 'Canvas' : l.type === 'board' ? 'Board' : l.type;
+                          return (
+                            <button
+                              key={l.id}
+                              onClick={() => {
+                                router.push(`/orgs/${orgIdFromParams}/airunote/lens/${l.id}`);
+                                setIsLensSwitcherOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                                isActive
+                                  ? 'bg-blue-50 text-blue-600 font-medium'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs opacity-75">{typeLabel}</span>
+                                <span>{l.name}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             <p className="text-sm text-gray-600 mt-1">
               {items.length > 0 ? items.length : documentMetadata.length} {items.length > 0 ? 'item' : 'document'}{items.length !== 1 && documentMetadata.length !== 1 ? 's' : ''}
               {lens.folderId === null && lens.type === 'desktop' && ' (Desktop Lens)'}
               {lens.folderId === null && lens.type === 'saved' && ' (Saved View)'}
             </p>
           </div>
-          {lens.type === 'saved' && (
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
-            >
-              Edit View
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {lens.type === 'saved' && (
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
+              >
+                Edit View
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -180,7 +262,26 @@ export default function LensViewPage() {
           />
         ) : lens.type === 'canvas' && lens.id ? (
           // Unified: Canvas view using CanvasLens (same as folder pages)
-          <div className="h-screen overflow-hidden">
+          <div className="h-screen overflow-hidden relative">
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={lensId}
+              currentLens={lens}
+              lenses={availableLenses}
+              folderId={null}
+              orgId={orgId}
+              onViewChange={(view, newLensId) => {
+                if (view === 'grid' || view === 'tree') {
+                  router.push(`/orgs/${orgIdFromParams}/airunote`);
+                } else if (newLensId) {
+                  router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                }
+              }}
+              onCreateLens={() => {
+                // Navigate to home to create desktop lens
+                router.push(`/orgs/${orgIdFromParams}/airunote`);
+              }}
+            />
             <CanvasLens
               orgId={orgId}
               lens={lens}
@@ -191,14 +292,35 @@ export default function LensViewPage() {
           </div>
         ) : lens.type === 'board' && lens.id ? (
           // Unified: Board view using BoardLens (same as folder pages)
-          <div className="p-8">
-            <BoardLens
+          <div className="h-screen overflow-hidden relative">
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={lensId}
+              currentLens={lens}
+              lenses={availableLenses}
+              folderId={null}
               orgId={orgId}
-              lens={lens}
-              items={items}
-              lensItems={lensItems}
-              onPersist={handlePersist}
+              onViewChange={(view, newLensId) => {
+                if (view === 'grid' || view === 'tree') {
+                  router.push(`/orgs/${orgIdFromParams}/airunote`);
+                } else if (newLensId) {
+                  router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                }
+              }}
+              onCreateLens={() => {
+                // Navigate to home to create desktop lens
+                router.push(`/orgs/${orgIdFromParams}/airunote`);
+              }}
             />
+            <div className="p-8">
+              <BoardLens
+                orgId={orgId}
+                lens={lens}
+                items={items}
+                lensItems={lensItems}
+                onPersist={handlePersist}
+              />
+            </div>
           </div>
         ) : (
           // Fallback: DocumentList for box/book types

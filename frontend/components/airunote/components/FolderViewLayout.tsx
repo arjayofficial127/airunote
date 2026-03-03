@@ -41,6 +41,7 @@ interface FolderViewLayoutProps {
   hideHeader?: boolean; // Hide header block (for Home page)
   onLensSelected?: (lensId: string | null) => void; // Callback when lens is selected
   selectedLensId?: string | null; // External lens selection (from parent)
+  defaultViewMode?: 'grid' | 'tree'; // Default view mode when switching from lens
 }
 
 export function FolderViewLayout({
@@ -60,10 +61,18 @@ export function FolderViewLayout({
   hideHeader = false,
   onLensSelected,
   selectedLensId: externalSelectedLensId,
+  defaultViewMode,
 }: FolderViewLayoutProps) {
   const params = useParams();
   const orgIdFromParams = params.orgId as string;
-  const [viewMode, setViewMode] = useState<'grid' | 'tree' | 'lens'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'tree' | 'lens'>(defaultViewMode || 'grid');
+  
+  // Update view mode when defaultViewMode changes (e.g., when switching from lens)
+  useEffect(() => {
+    if (defaultViewMode && (defaultViewMode === 'grid' || defaultViewMode === 'tree')) {
+      setViewMode(defaultViewMode);
+    }
+  }, [defaultViewMode]);
   const [internalSelectedLensId, setInternalSelectedLensId] = useState<string | null>(null);
   
   // Use external selectedLensId if provided, otherwise use internal state

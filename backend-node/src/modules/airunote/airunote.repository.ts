@@ -2641,6 +2641,45 @@ export class AirunoteRepository {
   }
 
   /**
+   * Get all desktop/saved lenses for an org (where folderId is null)
+   */
+  async getDesktopLenses(
+    orgId: string,
+    tx?: Transaction
+  ): Promise<AiruLens[]> {
+    const dbInstance = tx ?? db;
+    // Get all folders in org to verify org membership
+    const orgFolders = await dbInstance
+      .select({ id: airuFoldersTable.id })
+      .from(airuFoldersTable)
+      .where(eq(airuFoldersTable.orgId, orgId))
+      .limit(1);
+
+    if (orgFolders.length === 0) {
+      return []; // Org doesn't exist or has no folders
+    }
+
+    // Get desktop/saved lenses (folderId is null)
+    const lenses = await dbInstance
+      .select()
+      .from(airuLensesTable)
+      .where(isNull(airuLensesTable.folderId))
+      .orderBy(desc(airuLensesTable.createdAt));
+
+    return lenses.map((lens) => ({
+      id: lens.id,
+      folderId: lens.folderId,
+      name: lens.name,
+      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      isDefault: lens.isDefault,
+      metadata: (lens.metadata as Record<string, unknown>) || {},
+      query: (lens.query as Record<string, unknown> | null) || null,
+      createdAt: lens.createdAt,
+      updatedAt: lens.updatedAt,
+    }));
+  }
+
+  /**
    * Create a new lens
    */
   async createLens(

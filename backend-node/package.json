@@ -13,6 +13,7 @@
     "test:coverage": "jest --coverage",
     "db:generate": "drizzle-kit generate:pg",
     "db:migrate": "tsx src/infrastructure/db/drizzle/migrate.ts",
+    "db:migrate:view-mode": "tsx run-view-mode-migration.ts",
     "db:seed": "tsx src/infrastructure/db/drizzle/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
