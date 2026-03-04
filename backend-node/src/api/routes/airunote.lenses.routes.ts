@@ -330,6 +330,42 @@ router.post('/folders/:folderId/lenses', async (req: Request, res: Response, nex
 });
 
 /**
+ * POST /folders/:folderId/lenses/:lensId/set-default
+ * Set an existing folder lens as the default lens for that folder
+ */
+router.post('/folders/:folderId/lenses/:lensId/set-default', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orgId, folderId, lensId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Authentication required', code: 'UNAUTHORIZED' },
+      });
+    }
+
+    if (!isUuidLike(orgId) || !isUuidLike(folderId) || !isUuidLike(lensId)) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Invalid orgId, folderId, or lensId', code: 'VALIDATION_ERROR' },
+      });
+    }
+
+    const domainService = container.resolve(AirunoteDomainService);
+
+    await domainService.switchFolderLens(folderId, lensId, orgId, userId);
+
+    res.status(200).json({
+      success: true,
+      data: {},
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * POST /:lensId/duplicate
  * Duplicate a lens
  */

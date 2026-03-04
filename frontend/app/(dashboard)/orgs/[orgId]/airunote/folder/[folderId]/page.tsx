@@ -24,7 +24,7 @@ import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useDeleteFolder } from '@/components/airunote/hooks/useDeleteFolder';
 import { useDeleteDocument } from '@/components/airunote/hooks/useDeleteDocument';
-import { useFolderLenses, useLens, useUpdateLensItems, useUpdateFolderLens, useDeleteLens } from '@/hooks/useAirunoteLenses';
+import { useFolderLenses, useLens, useUpdateLensItems, useUpdateFolderLens, useDeleteLens, useSetFolderDefaultLens } from '@/hooks/useAirunoteLenses';
 import { buildLensProjection } from '@/components/airunote/utils/lensProjection';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
@@ -130,6 +130,9 @@ export default function FolderViewPage() {
   
   // Hook for deleting lens
   const deleteLens = useDeleteLens(orgId || undefined, folderId || undefined);
+
+  // Hook for setting default lens for this folder
+  const setFolderDefaultLens = useSetFolderDefaultLens(orgId || undefined, folderId || undefined);
 
   // Build lens projection when lens data is available
   const lensProjection = useMemo(() => {
@@ -335,10 +338,17 @@ export default function FolderViewPage() {
       // Clear lens selection and set desired view mode
       setSelectedLensId(null);
       setDesiredViewMode(view);
-    } else {
-      // Set lens selection and clear desired view mode
-      setSelectedLensId(lensId || null);
+    } else if (view === 'lens') {
+      const targetLensId = lensId || null;
+      // Update local selection
+      setSelectedLensId(targetLensId);
       setDesiredViewMode(null);
+
+      // If a lens is specified, persist it as the default for this folder
+      if (targetLensId && setFolderDefaultLens.mutateAsync) {
+        // Fire and forget; errors are surfaced via the hook's own handling (e.g., toasts)
+        void setFolderDefaultLens.mutateAsync({ lensId: targetLensId });
+      }
     }
   };
 

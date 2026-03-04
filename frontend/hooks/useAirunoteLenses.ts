@@ -10,6 +10,7 @@ import {
   fetchDesktopLenses,
   fetchLens,
   patchLensItems,
+  setFolderDefaultLens,
   updateFolderLens,
   updateDesktopLens,
   deleteLens,
@@ -140,6 +141,37 @@ export function useUpdateFolderLens(orgId?: string, folderId?: string) {
       // Invalidate folder lenses and lens queries
       if (orgId && folderId) {
         queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });
+        queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
+      }
+    },
+  });
+}
+
+/**
+ * Hook for setting a folder's default lens
+ */
+export function useSetFolderDefaultLens(orgId?: string, folderId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { },
+    Error,
+    { lensId: string }
+  >({
+    mutationFn: async ({ lensId }) => {
+      if (!orgId || !folderId) {
+        throw new Error('orgId and folderId are required');
+      }
+      const response = await setFolderDefaultLens(orgId, folderId, lensId);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to set default lens');
+      }
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      if (orgId && folderId) {
+        queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });
+        // Also invalidate the specific lens, in case default-related metadata is used
         queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
       }
     },

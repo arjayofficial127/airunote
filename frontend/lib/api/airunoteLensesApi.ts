@@ -122,6 +122,20 @@ export async function updateFolderLens(
 }
 
 /**
+ * Set an existing folder lens as the default lens for that folder
+ */
+export async function setFolderDefaultLens(
+  orgId: string,
+  folderId: string,
+  lensId: string
+): Promise<AirunoteApiResponse<{ }>> {
+  const response = await apiClient.post(
+    `/orgs/${orgId}/airunote/lenses/folders/${folderId}/lenses/${lensId}/set-default`
+  );
+  return response.data;
+}
+
+/**
  * Update a desktop or saved lens
  */
 export async function updateDesktopLens(
