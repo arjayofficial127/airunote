@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
@@ -187,13 +187,10 @@ export default function FolderViewPage() {
   }, [folderId, getFoldersByParent, getDocumentsByFolder, selectedLensId, lensData]);
 
   // Handle persist for board lens
-  const handleBoardPersist = useCallback(
-    async (items: LensItemInput[]) => {
-      if (!updateLensItems.mutateAsync) return;
-      await updateLensItems.mutateAsync({ items });
-    },
-    [updateLensItems]
-  );
+  const handleBoardPersist = async (items: LensItemInput[]) => {
+    if (!updateLensItems.mutateAsync) return;
+    await updateLensItems.mutateAsync({ items });
+  };
 
   // availableLenses removed - now handled by ViewSwitcher in FolderViewLayout
 
@@ -333,7 +330,7 @@ export default function FolderViewPage() {
     (selectedLensId && (shouldRenderBoardLens || shouldRenderCanvasLens)) ? 'lens' : 'grid';
 
   // Handle view change from LensToolbar
-  const handleViewChangeFromToolbar = useCallback((view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
+  const handleViewChangeFromToolbar = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
     if (view === 'grid' || view === 'tree') {
       // Clear lens selection and set desired view mode
       setSelectedLensId(null);
@@ -343,7 +340,7 @@ export default function FolderViewPage() {
       setSelectedLensId(lensId || null);
       setDesiredViewMode(null);
     }
-  }, []);
+  };
 
   return (
     <>
