@@ -378,10 +378,8 @@ export function CanvasLens({
             entityType: draggedItem.type,
             x: newX,
             y: newY,
-            // Preserve existing metadata
-            metadata: {
-              viewMode: currentState.viewMode,
-            },
+            // Send viewMode as top-level field (not in metadata)
+            viewMode: currentState.viewMode,
           },
         ]);
       } catch (error) {

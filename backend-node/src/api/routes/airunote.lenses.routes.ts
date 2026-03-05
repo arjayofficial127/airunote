@@ -41,6 +41,11 @@ function isValidViewMode(mode: unknown): boolean {
   return typeof mode === 'string' && validModes.includes(mode);
 }
 
+function isValidLensItemViewMode(mode: unknown): boolean {
+  const validModes = ['list', 'icon', 'preview', 'full'];
+  return typeof mode === 'string' && validModes.includes(mode);
+}
+
 /**
  * GET /
  * Get all desktop/saved lenses for the org
@@ -558,6 +563,7 @@ router.patch('/:lensId/items', async (req: Request, res: Response, next: NextFun
       order?: number | null;
       x?: number | null;
       y?: number | null;
+      viewMode?: 'list' | 'icon' | 'preview' | 'full' | null;
       metadata?: AiruLensItemMetadata;
     }> = [];
 
@@ -620,6 +626,19 @@ router.patch('/:lensId/items', async (req: Request, res: Response, next: NextFun
           return res.status(400).json({
             success: false,
             error: { message: 'y must be a number or null', code: 'VALIDATION_ERROR' },
+          });
+        }
+      }
+
+      if (itemObj.viewMode !== undefined) {
+        if (itemObj.viewMode === null) {
+          validatedItem.viewMode = null;
+        } else if (isValidLensItemViewMode(itemObj.viewMode)) {
+          validatedItem.viewMode = itemObj.viewMode as 'list' | 'icon' | 'preview' | 'full';
+        } else {
+          return res.status(400).json({
+            success: false,
+            error: { message: 'viewMode must be one of: list, icon, preview, full, or null', code: 'VALIDATION_ERROR' },
           });
         }
       }
