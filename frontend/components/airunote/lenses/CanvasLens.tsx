@@ -146,7 +146,8 @@ function CanvasItem({ item, x, y, viewMode, onToggleViewMode, onViewModeChange, 
           </div>
         );
 
-      case 'full':
+      case 'full': {
+        const isFull = viewMode === 'full';
         return (
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -160,7 +161,9 @@ function CanvasItem({ item, x, y, viewMode, onToggleViewMode, onViewModeChange, 
               </span>
             </div>
             {item.type === 'document' && documentContent && (
-              <div className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-[300px] overflow-auto">
+              <div
+                className={`text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap ${isFull ? 'overflow-visible h-auto max-h-none' : 'max-h-[300px] overflow-auto'}`}
+              >
                 {documentContent}
               </div>
             )}
@@ -169,6 +172,7 @@ function CanvasItem({ item, x, y, viewMode, onToggleViewMode, onViewModeChange, 
             )}
           </div>
         );
+      }
 
       default:
         return null;
