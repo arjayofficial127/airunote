@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react';
 
 export type CanvasThemeMode = 'dark' | 'paper-white' | 'recycled-paper' | 'custom-color';
+export type LensAppearancePresetId = 'writer' | 'research' | 'study' | 'paper-desk';
 
 export interface LensCanvasTheme {
   mode: CanvasThemeMode;
   customColor: string | null;
+  presetId: LensAppearancePresetId | null;
 }
 
 export interface CanvasSurfaceTheme {
@@ -18,6 +20,21 @@ export interface CanvasNoteCardTheme {
   cardStyle: CSSProperties;
   cardClassName: string;
   swatchColor: string;
+}
+
+interface LensAppearancePreset {
+  id: LensAppearancePresetId;
+  label: string;
+  description: string;
+  canvasTheme: {
+    mode: CanvasThemeMode;
+    customColor: string | null;
+  };
+  noteCard: {
+    backgroundColor: string;
+    borderColor: string;
+    cardClassName?: string;
+  };
 }
 
 const DEFAULT_CUSTOM_COLOR = '#2f3b52';
@@ -39,6 +56,65 @@ export const CANVAS_NOTE_COLOR_OPTIONS: Array<{ value: string; label: string }> 
   { value: '#e7edf5', label: 'Slate' },
 ];
 
+export const LENS_APPEARANCE_PRESETS: LensAppearancePreset[] = [
+  {
+    id: 'writer',
+    label: 'Writer',
+    description: 'Calm paper surface with warm reading cards.',
+    canvasTheme: {
+      mode: 'paper-white',
+      customColor: null,
+    },
+    noteCard: {
+      backgroundColor: '#fff9ef',
+      borderColor: '#d7c8ab',
+      cardClassName: 'shadow-md backdrop-blur-[1px]',
+    },
+  },
+  {
+    id: 'research',
+    label: 'Research',
+    description: 'Cooler workspace with crisp, reference-friendly cards.',
+    canvasTheme: {
+      mode: 'custom-color',
+      customColor: '#2c3d59',
+    },
+    noteCard: {
+      backgroundColor: '#edf4ff',
+      borderColor: '#91a8ca',
+      cardClassName: 'shadow-md backdrop-blur-[1px]',
+    },
+  },
+  {
+    id: 'study',
+    label: 'Study',
+    description: 'Soft bright canvas with highlighter-friendly notes.',
+    canvasTheme: {
+      mode: 'custom-color',
+      customColor: '#dfe8f4',
+    },
+    noteCard: {
+      backgroundColor: '#fff7c7',
+      borderColor: '#d8c36a',
+      cardClassName: 'shadow-md backdrop-blur-[1px]',
+    },
+  },
+  {
+    id: 'paper-desk',
+    label: 'Paper Desk',
+    description: 'Textured desk surface with grounded note cards.',
+    canvasTheme: {
+      mode: 'recycled-paper',
+      customColor: null,
+    },
+    noteCard: {
+      backgroundColor: '#f6ebd7',
+      borderColor: '#bc9b70',
+      cardClassName: 'shadow-md backdrop-blur-[1px]',
+    },
+  },
+];
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -47,8 +123,20 @@ function isCanvasThemeMode(value: unknown): value is CanvasThemeMode {
   return value === 'dark' || value === 'paper-white' || value === 'recycled-paper' || value === 'custom-color';
 }
 
+function isLensAppearancePresetId(value: unknown): value is LensAppearancePresetId {
+  return value === 'writer' || value === 'research' || value === 'study' || value === 'paper-desk';
+}
+
 function readCanvasThemeCustomColor(background: Record<string, unknown> | null): string | null {
   return normalizeHexColor(background?.color) ?? normalizeHexColor(background?.customColor);
+}
+
+function getAppearancePreset(presetId: LensAppearancePresetId | null | undefined): LensAppearancePreset | null {
+  if (!presetId) {
+    return null;
+  }
+
+  return LENS_APPEARANCE_PRESETS.find((preset) => preset.id === presetId) ?? null;
 }
 
 function normalizeHexColor(value: unknown): string | null {
@@ -103,12 +191,14 @@ export function readLensCanvasTheme(metadata: Record<string, unknown> | null | u
   const appearance = isRecord(metadata?.appearance) ? metadata.appearance : null;
   const canvas = isRecord(appearance?.canvas) ? appearance.canvas : null;
   const background = isRecord(canvas?.background) ? canvas.background : null;
+  const presetId = isLensAppearancePresetId(canvas?.preset) ? canvas.preset : null;
   const mode = isCanvasThemeMode(background?.mode) ? background.mode : 'dark';
   const customColor = readCanvasThemeCustomColor(background);
 
   return {
     mode,
     customColor,
+    presetId,
   };
 }
 
@@ -125,6 +215,12 @@ export function buildLensMetadataWithCanvasTheme(
     ...(theme.mode === 'custom-color' && theme.customColor ? { color: theme.customColor } : {}),
   };
 
+  if (theme.presetId) {
+    nextCanvas.preset = theme.presetId;
+  } else if ('preset' in nextCanvas) {
+    delete nextCanvas.preset;
+  }
+
   nextAppearance.canvas = nextCanvas;
   nextMetadata.appearance = nextAppearance;
 
@@ -133,6 +229,24 @@ export function buildLensMetadataWithCanvasTheme(
 
 export function getDefaultCanvasThemeCustomColor(): string {
   return DEFAULT_CUSTOM_COLOR;
+}
+
+export function buildLensCanvasThemeFromPreset(presetId: LensAppearancePresetId): LensCanvasTheme {
+  const preset = getAppearancePreset(presetId);
+
+  if (!preset) {
+    return {
+      mode: 'dark',
+      customColor: null,
+      presetId: null,
+    };
+  }
+
+  return {
+    mode: preset.canvasTheme.mode,
+    customColor: preset.canvasTheme.customColor,
+    presetId: preset.id,
+  };
 }
 
 export function readCanvasItemNoteColorOverride(metadata: Record<string, unknown> | null | undefined): string | null {
@@ -180,6 +294,18 @@ export function resolveCanvasNoteCardTheme(theme: LensCanvasTheme, overrideColor
         borderColor: mixHexColors(normalizedOverrideColor, '#475569', 0.18),
       },
       swatchColor: normalizedOverrideColor,
+    };
+  }
+
+  const preset = getAppearancePreset(theme.presetId);
+  if (preset) {
+    return {
+      cardClassName: preset.noteCard.cardClassName ?? 'shadow-md backdrop-blur-[1px]',
+      cardStyle: {
+        backgroundColor: preset.noteCard.backgroundColor,
+        borderColor: preset.noteCard.borderColor,
+      },
+      swatchColor: preset.noteCard.backgroundColor,
     };
   }
 

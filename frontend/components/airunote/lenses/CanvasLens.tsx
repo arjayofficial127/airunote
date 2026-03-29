@@ -43,7 +43,7 @@ import {
 import {
   computeCanvasArrangement,
   type CanvasArrangePreset,
-} from '../utils/canvasArrange';
+} from '@/components/airunote/utils/canvasArrange';
 
 type CanvasLensItem = {
   id: string;
@@ -1137,7 +1137,12 @@ export function CanvasLens({
 
     lastArrangementKeyRef.current = arrangementRequest.key;
 
-    const arrangedStates = computeCanvasArrangement(arrangementRequest.preset, children);
+    const containerWidth = containerRef.current?.clientWidth ?? 0;
+    const containerHeight = containerRef.current?.clientHeight ?? 0;
+    const arrangedStates = computeCanvasArrangement(arrangementRequest.preset, children, {
+      viewportWidth: Math.max(containerWidth - resolvedContentInset.left - resolvedContentInset.right, 0),
+      viewportHeight: Math.max(containerHeight - resolvedContentInset.top - resolvedContentInset.bottom, 0),
+    });
 
     setStagedItems((prev) => {
       const nextItems = new Map(prev);
@@ -1158,7 +1163,7 @@ export function CanvasLens({
 
       return nextItems;
     });
-  }, [arrangementRequest, children]);
+  }, [arrangementRequest, children, resolvedContentInset.bottom, resolvedContentInset.left, resolvedContentInset.right, resolvedContentInset.top]);
 
   useEffect(() => {
     if (!navigationRequest) {

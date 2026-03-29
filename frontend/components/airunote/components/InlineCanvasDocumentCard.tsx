@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import MarkdownIt from 'markdown-it';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -190,20 +190,20 @@ function InlineTextDocumentCard({
     [document?.content, draftContent]
   );
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!document || !hasUnsavedChanges) {
       return;
     }
 
     await onSave(draftContent);
     setHasUnsavedChanges(false);
-  };
+  }, [document, draftContent, hasUnsavedChanges, onSave]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setDraftContent(document?.content ?? '');
     setHasUnsavedChanges(false);
     onCancel();
-  };
+  }, [document?.content, onCancel]);
 
   useEffect(() => {
     onActionsChange?.({
@@ -346,6 +346,7 @@ function InlineRichTextDocumentCard({
 }: InlineCanvasDocumentCardProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+  const documentContent = document?.content ?? null;
   const previousPlainText = useMemo(() => stripHtmlToText(document?.content ?? ''), [document?.content]);
 
   const editor = useEditor({
@@ -409,24 +410,24 @@ function InlineRichTextDocumentCard({
   }, [editor, isEditing]);
 
   useEffect(() => {
-    if (!editor || !document) {
+    if (!editor || documentContent === null) {
       return;
     }
 
-    if (!isEditing && editor.getHTML() !== document.content) {
-      editor.commands.setContent(document.content);
+    if (!isEditing && editor.getHTML() !== documentContent) {
+      editor.commands.setContent(documentContent);
       setHasUnsavedChanges(false);
     }
-  }, [document?.content, editor, isEditing]);
+  }, [documentContent, editor, isEditing]);
 
   useEffect(() => {
-    if (!editor || !document) {
+    if (!editor || documentContent === null) {
       return;
     }
 
-    editor.commands.setContent(document.content);
+    editor.commands.setContent(documentContent);
     setHasUnsavedChanges(false);
-  }, [discardChangesSignal, document?.content, editor, document]);
+  }, [discardChangesSignal, documentContent, editor]);
 
   useEffect(() => {
     onDirtyStateChange?.(hasUnsavedChanges);
@@ -438,28 +439,28 @@ function InlineRichTextDocumentCard({
     };
   }, [onDirtyStateChange]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!editor || !document || !hasUnsavedChanges) {
       return;
     }
 
     await onSave(editor.getHTML());
     setHasUnsavedChanges(false);
-  };
+  }, [document, editor, hasUnsavedChanges, onSave]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     if (editor && document) {
       editor.commands.setContent(document.content);
       setHasUnsavedChanges(false);
     }
 
     onCancel();
-  };
+  }, [document, editor, onCancel]);
 
   const diffSummary = useMemo(() => {
     const nextPlainText = editor ? editor.getText() : previousPlainText;
     return summarizeInlineDiff(previousPlainText, nextPlainText);
-  }, [editor, previousPlainText, hasUnsavedChanges]);
+  }, [editor, previousPlainText]);
 
   useEffect(() => {
     onActionsChange?.({

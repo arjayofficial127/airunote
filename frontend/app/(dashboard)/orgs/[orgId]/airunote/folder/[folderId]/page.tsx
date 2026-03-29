@@ -38,16 +38,17 @@ import {
   type CanvasPendingChangesState,
 } from '@/components/airunote/lenses/CanvasLens';
 import { LensToolbar } from '@/components/airunote/components/LensToolbar';
+import { FolderCanvasTopOverlay } from './_components/FolderCanvasTopOverlay';
 import {
-  CANVAS_ARRANGE_OPTIONS,
   type CanvasArrangePreset,
 } from '@/components/airunote/utils/canvasArrange';
 import {
-  CANVAS_THEME_OPTIONS,
+  buildLensCanvasThemeFromPreset,
   buildLensMetadataWithCanvasTheme,
   getDefaultCanvasThemeCustomColor,
   readLensCanvasTheme,
   type CanvasThemeMode,
+  type LensAppearancePresetId,
   type LensCanvasTheme,
 } from '@/components/airunote/utils/canvasTheme';
 import type { FolderCanvasPdfExportItem } from '@/components/airunote/utils/exportFolderCanvasPdf';
@@ -496,9 +497,26 @@ export default function FolderViewPage() {
       void persistCanvasTheme({
         mode,
         customColor: mode === 'custom-color' ? canvasThemeColorDraft : null,
+        presetId: null,
       });
     },
     [canvasThemeColorDraft, persistCanvasTheme]
+  );
+
+  const handleCanvasPresetChange = useCallback(
+    (presetId: LensAppearancePresetId | null) => {
+      if (!presetId) {
+        void persistCanvasTheme({
+          mode: currentCanvasTheme.mode,
+          customColor: currentCanvasTheme.customColor ?? null,
+          presetId: null,
+        });
+        return;
+      }
+
+      void persistCanvasTheme(buildLensCanvasThemeFromPreset(presetId));
+    },
+    [currentCanvasTheme.customColor, currentCanvasTheme.mode, persistCanvasTheme]
   );
 
   const handleApplyCanvasThemeColor = useCallback(() => {
@@ -509,6 +527,7 @@ export default function FolderViewPage() {
     void persistCanvasTheme({
       mode: 'custom-color',
       customColor: canvasThemeColorDraft,
+      presetId: null,
     });
   }, [canvasThemeColorDraft, currentCanvasTheme.mode, persistCanvasTheme]);
 
@@ -625,10 +644,6 @@ export default function FolderViewPage() {
         0
       ),
     [canvasNavigatorState.dirtyItemIds, canvasNavigatorState.inlineDiffByItemId]
-  );
-  const currentCanvasThemeLabel = useMemo(
-    () => CANVAS_THEME_OPTIONS.find((option) => option.value === currentCanvasTheme.mode)?.label ?? 'Dark',
-    [currentCanvasTheme.mode]
   );
   const isCanvasThemeColorDirty =
     currentCanvasTheme.mode !== 'custom-color' ||
@@ -927,298 +942,41 @@ export default function FolderViewPage() {
       ) : shouldRenderCanvasLens && lensData ? (
         <div className="relative h-screen overflow-hidden">
           <div className="pointer-events-none absolute inset-x-0 top-0 z-40 px-4 pt-4 sm:px-6 sm:pt-6">
-            <div ref={topLeftOverlayRef} className="pointer-events-auto flex w-full max-w-[min(76rem,calc(100vw-2rem))] flex-col gap-2">
-              <div className="rounded-[28px] border border-white/70 bg-white/92 p-3 shadow-[0_18px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl dark:border-gray-700/80 dark:bg-gray-900/88">
-                <div className="flex flex-wrap items-start justify-between gap-3 px-1 pb-3">
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-                      Folder Canvas
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-                      Explore, appearance, note workflow, and layout controls
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-[11px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      {boardChildren.length} canvas items
-                    </div>
-                    <div className={`rounded-full border px-3 py-1.5 text-[11px] font-medium ${layoutChangeUrgency.statusTone}`}>
-                      {canvasPendingChanges.hasPendingChanges ? `${canvasPendingChanges.changedCount} layout pending` : 'Layout synced'}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,1.2fr)_minmax(0,1.1fr)]">
-                  <section className="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/80 p-3 shadow-sm dark:border-gray-700/80 dark:from-gray-900 dark:to-gray-800/80">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                          Explore
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                          Navigation and export
-                        </div>
-                      </div>
-                      <div className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:border-sky-900/40 dark:bg-sky-900/20 dark:text-sky-300">
-                        {isCanvasNavigatorOpen ? 'Navigator on' : 'Navigator off'}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsCanvasNavigatorOpen((prev) => !prev)}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          isCanvasNavigatorOpen
-                            ? 'border-sky-600 bg-sky-600 text-white hover:bg-sky-700'
-                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-                        }`}
-                      >
-                        {isCanvasNavigatorOpen ? 'Hide Navigator' : 'Show Navigator'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleExportCanvasPdf()}
-                        disabled={isExportingCanvasPdf || boardChildren.length === 0}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          !isExportingCanvasPdf && boardChildren.length > 0
-                            ? 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700'
-                            : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                        }`}
-                      >
-                        {isExportingCanvasPdf ? 'Exporting...' : 'Export PDF'}
-                      </button>
-                    </div>
-                  </section>
-                  <section className="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/80 p-3 shadow-sm dark:border-gray-700/80 dark:from-gray-900 dark:to-gray-800/80">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                          Canvas
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                          Surface appearance
-                        </div>
-                      </div>
-                      <div className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700 dark:border-violet-900/40 dark:bg-violet-900/20 dark:text-violet-300">
-                        {currentCanvasThemeLabel}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="rounded-xl border border-gray-300 bg-white px-2 py-1.5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <select
-                          aria-label="Canvas theme"
-                          value={currentCanvasTheme.mode}
-                          onChange={(event) => handleCanvasThemeModeChange(event.target.value as CanvasThemeMode)}
-                          disabled={isSavingCanvasTheme}
-                          className="rounded-md bg-white px-2 py-1 text-sm font-medium text-gray-700 outline-none transition-colors dark:bg-gray-800 dark:text-gray-100"
-                        >
-                          {CANVAS_THEME_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value} className="bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      {currentCanvasTheme.mode === 'custom-color' && (
-                        <>
-                          <label className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">Color</span>
-                            <input
-                              type="color"
-                              value={canvasThemeColorDraft}
-                              onChange={(event) => setCanvasThemeColorDraft(event.target.value)}
-                              disabled={isSavingCanvasTheme}
-                              className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0"
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={handleApplyCanvasThemeColor}
-                            disabled={!isCanvasThemeColorDirty || isSavingCanvasTheme}
-                            className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                              isCanvasThemeColorDirty && !isSavingCanvasTheme
-                                ? 'border-violet-600 bg-violet-600 text-white hover:bg-violet-700'
-                                : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                            }`}
-                          >
-                            {isSavingCanvasTheme ? 'Saving Theme...' : 'Apply Color'}
-                          </button>
-                        </>
-                      )}
-                      {canvasThemeFeedback && (
-                        <div
-                          className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                            canvasThemeFeedback.type === 'success'
-                              ? 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/40 dark:bg-violet-900/20 dark:text-violet-300'
-                              : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'
-                          }`}
-                        >
-                          {canvasThemeFeedback.message}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                  <section className="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/80 p-3 shadow-sm dark:border-gray-700/80 dark:from-gray-900 dark:to-gray-800/80">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                          Notes
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                          Editing and note saves
-                        </div>
-                      </div>
-                      <div className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700 dark:border-cyan-900/40 dark:bg-cyan-900/20 dark:text-cyan-300">
-                        {activeCanvasNoteEditCount > 0 ? `${activeCanvasNoteEditCount} active` : `${eligibleCanvasNoteCount} available`}
-                      </div>
-                    </div>
-                    <div className="mb-2 rounded-xl border border-cyan-200 bg-cyan-50/80 px-3 py-2 text-xs font-medium text-cyan-700 dark:border-cyan-900/40 dark:bg-cyan-900/20 dark:text-cyan-300">
-                      {activeCanvasNoteEditCount > 0
-                        ? `${activeCanvasNoteEditCount} editing${dirtyCanvasNoteCount > 0 ? ` • ${dirtyCanvasNoteCount} unsaved` : ''}${dirtyCanvasNoteChangedLineCount > 0 ? ` • ${dirtyCanvasNoteChangedLineCount} changed lines` : ''}`
-                        : eligibleCanvasNoteCount > 0
-                          ? `${eligibleCanvasNoteCount} notes available`
-                          : 'No editable notes'}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleEditAllCanvasNotes}
-                        disabled={eligibleCanvasNoteCount === 0 || activeCanvasNoteEditCount === eligibleCanvasNoteCount}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          eligibleCanvasNoteCount > 0 && activeCanvasNoteEditCount !== eligibleCanvasNoteCount
-                            ? 'border-cyan-600 bg-cyan-600 text-white hover:bg-cyan-700'
-                            : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                        }`}
-                      >
-                        Edit All Notes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveCanvasNotes}
-                        disabled={dirtyCanvasNoteCount === 0 || isSavingCanvasNotes}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          dirtyCanvasNoteCount > 0 && !isSavingCanvasNotes
-                            ? 'border-cyan-700 bg-cyan-700 text-white hover:bg-cyan-800'
-                            : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                        }`}
-                      >
-                        {isSavingCanvasNotes ? 'Saving Notes...' : `Save Notes${dirtyCanvasNoteCount > 0 ? ` (${dirtyCanvasNoteCount})` : ''}`}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCancelCanvasNotes}
-                        disabled={activeCanvasNoteEditCount === 0 || isSavingCanvasNotes}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          activeCanvasNoteEditCount > 0 && !isSavingCanvasNotes
-                            ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-                            : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                        }`}
-                      >
-                        Cancel Notes
-                      </button>
-                      {canvasNotesFeedback && (
-                        <div
-                          className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                            canvasNotesFeedback.type === 'success'
-                              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/40 dark:bg-cyan-900/20 dark:text-cyan-300'
-                              : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'
-                          }`}
-                        >
-                          {canvasNotesFeedback.message}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                  <section className="rounded-2xl border border-gray-200/80 bg-gradient-to-b from-white to-gray-50/80 p-3 shadow-sm dark:border-gray-700/80 dark:from-gray-900 dark:to-gray-800/80">
-                    <div className="mb-3 flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-gray-400">
-                          Layout
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-gray-900 dark:text-white">
-                          Arrangement and staged saves
-                        </div>
-                      </div>
-                      <div className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${layoutChangeUrgency.statusTone}`}>
-                        {canvasPendingChanges.hasPendingChanges ? `${canvasPendingChanges.changedCount} unsaved` : 'All saved'}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="rounded-xl border border-gray-300 bg-white px-2 py-1.5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                        <select
-                          aria-label="Arrange canvas layout"
-                          defaultValue=""
-                          onChange={(event) => {
-                            const preset = event.target.value as CanvasArrangePreset;
-                            if (!preset) {
-                              return;
-                            }
-
-                            handleArrangeCanvas(preset);
-                            event.target.value = '';
-                          }}
-                          className="rounded-md bg-white px-2 py-1 text-sm font-medium text-gray-700 outline-none transition-colors dark:bg-gray-800 dark:text-gray-100"
-                        >
-                          <option value="" className="bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-100">Arrange</option>
-                          {CANVAS_ARRANGE_OPTIONS.map((option) => (
-                            <option key={option.preset} value={option.preset} className="bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-100">
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleSaveAllCanvasChanges()}
-                        disabled={!canvasPendingChanges.hasPendingChanges || isSavingCanvasChanges}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          canvasPendingChanges.hasPendingChanges && !isSavingCanvasChanges
-                            ? layoutChangeUrgency.saveTone
-                            : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                        }`}
-                      >
-                        {isSavingCanvasChanges
-                          ? 'Saving...'
-                          : `Save All${canvasPendingChanges.changedCount > 0 ? ` (${canvasPendingChanges.changedCount})` : ''}`}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDiscardCanvasChanges}
-                        disabled={!canvasPendingChanges.hasPendingChanges || isSavingCanvasChanges}
-                        className={`rounded-xl border px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 ${
-                          canvasPendingChanges.hasPendingChanges && !isSavingCanvasChanges
-                            ? 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
-                            : 'border-gray-300 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
-                        }`}
-                      >
-                        Discard Changes
-                      </button>
-                      {canvasSaveFeedback && (
-                        <div
-                          className={`rounded-xl border px-3 py-2 text-xs font-medium ${
-                            canvasSaveFeedback.type === 'success'
-                              ? 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300'
-                              : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'
-                          }`}
-                        >
-                          {canvasSaveFeedback.message}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                </div>
-              </div>
-              {layoutChangeUrgency.nudge && canvasPendingChanges.hasPendingChanges && !isSavingCanvasChanges && (
-                <div
-                  className={`self-start rounded-2xl border px-4 py-2.5 text-xs font-medium shadow-lg ${
-                    layoutChangeUrgency.level === 'high'
-                      ? 'border-rose-200 bg-white/95 text-rose-700 dark:border-rose-900/40 dark:bg-gray-800/95 dark:text-rose-300'
-                      : 'border-amber-200 bg-white/95 text-amber-700 dark:border-amber-900/40 dark:bg-gray-800/95 dark:text-amber-300'
-                  }`}
-                >
-                  {layoutChangeUrgency.nudge}
-                </div>
-              )}
-            </div>
+            <FolderCanvasTopOverlay
+              overlayRef={topLeftOverlayRef}
+              itemCount={boardChildren.length}
+              isNavigatorOpen={isCanvasNavigatorOpen}
+              onToggleNavigator={() => setIsCanvasNavigatorOpen((prev) => !prev)}
+              onExportPdf={() => void handleExportCanvasPdf()}
+              isExportingPdf={isExportingCanvasPdf}
+              currentCanvasPresetId={currentCanvasTheme.presetId ?? null}
+              onCanvasPresetChange={handleCanvasPresetChange}
+              currentCanvasThemeMode={currentCanvasTheme.mode}
+              currentCanvasThemeColorDraft={canvasThemeColorDraft}
+              onCanvasThemeModeChange={handleCanvasThemeModeChange}
+              onCanvasThemeColorDraftChange={setCanvasThemeColorDraft}
+              onApplyCanvasThemeColor={handleApplyCanvasThemeColor}
+              isSavingCanvasTheme={isSavingCanvasTheme}
+              isCanvasThemeColorDirty={isCanvasThemeColorDirty}
+              canvasThemeFeedback={canvasThemeFeedback}
+              activeCanvasNoteEditCount={activeCanvasNoteEditCount}
+              eligibleCanvasNoteCount={eligibleCanvasNoteCount}
+              dirtyCanvasNoteCount={dirtyCanvasNoteCount}
+              dirtyCanvasNoteChangedLineCount={dirtyCanvasNoteChangedLineCount}
+              onEditAllCanvasNotes={handleEditAllCanvasNotes}
+              onSaveCanvasNotes={handleSaveCanvasNotes}
+              onCancelCanvasNotes={handleCancelCanvasNotes}
+              isSavingCanvasNotes={isSavingCanvasNotes}
+              canvasNotesFeedback={canvasNotesFeedback}
+              hasPendingLayoutChanges={canvasPendingChanges.hasPendingChanges}
+              layoutChangedCount={canvasPendingChanges.changedCount}
+              isSavingCanvasChanges={isSavingCanvasChanges}
+              onArrangeCanvas={handleArrangeCanvas}
+              onSaveAllCanvasChanges={() => void handleSaveAllCanvasChanges()}
+              onDiscardCanvasChanges={handleDiscardCanvasChanges}
+              canvasSaveFeedback={canvasSaveFeedback}
+              layoutChangeUrgency={layoutChangeUrgency}
+            />
           </div>
           <div className="pointer-events-none absolute right-4 top-4 z-40 sm:right-6 sm:top-6">
             <div
