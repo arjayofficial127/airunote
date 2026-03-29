@@ -10,11 +10,17 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+import { eq, sql } from 'drizzle-orm';
 import { container } from '../../core/di/container';
+import { TYPES } from '../../core/di/types';
 import { AirunoteDomainService } from '../../modules/airunote/airunote.domainService';
+import { IOrgRepository } from '../../application/interfaces/IOrgRepository';
+import { AppError } from '../../core/errors/AppError';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { requireOrgMembership } from '../middleware/requireOrgMembership';
 import type { AiruFolderType } from '../../modules/airunote/airunote.repository';
+import { db } from '../../infrastructure/db/drizzle/client';
+import { airuDocumentsTable, airuFoldersTable } from '../../infrastructure/db/drizzle/schema';
 
 const router: ReturnType<typeof Router> = Router({ mergeParams: true });
 
@@ -36,6 +42,8 @@ const VALID_FOLDER_TYPES: AiruFolderType[] = [
   'contacts', 'ledger', 'journal', 'manual', 
   'notebook', 'pipeline', 'project', 'wiki'
 ];
+
+const FREE_LIMIT = Number(process.env.FREE_PLAN_LIMIT || 10);
 
 /**
  * POST /folders
@@ -329,6 +337,21 @@ router.post('/documents', async (req: Request, res: Response, next: NextFunction
         success: false,
         error: { message: 'type must be one of: TXT, MD, RTF', code: 'VALIDATION_ERROR' },
       });
+    }
+
+    const orgRepository = container.resolve<IOrgRepository>(TYPES.IOrgRepository);
+    const org = await orgRepository.findById(orgId);
+
+    if (org) {
+      const [{ count }] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(airuDocumentsTable)
+        .innerJoin(airuFoldersTable, eq(airuDocumentsTable.folderId, airuFoldersTable.id))
+        .where(eq(airuFoldersTable.orgId, orgId));
+
+      if ((org.plan || 'free') !== 'pro' && count >= FREE_LIMIT) {
+        return next(new AppError('Upgrade required to continue', 403, 'UPGRADE_REQUIRED'));
+      }
     }
 
     const domainService = container.resolve(AirunoteDomainService);
