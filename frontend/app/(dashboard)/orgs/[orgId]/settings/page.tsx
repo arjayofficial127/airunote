@@ -134,6 +134,9 @@ export default function SettingsPage() {
     window.location.href = buildCheckoutUrl(orgId, successUrl);
   };
 
+  const currentPlan = (orgSession.activeOrg?.plan || org?.plan || 'free').toLowerCase();
+  const isProPlan = currentPlan === 'pro';
+
   // Check permissions - show error if not admin
   if (permissionsLoading) {
     return (
@@ -170,7 +173,16 @@ export default function SettingsPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Organization Settings</h1>
+      <div className="mb-8 flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-gray-900">Organization Settings</h1>
+        <span
+          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+            isProPlan ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
+          }`}
+        >
+          {isProPlan ? 'Pro' : 'Free'}
+        </span>
+      </div>
 
       <div className="space-y-6">
         {/* Update Form */}
