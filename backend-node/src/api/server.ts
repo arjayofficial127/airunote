@@ -1,4 +1,4 @@
-import express, { Express, Request } from 'express';
+import express, { Express } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
@@ -192,13 +192,10 @@ export function createApp(): Express {
     },
     credentials: true,
   }));
-  app.use(express.json({
-    verify: (req, _res, buf) => {
-      (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
-    },
-  }));
   app.use(cookieParser());
   app.use(apiRateLimit);
+  app.use('/api/webhooks/lemonsqueezy', express.raw({ type: 'application/json' }), lemonSqueezyWebhooksRoutes);
+  app.use(express.json());
 
   // Root route
   app.get('/', (_req, res) => {
@@ -235,7 +232,6 @@ export function createApp(): Express {
   app.use('/api/orgs/:orgId/posts/:postId/attachments', attachmentsRoutes);
   app.use('/api/orgs/:orgId/members', membersRoutes);
   app.use('/api/dashboard', dashboardRoutes);
-  app.use('/api/webhooks/lemonsqueezy', lemonSqueezyWebhooksRoutes);
   app.use('/api/orgs/:orgId/airunote', airunoteRoutes);
   app.use('/api/orgs/:orgId/airunote/lenses', airunoteLensesRoutes);
 

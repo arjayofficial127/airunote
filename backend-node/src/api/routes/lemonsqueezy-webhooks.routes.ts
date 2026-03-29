@@ -5,34 +5,38 @@ import { TYPES } from '../../core/di/types';
 import { IOrgRepository } from '../../application/interfaces/IOrgRepository';
 
 const router: ReturnType<typeof Router> = Router();
-const VALID_EVENTS = new Set(['subscription_created', 'subscription_updated']);
+const VALID_EVENTS = new Set([
+  'subscription_created',
+  'subscription_updated',
+  'subscription_cancelled',
+  'subscription_expired',
+]);
 
 type LemonWebhookRequest = Request & {
-  rawBody?: Buffer;
+  body: Buffer;
 };
 
 router.post('/', async (req: LemonWebhookRequest, res: Response) => {
-  console.log('Webhook received:', req.body);
-
+  const rawBody = req.body;
   const signatureHeader = req.headers['x-signature'];
 
   if (!signatureHeader || Array.isArray(signatureHeader)) {
     console.log('Webhook missing signature header');
-    res.status(401).send('Unauthorized');
+    res.status(401).send('Missing signature');
     return;
   }
 
   const webhookSecret = process.env.LEMON_WEBHOOK_SECRET;
 
-  if (!webhookSecret || !req.rawBody) {
+  if (!webhookSecret || !Buffer.isBuffer(rawBody)) {
     console.log('Webhook secret or raw body missing');
-    res.status(401).send('Unauthorized');
+    res.status(401).send('Invalid signature');
     return;
   }
 
   const computedSignature = crypto
     .createHmac('sha256', webhookSecret)
-    .update(req.rawBody)
+    .update(rawBody)
     .digest('hex');
 
   const signatureBuffer = Buffer.from(signatureHeader, 'utf8');
@@ -43,16 +47,27 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
     || !crypto.timingSafeEqual(signatureBuffer, computedBuffer)
   ) {
     console.log('Webhook signature verification failed');
-    res.status(401).send('Unauthorized');
+    res.status(401).send('Invalid signature');
     return;
   }
 
-  const event = req.body;
+  let event: any;
+
+  try {
+    event = JSON.parse(rawBody.toString('utf8'));
+  } catch (error) {
+    console.log('Webhook JSON parse failed:', error);
+    res.status(400).send('Invalid payload');
+    return;
+  }
+
+  console.log('Webhook received:', event);
+
   const eventName = event?.meta?.event_name;
 
   if (!VALID_EVENTS.has(eventName)) {
     console.log('Ignoring unsupported webhook event:', eventName ?? null);
-    res.status(200).send('OK');
+    res.status(200).send('Ignored');
     return;
   }
 
