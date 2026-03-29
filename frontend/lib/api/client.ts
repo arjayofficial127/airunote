@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { tokenStorage } from './token';
 
 const DEBUG_AUTH = true;
+const AUTH_SESSION_PATHS = ['/auth/me', '/auth/me/full', '/auth/bootstrap'];
 
 // Direct backend URL (no proxy)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:4000/api';
@@ -20,6 +21,40 @@ export const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+function normalizeRequestUrl(url?: string): string {
+  if (!url) {
+    return '';
+  }
+
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      return new URL(url).pathname;
+    } catch {
+      return url;
+    }
+  }
+
+  return url;
+}
+
+function isAuthSessionRequest(url?: string): boolean {
+  const normalizedUrl = normalizeRequestUrl(url);
+  return AUTH_SESSION_PATHS.some((path) => normalizedUrl.includes(path));
+}
+
+function redirectToLogin(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const pathname = window.location.pathname;
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
+  if (!isAuthPage) {
+    window.location.href = '/login';
+  }
+}
 
 // Request interceptor: Attach Authorization header
 apiClient.interceptors.request.use(
@@ -48,19 +83,16 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error: AxiosError) => {
-    // Simple 401 handling: redirect to login
+    const requestUrl = error.config?.url;
+
+    // Only auth session validation endpoints should invalidate the whole session.
+    // Other 401s are surfaced to their local callers to avoid surprise global logouts.
     if (error.response?.status === 401) {
-      // Clear token on 401
-      tokenStorage.clearToken();
-      
-      // Redirect to login (only on client, not on auth endpoints)
-      if (typeof window !== 'undefined') {
-        const pathname = window.location.pathname;
-        const isAuthPage = pathname === '/login' || pathname === '/register';
-        
-        if (!isAuthPage) {
-          window.location.href = '/login';
-        }
+      if (isAuthSessionRequest(requestUrl)) {
+        tokenStorage.clearToken();
+        redirectToLogin();
+      } else if (DEBUG_AUTH) {
+        console.warn('[API Client] 401 returned from non-session endpoint; preserving token for explicit auth revalidation:', requestUrl);
       }
     }
 
