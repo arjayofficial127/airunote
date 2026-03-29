@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+import express, { Express, Request } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
@@ -192,7 +192,11 @@ export function createApp(): Express {
     },
     credentials: true,
   }));
-  app.use(express.json());
+  app.use(express.json({
+    verify: (req, _res, buf) => {
+      (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+    },
+  }));
   app.use(cookieParser());
   app.use(apiRateLimit);
 
