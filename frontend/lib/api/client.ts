@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { tokenStorage } from './token';
+import { openUpgradeRequiredPrompt } from '@/lib/payments/upgradeRequiredPrompt';
 
 const DEBUG_AUTH = true;
 const AUTH_SESSION_PATHS = ['/auth/me', '/auth/me/full', '/auth/bootstrap'];
@@ -84,6 +85,16 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const requestUrl = error.config?.url;
+    const errorCode = (error.response?.data as any)?.error?.code;
+    const errorMessage = (error.response?.data as any)?.error?.message;
+
+    if (errorCode === 'UPGRADE_REQUIRED' || errorMessage === 'UPGRADE_REQUIRED') {
+      openUpgradeRequiredPrompt({
+        message: errorMessage && errorMessage !== 'UPGRADE_REQUIRED'
+          ? errorMessage
+          : 'This action requires a Pro plan. Upgrade to continue.',
+      });
+    }
 
     // Only auth session validation endpoints should invalidate the whole session.
     // Other 401s are surfaced to their local callers to avoid surprise global logouts.

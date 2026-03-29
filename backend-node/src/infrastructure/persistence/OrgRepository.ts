@@ -24,7 +24,11 @@ export class OrgRepository implements IOrgRepository {
       created.slug,
       created.description,
       created.isActive,
-      created.createdAt
+      created.createdAt,
+      created.plan,
+      created.subscriptionStatus,
+      created.subscriptionId,
+      created.currentPeriodEnd
     );
   }
 
@@ -43,7 +47,11 @@ export class OrgRepository implements IOrgRepository {
       org.slug,
       org.description,
       org.isActive,
-      org.createdAt
+      org.createdAt,
+      org.plan,
+      org.subscriptionStatus,
+      org.subscriptionId,
+      org.currentPeriodEnd
     );
   }
 
@@ -62,7 +70,11 @@ export class OrgRepository implements IOrgRepository {
       org.slug,
       org.description,
       org.isActive,
-      org.createdAt
+      org.createdAt,
+      org.plan,
+      org.subscriptionStatus,
+      org.subscriptionId,
+      org.currentPeriodEnd
     );
   }
 
@@ -75,6 +87,10 @@ export class OrgRepository implements IOrgRepository {
         description: orgsTable.description,
         isActive: orgsTable.isActive,
         createdAt: orgsTable.createdAt,
+        plan: orgsTable.plan,
+        subscriptionStatus: orgsTable.subscriptionStatus,
+        subscriptionId: orgsTable.subscriptionId,
+        currentPeriodEnd: orgsTable.currentPeriodEnd,
       })
       .from(orgsTable)
       .innerJoin(orgUsersTable, eq(orgsTable.id, orgUsersTable.orgId))
@@ -88,7 +104,11 @@ export class OrgRepository implements IOrgRepository {
           o.slug,
           o.description,
           o.isActive,
-          o.createdAt
+          o.createdAt,
+          o.plan,
+          o.subscriptionStatus,
+          o.subscriptionId,
+          o.currentPeriodEnd
         )
     );
   }
@@ -106,7 +126,11 @@ export class OrgRepository implements IOrgRepository {
           o.slug,
           o.description,
           o.isActive,
-          o.createdAt
+          o.createdAt,
+          o.plan,
+          o.subscriptionStatus,
+          o.subscriptionId,
+          o.currentPeriodEnd
         )
     );
   }
@@ -130,7 +154,11 @@ export class OrgRepository implements IOrgRepository {
       updated.slug,
       updated.description,
       updated.isActive,
-      updated.createdAt
+      updated.createdAt,
+      updated.plan,
+      updated.subscriptionStatus,
+      updated.subscriptionId,
+      updated.currentPeriodEnd
     );
   }
 

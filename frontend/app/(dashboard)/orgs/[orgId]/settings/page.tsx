@@ -130,7 +130,8 @@ export default function SettingsPage() {
 
   const handleUpgrade = () => {
     if (!orgId) return;
-    window.location.href = buildCheckoutUrl(orgId);
+    const successUrl = `${window.location.origin}${window.location.pathname}?upgraded=1`;
+    window.location.href = buildCheckoutUrl(orgId, successUrl);
   };
 
   // Check permissions - show error if not admin

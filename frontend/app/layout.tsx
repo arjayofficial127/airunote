@@ -10,6 +10,7 @@ import { AuthSessionProvider } from '@/providers/AuthSessionProvider';
 import { OrgSessionProvider } from '@/providers/OrgSessionProvider';
 import { MetadataIndexProvider } from '@/providers/MetadataIndexProvider';
 import { HydratedContentProvider } from '@/providers/HydratedContentProvider';
+import { UpgradeRequiredModal } from '@/components/payments/UpgradeRequiredModal';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -37,6 +38,7 @@ export default function RootLayout({
                       {children}
                       <ConditionalFooter />
                     </div>
+                    <UpgradeRequiredModal />
                     {/* ToastContainer must be here for toasts to show globally */}
                     <ToastContainer />
                   </ErrorBoundary>

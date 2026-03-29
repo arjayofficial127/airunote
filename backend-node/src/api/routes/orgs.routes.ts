@@ -148,6 +148,10 @@ router.get('/', async (req: Request, res: Response, next) => {
           description: org.description,
           isActive: org.isActive,
           createdAt: org.createdAt,
+          plan: org.plan || 'free',
+          subscriptionStatus: org.subscriptionStatus || null,
+          subscriptionId: org.subscriptionId || null,
+          currentPeriodEnd: org.currentPeriodEnd ? org.currentPeriodEnd.toISOString() : null,
           roles,
           // Join code fields
           joinCode: joinCode?.code || null,
@@ -210,6 +214,10 @@ router.get('/:orgId', async (req: Request, res: Response, next) => {
       description: org.description,
       isActive: org.isActive,
       createdAt: org.createdAt,
+      plan: org.plan || 'free',
+      subscriptionStatus: org.subscriptionStatus || null,
+      subscriptionId: org.subscriptionId || null,
+      currentPeriodEnd: org.currentPeriodEnd ? org.currentPeriodEnd.toISOString() : null,
       roles,
       // Join code fields
       joinCode: joinCode?.code || null,

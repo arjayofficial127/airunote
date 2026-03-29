@@ -7,6 +7,10 @@ export interface Org {
   description: string | null;
   isActive: boolean;
   createdAt: string;
+  plan?: string;
+  subscriptionStatus?: string | null;
+  subscriptionId?: string | null;
+  currentPeriodEnd?: string | null;
   roles?: string[];
   // Join code fields
   joinCode?: string | null;
