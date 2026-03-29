@@ -33,6 +33,8 @@ import {
   type CanvasArrangementRequest,
   type CanvasContentInset,
   type CanvasNavigationRequest,
+  type CanvasNavigatorPanelItem,
+  type CanvasNavigatorPanelMode,
   type CanvasNavigatorState,
   type CanvasNotesRequest,
   type CanvasPendingChangesState,
@@ -92,6 +94,8 @@ export default function FolderViewPage() {
   const [canvasArrangementRequest, setCanvasArrangementRequest] = useState<CanvasArrangementRequest | null>(null);
   const [canvasNavigationRequest, setCanvasNavigationRequest] = useState<CanvasNavigationRequest | null>(null);
   const [isCanvasNavigatorOpen, setIsCanvasNavigatorOpen] = useState(false);
+  const [canvasNavigatorPresentation, setCanvasNavigatorPresentation] = useState<'overlay' | 'panel'>('overlay');
+  const [canvasNavigatorPanelMode, setCanvasNavigatorPanelMode] = useState<CanvasNavigatorPanelMode>('preview');
   const [canvasNavigatorQuery, setCanvasNavigatorQuery] = useState('');
   const [canvasNavigatorState, setCanvasNavigatorState] = useState<CanvasNavigatorState>({
     activeItemId: null,
@@ -104,6 +108,7 @@ export default function FolderViewPage() {
   const [canvasNotesRequest, setCanvasNotesRequest] = useState<CanvasNotesRequest | null>(null);
   const [isSavingCanvasNotes, setIsSavingCanvasNotes] = useState(false);
   const [isSavingCanvasTheme, setIsSavingCanvasTheme] = useState(false);
+  const [canvasThemeOverride, setCanvasThemeOverride] = useState<LensCanvasTheme | null>(null);
   const [canvasNotesFeedback, setCanvasNotesFeedback] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -213,13 +218,6 @@ export default function FolderViewPage() {
     };
 
     const projection = buildLensProjection(children, lensData.items, lensData.lens.type as 'board' | 'canvas' | 'book');
-    
-    // Console log for debugging (as requested)
-    console.log('Lens Projection:', {
-      lensId: selectedLensId,
-      lensType: lensData.lens.type,
-      projection,
-    });
 
     return projection;
   }, [lensData, selectedLensId, folderId, getFilteredFolders, getFilteredDocuments]);
@@ -233,15 +231,7 @@ export default function FolderViewPage() {
     // Filtered versions might be affected by search query or other state
     const folders = getFoldersByParent(folderId);
     const documents = getDocumentsByFolder(folderId);
-    
-    console.log('[FolderPage] boardChildren computation:', {
-      folderId,
-      foldersCount: folders.length,
-      documentsCount: documents.length,
-      selectedLensId,
-      lensType: lensData?.lens.type,
-    });
-    
+
     return [
       ...folders.map((f) => ({
         id: f.id,
@@ -256,7 +246,7 @@ export default function FolderViewPage() {
         name: d.name,
       })),
     ];
-  }, [folderId, getFoldersByParent, getDocumentsByFolder, selectedLensId, lensData]);
+  }, [folderId, getFoldersByParent, getDocumentsByFolder]);
 
   // Handle persist for board lens
   const handleBoardPersist = useCallback(async (items: LensItemInput[]) => {
@@ -268,10 +258,29 @@ export default function FolderViewPage() {
     setCanvasPendingChanges(state);
   }, []);
 
-  const currentCanvasTheme = useMemo(
+  const persistedCanvasTheme = useMemo(
     () => readLensCanvasTheme(lensData?.lens.metadata),
     [lensData?.lens.metadata]
   );
+  const currentCanvasTheme = canvasThemeOverride ?? persistedCanvasTheme;
+
+  useEffect(() => {
+    setCanvasThemeOverride(null);
+  }, [lensData?.lens.id]);
+
+  useEffect(() => {
+    if (!canvasThemeOverride) {
+      return;
+    }
+
+    if (
+      canvasThemeOverride.mode === persistedCanvasTheme.mode &&
+      canvasThemeOverride.customColor === persistedCanvasTheme.customColor &&
+      canvasThemeOverride.presetId === persistedCanvasTheme.presetId
+    ) {
+      setCanvasThemeOverride(null);
+    }
+  }, [canvasThemeOverride, persistedCanvasTheme.customColor, persistedCanvasTheme.mode, persistedCanvasTheme.presetId]);
 
   useEffect(() => {
     setCanvasThemeColorDraft(currentCanvasTheme.customColor ?? getDefaultCanvasThemeCustomColor());
@@ -465,6 +474,8 @@ export default function FolderViewPage() {
         return;
       }
 
+      const previousTheme = currentCanvasTheme;
+      setCanvasThemeOverride(nextTheme);
       setIsSavingCanvasTheme(true);
       setCanvasThemeFeedback(null);
 
@@ -480,6 +491,7 @@ export default function FolderViewPage() {
           message: 'Canvas theme saved',
         });
       } catch (error) {
+        setCanvasThemeOverride(previousTheme);
         console.error('Failed to save canvas theme:', error);
         setCanvasThemeFeedback({
           type: 'error',
@@ -489,7 +501,7 @@ export default function FolderViewPage() {
         setIsSavingCanvasTheme(false);
       }
     },
-    [folderId, lensData, updateFolderLens]
+    [currentCanvasTheme, folderId, lensData, updateFolderLens]
   );
 
   const handleCanvasThemeModeChange = useCallback(
@@ -630,6 +642,25 @@ export default function FolderViewPage() {
   const canvasNavigatorDocuments = useMemo(
     () => filteredCanvasNavigatorItems.filter((item) => item.type === 'document'),
     [filteredCanvasNavigatorItems]
+  );
+  const canvasNavigatorPanelItems = useMemo<CanvasNavigatorPanelItem[]>(
+    () =>
+      filteredCanvasNavigatorItems.map((item) => ({
+        id: item.id,
+        type: item.type,
+        title: item.title,
+        isActive: canvasNavigatorState.activeItemId === item.id,
+        isFocused: canvasNavigatorState.focusedItemId === item.id,
+        isEditing: canvasNavigatorState.editingItemIds.includes(item.id),
+        isDirty: canvasNavigatorState.dirtyItemIds.includes(item.id),
+      })),
+    [
+      canvasNavigatorState.activeItemId,
+      canvasNavigatorState.dirtyItemIds,
+      canvasNavigatorState.editingItemIds,
+      canvasNavigatorState.focusedItemId,
+      filteredCanvasNavigatorItems,
+    ]
   );
   const eligibleCanvasNoteCount = useMemo(
     () => boardChildren.filter((item) => item.type === 'document').length,
@@ -865,17 +896,6 @@ export default function FolderViewPage() {
     lensData.lens.type === 'canvas' &&
     !isLoadingLens;
 
-  // Debug logging
-  console.log('[FolderPage] View rendering decision:', {
-    selectedLensId,
-    lensDataExists: !!lensData,
-    lensType: lensData?.lens.type,
-    isLoadingLens,
-    shouldRenderBoardLens,
-    shouldRenderCanvasLens,
-    boardChildrenCount: boardChildren.length,
-  });
-
   // Determine current view mode based on selected lens
   const currentViewMode: 'grid' | 'tree' | 'lens' = 
     (selectedLensId && (shouldRenderBoardLens || shouldRenderCanvasLens)) ? 'lens' : 'grid';
@@ -900,6 +920,15 @@ export default function FolderViewPage() {
     }
   };
 
+  const handleEditLensRequest = (lens: AiruLens) => {
+    setEditingLens(lens);
+    setIsEditLensModalOpen(true);
+  };
+
+  const handleDeleteLensRequest = (lens: AiruLens) => {
+    setDeleteLensModal(lens);
+  };
+
   return (
     <>
       {/* Render Board Lens if active */}
@@ -920,14 +949,8 @@ export default function FolderViewPage() {
             orgId={orgId || orgIdFromParams}
             onViewChange={handleViewChangeFromToolbar}
             onCreateLens={() => setIsCreateLensModalOpen(true)}
-            onEditLens={(lens) => {
-              // TODO: Implement edit lens
-              console.log('Edit lens:', lens);
-            }}
-            onDeleteLens={(lens) => {
-              // TODO: Implement delete lens
-              console.log('Delete lens:', lens);
-            }}
+            onEditLens={handleEditLensRequest}
+            onDeleteLens={handleDeleteLensRequest}
           />
           <div className="p-8">
             <BoardLens
@@ -990,20 +1013,15 @@ export default function FolderViewPage() {
                 lenses={folderLenses}
                 folderId={folderId}
                 orgId={orgId || orgIdFromParams}
+                placement="inline"
                 onViewChange={handleViewChangeFromToolbar}
                 onCreateLens={() => setIsCreateLensModalOpen(true)}
-                onEditLens={(lens) => {
-                  // TODO: Implement edit lens
-                  console.log('Edit lens:', lens);
-                }}
-                onDeleteLens={(lens) => {
-                  // TODO: Implement delete lens
-                  console.log('Delete lens:', lens);
-                }}
+                onEditLens={handleEditLensRequest}
+                onDeleteLens={handleDeleteLensRequest}
               />
             </div>
           </div>
-          {isCanvasNavigatorOpen && (
+          {isCanvasNavigatorOpen && canvasNavigatorPresentation === 'overlay' && (
             <div className="pointer-events-none absolute left-4 top-20 z-40 w-[min(22rem,calc(100vw-2rem))] sm:left-6 sm:top-24">
               <div className="pointer-events-auto overflow-hidden rounded-2xl border border-gray-200 bg-white/95 shadow-2xl backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">
                 <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
@@ -1014,6 +1032,13 @@ export default function FolderViewPage() {
                         Jump through folders and documents in this canvas.
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setCanvasNavigatorPresentation('panel')}
+                      className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700 transition-colors hover:bg-sky-100 dark:border-sky-900/40 dark:bg-sky-900/20 dark:text-sky-300 dark:hover:bg-sky-900/30"
+                    >
+                      Dock To Canvas
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsCanvasNavigatorOpen(false)}
@@ -1165,6 +1190,7 @@ export default function FolderViewPage() {
           <CanvasLens
             orgId={orgId || orgIdFromParams}
             lens={lensData.lens}
+            canvasTheme={currentCanvasTheme}
             items={boardChildren}
             lensItems={lensData.items || []}
             onPersist={handleBoardPersist}
@@ -1175,6 +1201,21 @@ export default function FolderViewPage() {
             arrangementRequest={canvasArrangementRequest}
             navigationRequest={canvasNavigationRequest}
             notesRequest={canvasNotesRequest}
+            navigatorPanel={
+              isCanvasNavigatorOpen && canvasNavigatorPresentation === 'panel'
+                ? {
+                    isOpen: true,
+                    mode: canvasNavigatorPanelMode,
+                    query: canvasNavigatorQuery,
+                    items: canvasNavigatorPanelItems,
+                    onQueryChange: setCanvasNavigatorQuery,
+                    onJump: handleCanvasNavigatorJump,
+                    onClose: () => setIsCanvasNavigatorOpen(false),
+                    onModeChange: setCanvasNavigatorPanelMode,
+                    onRequestOverlay: () => setCanvasNavigatorPresentation('overlay'),
+                  }
+                : null
+            }
             contentInset={canvasContentInset}
             onNavigatorStateChange={setCanvasNavigatorState}
             onNotesActionComplete={handleCanvasNotesActionComplete}

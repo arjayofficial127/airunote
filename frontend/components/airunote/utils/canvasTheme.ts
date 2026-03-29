@@ -66,9 +66,9 @@ export const LENS_APPEARANCE_PRESETS: LensAppearancePreset[] = [
       customColor: null,
     },
     noteCard: {
-      backgroundColor: '#fff9ef',
-      borderColor: '#d7c8ab',
-      cardClassName: 'shadow-md backdrop-blur-[1px]',
+      backgroundColor: '#fff4de',
+      borderColor: '#cdae78',
+      cardClassName: 'shadow-[0_14px_30px_rgba(146,98,39,0.18)] ring-1 ring-white/80',
     },
   },
   {
@@ -80,9 +80,9 @@ export const LENS_APPEARANCE_PRESETS: LensAppearancePreset[] = [
       customColor: '#2c3d59',
     },
     noteCard: {
-      backgroundColor: '#edf4ff',
-      borderColor: '#91a8ca',
-      cardClassName: 'shadow-md backdrop-blur-[1px]',
+      backgroundColor: '#e7f0ff',
+      borderColor: '#6f8fbe',
+      cardClassName: 'shadow-[0_14px_30px_rgba(37,99,235,0.18)] ring-1 ring-slate-900/5',
     },
   },
   {
@@ -94,9 +94,9 @@ export const LENS_APPEARANCE_PRESETS: LensAppearancePreset[] = [
       customColor: '#dfe8f4',
     },
     noteCard: {
-      backgroundColor: '#fff7c7',
-      borderColor: '#d8c36a',
-      cardClassName: 'shadow-md backdrop-blur-[1px]',
+      backgroundColor: '#fff2a6',
+      borderColor: '#c8a42d',
+      cardClassName: 'shadow-[0_14px_28px_rgba(202,138,4,0.18)] ring-1 ring-amber-50',
     },
   },
   {
@@ -108,9 +108,9 @@ export const LENS_APPEARANCE_PRESETS: LensAppearancePreset[] = [
       customColor: null,
     },
     noteCard: {
-      backgroundColor: '#f6ebd7',
-      borderColor: '#bc9b70',
-      cardClassName: 'shadow-md backdrop-blur-[1px]',
+      backgroundColor: '#f1dfc2',
+      borderColor: '#a97d52',
+      cardClassName: 'shadow-[0_14px_30px_rgba(120,84,47,0.2)] ring-1 ring-white/55',
     },
   },
 ];
@@ -288,10 +288,10 @@ export function resolveCanvasNoteCardTheme(theme: LensCanvasTheme, overrideColor
   if (overrideColor) {
     const normalizedOverrideColor = normalizeHexColor(overrideColor) ?? DEFAULT_NOTE_OVERRIDE_COLOR;
     return {
-      cardClassName: 'shadow-md backdrop-blur-[1px]',
+      cardClassName: 'shadow-[0_16px_34px_rgba(15,23,42,0.16)] ring-1 ring-white/70',
       cardStyle: {
         backgroundColor: normalizedOverrideColor,
-        borderColor: mixHexColors(normalizedOverrideColor, '#475569', 0.18),
+        borderColor: mixHexColors(normalizedOverrideColor, '#334155', 0.24),
       },
       swatchColor: normalizedOverrideColor,
     };
@@ -300,7 +300,7 @@ export function resolveCanvasNoteCardTheme(theme: LensCanvasTheme, overrideColor
   const preset = getAppearancePreset(theme.presetId);
   if (preset) {
     return {
-      cardClassName: preset.noteCard.cardClassName ?? 'shadow-md backdrop-blur-[1px]',
+      cardClassName: preset.noteCard.cardClassName ?? 'shadow-md',
       cardStyle: {
         backgroundColor: preset.noteCard.backgroundColor,
         borderColor: preset.noteCard.borderColor,
@@ -312,34 +312,34 @@ export function resolveCanvasNoteCardTheme(theme: LensCanvasTheme, overrideColor
   switch (theme.mode) {
     case 'paper-white':
       return {
-        cardClassName: 'shadow-md backdrop-blur-[1px]',
+        cardClassName: 'shadow-[0_12px_26px_rgba(120,113,108,0.12)] ring-1 ring-white/80',
         cardStyle: {
-          backgroundColor: '#fffaf0',
-          borderColor: '#d8ccb5',
+          backgroundColor: '#fffbf2',
+          borderColor: '#cfbea2',
         },
-        swatchColor: '#fffaf0',
+        swatchColor: '#fffbf2',
       };
     case 'recycled-paper':
       return {
-        cardClassName: 'shadow-md backdrop-blur-[1px]',
+        cardClassName: 'shadow-[0_12px_26px_rgba(120,94,58,0.16)] ring-1 ring-white/55',
         cardStyle: {
-          backgroundColor: '#fbf1de',
-          borderColor: '#c9a874',
+          backgroundColor: '#f5e7cb',
+          borderColor: '#b88d56',
         },
-        swatchColor: '#fbf1de',
+        swatchColor: '#f5e7cb',
       };
     case 'custom-color': {
       const baseColor = theme.customColor ?? DEFAULT_CUSTOM_COLOR;
       const isDarkSurface = getRelativeLuminance(baseColor) < 0.42;
       const cardColor = isDarkSurface
-        ? mixHexColors(baseColor, '#ffffff', 0.9)
-        : mixHexColors(baseColor, '#ffffff', 0.74);
+        ? mixHexColors(baseColor, '#ffffff', 0.82)
+        : mixHexColors(baseColor, '#ffffff', 0.56);
 
       return {
-        cardClassName: 'shadow-md backdrop-blur-[1px]',
+        cardClassName: 'shadow-[0_18px_38px_rgba(15,23,42,0.2)] ring-1 ring-white/24',
         cardStyle: {
           backgroundColor: cardColor,
-          borderColor: mixHexColors(baseColor, '#334155', 0.22),
+          borderColor: mixHexColors(baseColor, '#0f172a', 0.42),
         },
         swatchColor: cardColor,
       };
@@ -347,12 +347,12 @@ export function resolveCanvasNoteCardTheme(theme: LensCanvasTheme, overrideColor
     case 'dark':
     default:
       return {
-        cardClassName: 'shadow-lg backdrop-blur-[1px]',
+        cardClassName: 'shadow-[0_16px_34px_rgba(15,23,42,0.28)] ring-1 ring-slate-200/60',
         cardStyle: {
-          backgroundColor: '#f7fafc',
-          borderColor: '#94a3b8',
+          backgroundColor: '#edf3ff',
+          borderColor: '#7286a8',
         },
-        swatchColor: '#f7fafc',
+        swatchColor: '#edf3ff',
       };
   }
 }
@@ -381,30 +381,33 @@ export function resolveCanvasSurfaceTheme(theme: LensCanvasTheme): CanvasSurface
     case 'paper-white':
       return buildSurfaceTheme(
         {
-          backgroundColor: '#f7f3e8',
+          backgroundColor: '#f4ecdc',
           backgroundImage: [
-            'linear-gradient(180deg, rgba(255,255,255,0.96), rgba(244,238,224,0.98))',
-            'linear-gradient(90deg, rgba(120,113,108,0.03) 0, rgba(120,113,108,0.03) 1px, transparent 1px, transparent 24px)',
+            'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(240,230,210,0.98))',
+            'linear-gradient(0deg, rgba(148,163,184,0.07) 0, rgba(148,163,184,0.07) 1px, transparent 1px, transparent 30px)',
+            'linear-gradient(90deg, rgba(120,113,108,0.045) 0, rgba(120,113,108,0.045) 1px, transparent 1px, transparent 24px)',
+            'radial-gradient(circle at 14% 18%, rgba(255,255,255,0.5), transparent 22%)',
           ].join(','),
-          backgroundSize: '100% 100%, 24px 24px',
+          backgroundSize: '100% 100%, 100% 30px, 24px 24px, auto',
         },
-        'border border-stone-200/80 shadow-inner',
+        'border border-stone-300/90 shadow-inner',
         'text-stone-600'
       );
     case 'recycled-paper':
       return buildSurfaceTheme(
         {
-          backgroundColor: '#e9dcc4',
+          backgroundColor: '#e2cca4',
           backgroundImage: [
-            'linear-gradient(180deg, rgba(245,236,216,0.98), rgba(225,210,183,0.98))',
-            'radial-gradient(circle at 18% 22%, rgba(120,94,58,0.09) 0 1.2px, transparent 1.4px)',
-            'radial-gradient(circle at 76% 34%, rgba(120,94,58,0.07) 0 1px, transparent 1.3px)',
-            'radial-gradient(circle at 44% 72%, rgba(120,94,58,0.06) 0 1.1px, transparent 1.5px)',
-            'linear-gradient(90deg, rgba(146,119,84,0.04) 0, rgba(146,119,84,0.04) 1px, transparent 1px, transparent 28px)',
+            'linear-gradient(180deg, rgba(246,236,212,0.99), rgba(221,202,169,0.99))',
+            'radial-gradient(circle at 18% 22%, rgba(120,94,58,0.13) 0 1.2px, transparent 1.4px)',
+            'radial-gradient(circle at 76% 34%, rgba(120,94,58,0.11) 0 1px, transparent 1.3px)',
+            'radial-gradient(circle at 44% 72%, rgba(120,94,58,0.09) 0 1.1px, transparent 1.5px)',
+            'linear-gradient(90deg, rgba(146,119,84,0.075) 0, rgba(146,119,84,0.075) 1px, transparent 1px, transparent 28px)',
+            'linear-gradient(0deg, rgba(120,94,58,0.04) 0, rgba(120,94,58,0.04) 1px, transparent 1px, transparent 32px)',
           ].join(','),
-          backgroundSize: '100% 100%, 180px 180px, 220px 220px, 200px 200px, 28px 28px',
+          backgroundSize: '100% 100%, 180px 180px, 220px 220px, 200px 200px, 28px 28px, 100% 32px',
         },
-        'border border-amber-200/80 shadow-inner',
+        'border border-amber-400/80 shadow-inner',
         'text-amber-900/70'
       );
     case 'custom-color':
@@ -412,12 +415,15 @@ export function resolveCanvasSurfaceTheme(theme: LensCanvasTheme): CanvasSurface
         {
           backgroundColor: customColor,
           backgroundImage: [
-            'linear-gradient(180deg, rgba(255,255,255,0.09), rgba(0,0,0,0.14))',
-            'radial-gradient(circle at 20% 18%, rgba(255,255,255,0.08), transparent 28%)',
-            'radial-gradient(circle at 78% 14%, rgba(255,255,255,0.06), transparent 24%)',
+            'linear-gradient(180deg, rgba(255,255,255,0.1), rgba(0,0,0,0.22))',
+            'linear-gradient(0deg, rgba(255,255,255,0.055) 0, rgba(255,255,255,0.055) 1px, transparent 1px, transparent 32px)',
+            'linear-gradient(90deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 28px)',
+            'radial-gradient(circle at 20% 18%, rgba(255,255,255,0.12), transparent 28%)',
+            'radial-gradient(circle at 78% 14%, rgba(255,255,255,0.1), transparent 24%)',
           ].join(','),
+          backgroundSize: '100% 100%, 100% 32px, 28px 28px, auto, auto',
         },
-        'border border-white/10 shadow-inner',
+        'border border-white/15 shadow-inner',
         'text-white/72'
       );
     case 'dark':
@@ -427,9 +433,12 @@ export function resolveCanvasSurfaceTheme(theme: LensCanvasTheme): CanvasSurface
           backgroundColor: '#0f172a',
           backgroundImage: [
             'linear-gradient(180deg, rgba(15,23,42,0.98), rgba(2,6,23,1))',
-            'radial-gradient(circle at 18% 20%, rgba(56,189,248,0.10), transparent 28%)',
-            'radial-gradient(circle at 82% 12%, rgba(148,163,184,0.10), transparent 22%)',
+            'linear-gradient(0deg, rgba(56,189,248,0.09) 0, rgba(56,189,248,0.09) 1px, transparent 1px, transparent 34px)',
+            'linear-gradient(90deg, rgba(148,163,184,0.035) 0, rgba(148,163,184,0.035) 1px, transparent 1px, transparent 28px)',
+            'radial-gradient(circle at 18% 20%, rgba(56,189,248,0.14), transparent 28%)',
+            'radial-gradient(circle at 82% 12%, rgba(148,163,184,0.14), transparent 22%)',
           ].join(','),
+          backgroundSize: '100% 100%, 100% 34px, 28px 28px, auto, auto',
         },
         'border border-slate-700/70 shadow-inner',
         'text-slate-300'

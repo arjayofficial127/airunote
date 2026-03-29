@@ -32,6 +32,7 @@ interface InlineCanvasDocumentCardProps {
   enableKeyboardShortcuts?: boolean;
   onActionsChange?: (actions: InlineCanvasDocumentCardActions | null) => void;
   onDiffSummaryChange?: (summary: InlineCanvasDocumentDiffSummary | null) => void;
+  hideActionBar?: boolean;
 }
 
 export interface InlineCanvasDocumentCardActions {
@@ -114,7 +115,7 @@ interface InlineCanvasActionBarProps {
 
 function InlineCanvasActionBar({ canSave, isSaving, onSave, onCancel }: InlineCanvasActionBarProps) {
   return (
-    <div className="mt-3 flex shrink-0 items-center justify-end gap-2">
+    <div className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-gray-200/80 pt-3 dark:border-gray-700/80">
       <button
         type="button"
         onClick={onCancel}
@@ -151,6 +152,7 @@ function InlineTextDocumentCard({
   enableKeyboardShortcuts = false,
   onActionsChange,
   onDiffSummaryChange,
+  hideActionBar = false,
 }: InlineCanvasDocumentCardProps) {
   const [draftContent, setDraftContent] = useState(document?.content ?? '');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -269,7 +271,7 @@ function InlineTextDocumentCard({
     return (
       <div
         ref={containerRef}
-        className={`flex h-full min-h-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-2 ${className ?? ''}`}
+        className={`flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-2 ${className ?? ''}`}
         onFocusCapture={() => setIsKeyboardActive(true)}
         onBlurCapture={(event) => {
           if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -280,34 +282,38 @@ function InlineTextDocumentCard({
         }}
       >
         <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-gray-200 bg-white">
-          <MonacoEditor
-            height="100%"
-            language={document.type === 'MD' ? 'markdown' : 'plaintext'}
-            value={draftContent}
-            onChange={(value) => {
-              const nextContent = value ?? '';
-              setDraftContent(nextContent);
-              setHasUnsavedChanges(nextContent !== (document.content ?? ''));
-            }}
-            theme="vs-light"
-            options={{
-              minimap: { enabled: false },
-              fontSize: 13,
-              wordWrap: 'on',
-              lineNumbers: 'off',
-              glyphMargin: false,
-              folding: false,
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-            }}
-          />
+          <div className="h-full min-h-0 overflow-hidden rounded-md">
+            <MonacoEditor
+              height="100%"
+              language={document.type === 'MD' ? 'markdown' : 'plaintext'}
+              value={draftContent}
+              onChange={(value) => {
+                const nextContent = value ?? '';
+                setDraftContent(nextContent);
+                setHasUnsavedChanges(nextContent !== (document.content ?? ''));
+              }}
+              theme="vs-light"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 13,
+                wordWrap: 'on',
+                lineNumbers: 'off',
+                glyphMargin: false,
+                folding: false,
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+              }}
+            />
+          </div>
         </div>
-        <InlineCanvasActionBar
-          canSave={hasUnsavedChanges}
-          isSaving={isSaving}
-          onSave={() => void handleSave()}
-          onCancel={handleCancel}
-        />
+        {!hideActionBar ? (
+          <InlineCanvasActionBar
+            canSave={hasUnsavedChanges}
+            isSaving={isSaving}
+            onSave={() => void handleSave()}
+            onCancel={handleCancel}
+          />
+        ) : null}
       </div>
     );
   }
@@ -322,7 +328,7 @@ function InlineTextDocumentCard({
   }
 
   return (
-    <div className={`h-full overflow-auto whitespace-pre-wrap break-words text-xs text-gray-700 ${className ?? ''}`}>
+    <div className={`h-full min-h-0 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words text-xs text-gray-700 ${className ?? ''}`}>
       {document.content || 'Empty document'}
     </div>
   );
@@ -343,6 +349,7 @@ function InlineRichTextDocumentCard({
   enableKeyboardShortcuts = false,
   onActionsChange,
   onDiffSummaryChange,
+  hideActionBar = false,
 }: InlineCanvasDocumentCardProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
@@ -377,7 +384,7 @@ function InlineRichTextDocumentCard({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none h-full min-h-full focus:outline-none',
+        class: 'prose prose-sm max-w-none h-full min-h-full overflow-y-auto break-words focus:outline-none',
       },
       handleKeyDown: (_, event) => {
         if (!isEditing || !enableKeyboardShortcuts || !isKeyboardActive || event.isComposing) {
@@ -524,7 +531,7 @@ function InlineRichTextDocumentCard({
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col rounded-md border border-gray-200 bg-gray-50 p-3 ${className ?? ''}`}
+      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-3 ${className ?? ''}`}
       onFocusCapture={() => setIsKeyboardActive(true)}
       onBlurCapture={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -534,10 +541,10 @@ function InlineRichTextDocumentCard({
         setIsKeyboardActive(false);
       }}
     >
-      <div className="min-h-0 flex-1 overflow-hidden rounded-md bg-white px-3 py-2 [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:overflow-auto">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-md bg-white px-3 py-2 [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:overflow-x-hidden">
         {editor ? <EditorContent editor={editor} /> : null}
       </div>
-      {isEditing ? (
+      {isEditing && !hideActionBar ? (
         <InlineCanvasActionBar
           canSave={hasUnsavedChanges}
           isSaving={isSaving}

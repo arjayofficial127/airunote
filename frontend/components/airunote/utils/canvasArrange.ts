@@ -74,7 +74,7 @@ function getTargetViewMode(preset: CanvasArrangePreset, itemType: CanvasArrangeI
     case 'tidy-grid':
       return 'list';
     case 'compact-grid':
-      return 'icon';
+      return 'list';
     case 'preview-wall':
       return itemType === 'document' ? 'preview' : 'icon';
     case 'full-reading-layout':
@@ -87,14 +87,14 @@ function getTargetViewMode(preset: CanvasArrangePreset, itemType: CanvasArrangeI
 function getFootprint(viewMode: ViewMode): ItemFootprint {
   switch (viewMode) {
     case 'icon':
-      return { width: 148, height: 136 };
+      return { width: 120, height: 112 };
     case 'preview':
-      return { width: 248, height: 236 };
+      return { width: 320, height: 256 };
     case 'full':
-      return { width: 344, height: 348 };
+      return { width: 436, height: 420 };
     case 'list':
     default:
-      return { width: 216, height: 104 };
+      return { width: 228, height: 104 };
   }
 }
 
@@ -293,18 +293,18 @@ export function computeCanvasArrangement(
     case 'compact-grid':
       return buildAdaptiveGridLayout(items, targetModes, frame, {
         minColumns: 3,
-        maxColumns: 8,
-        minGapX: 12,
-        maxGapX: 24,
-        gapY: 18,
+        maxColumns: 7,
+        minGapX: 10,
+        maxGapX: 18,
+        gapY: 14,
       });
     case 'preview-wall':
       return buildAdaptiveGridLayout(items, targetModes, frame, {
         minColumns: 2,
-        maxColumns: 5,
-        minGapX: 20,
-        maxGapX: 36,
-        gapY: 28,
+        maxColumns: 4,
+        minGapX: 22,
+        maxGapX: 40,
+        gapY: 32,
       });
     case 'full-reading-layout':
       return buildAdaptiveReadingLayout(items, targetModes, frame);
@@ -312,10 +312,10 @@ export function computeCanvasArrangement(
     default:
       return buildAdaptiveGridLayout(items, targetModes, frame, {
         minColumns: 2,
-        maxColumns: 5,
-        minGapX: 18,
-        maxGapX: 34,
-        gapY: 24,
+        maxColumns: 4,
+        minGapX: 22,
+        maxGapX: 40,
+        gapY: 28,
       });
   }
 }
