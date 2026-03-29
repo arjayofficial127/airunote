@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter, usePathname, useParams, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname, useParams } from 'next/navigation';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { orgsApi, type Org } from '@/lib/api/orgs';
 
@@ -69,7 +69,6 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
-  const searchParams = useSearchParams();
   
   const [status, setStatus] = useState<OrgSessionStatus>('idle');
   const [orgs, setOrgs] = useState<Org[]>([]);
@@ -94,7 +93,6 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
   
   // Track previous authInvalidateKey to detect changes
   const previousAuthInvalidateKeyRef = useRef<number>(authSession.authInvalidateKey);
-  const handledUpgradeReturnRef = useRef<string | null>(null);
   
   // Keep ref in sync with state
   useEffect(() => {
@@ -122,30 +120,6 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       isSyncingRouteRef.current = false;
     }
   }, [authSession.authInvalidateKey]);
-
-  useEffect(() => {
-    const upgraded = searchParams?.get('upgraded');
-    const searchKey = searchParams?.toString() || '';
-
-    if (upgraded !== '1') {
-      handledUpgradeReturnRef.current = null;
-      return;
-    }
-
-    if (handledUpgradeReturnRef.current === searchKey) {
-      return;
-    }
-
-    handledUpgradeReturnRef.current = searchKey;
-
-    void refetch().finally(() => {
-      const nextParams = new URLSearchParams(searchParams?.toString() || '');
-      nextParams.delete('upgraded');
-      const nextQuery = nextParams.toString();
-      const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-      router.replace(nextUrl);
-    });
-  }, [pathname, refetch, router, searchParams]);
 
   /**
    * Load org list

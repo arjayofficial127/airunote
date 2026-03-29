@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
@@ -11,6 +12,7 @@ import { OrgSessionProvider } from '@/providers/OrgSessionProvider';
 import { MetadataIndexProvider } from '@/providers/MetadataIndexProvider';
 import { HydratedContentProvider } from '@/providers/HydratedContentProvider';
 import { UpgradeRequiredModal } from '@/components/payments/UpgradeRequiredModal';
+import { UpgradeReturnHandler } from '@/components/payments/UpgradeReturnHandler';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,6 +35,9 @@ export default function RootLayout({
               <HydratedContentProvider>
                 <QueryProvider>
                   <ErrorBoundary>
+                    <Suspense fallback={null}>
+                      <UpgradeReturnHandler />
+                    </Suspense>
                     <ConnectivityAwarenessBanner />
                     <div className="flex flex-col min-h-screen">
                       {children}
