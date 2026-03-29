@@ -2,7 +2,7 @@ import { injectable } from 'tsyringe';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/drizzle/client';
 import { orgsTable, orgUsersTable } from '../db/drizzle/schema';
-import { IOrgRepository } from '../../application/interfaces/IOrgRepository';
+import { IOrgRepository, UpdateOrgSubscriptionData } from '../../application/interfaces/IOrgRepository';
 import { Org } from '../../domain/entities/Org';
 
 @injectable()
@@ -132,6 +132,18 @@ export class OrgRepository implements IOrgRepository {
       updated.isActive,
       updated.createdAt
     );
+  }
+
+  async updateOrgSubscription(orgId: string, data: UpdateOrgSubscriptionData): Promise<void> {
+    await db
+      .update(orgsTable)
+      .set({
+        plan: data.plan,
+        subscriptionStatus: data.subscriptionStatus,
+        subscriptionId: data.subscriptionId,
+        currentPeriodEnd: data.currentPeriodEnd,
+      })
+      .where(eq(orgsTable.id, orgId));
   }
 
   async delete(id: string): Promise<void> {

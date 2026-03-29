@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { orgsApi, type Org } from '@/lib/api/orgs';
+import { buildCheckoutUrl } from '@/lib/payments/checkout';
 import JoinCodeSettings from '@/components/orgs/JoinCodeSettings';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import UnauthorizedError from '@/components/errors/UnauthorizedError';
@@ -127,6 +128,11 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpgrade = () => {
+    if (!orgId) return;
+    window.location.href = buildCheckoutUrl(orgId);
+  };
+
   // Check permissions - show error if not admin
   if (permissionsLoading) {
     return (
@@ -169,6 +175,16 @@ export default function SettingsPage() {
         {/* Update Form */}
         <div className="bg-white rounded-lg shadow p-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">General Information</h2>
+
+          <div className="mb-6 flex justify-end">
+            <button
+              type="button"
+              onClick={handleUpgrade}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+            >
+              Upgrade
+            </button>
+          </div>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">

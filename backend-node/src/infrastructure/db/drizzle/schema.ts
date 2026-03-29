@@ -50,6 +50,10 @@ export const orgsTable = pgTable('orgs', {
   name: varchar('name', { length: 255 }).notNull(),
   slug: varchar('slug', { length: 255 }).notNull().unique(),
   description: text('description'),
+  plan: varchar('plan', { length: 50 }).notNull().default('free'),
+  subscriptionStatus: varchar('subscription_status', { length: 50 }),
+  subscriptionId: varchar('subscription_id', { length: 255 }),
+  currentPeriodEnd: timestamp('current_period_end'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
