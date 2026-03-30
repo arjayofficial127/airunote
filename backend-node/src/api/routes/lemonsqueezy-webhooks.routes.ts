@@ -8,6 +8,7 @@ import { db } from '../../infrastructure/db/drizzle/client';
 import { webhookEventsTable } from '../../infrastructure/db/drizzle/schema';
 
 const router: ReturnType<typeof Router> = Router();
+const WEBHOOK_TIMEOUT_MS = 5000;
 const VALID_EVENTS = new Set([
   'subscription_created',
   'subscription_updated',
@@ -35,8 +36,61 @@ type LemonWebhookEvent = {
   };
 };
 
+type DatabaseErrorLike = {
+  code?: string;
+  message?: string;
+};
+
+function isDuplicateKeyError(error: unknown): error is DatabaseErrorLike {
+  return typeof error === 'object'
+    && error !== null
+    && 'code' in error
+    && (error as DatabaseErrorLike).code === '23505';
+}
+
+async function withDatabaseRetry<T>(
+  operation: string,
+  task: () => Promise<T>,
+  retries = 2,
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+      console.error('Webhook database operation failed', {
+        operation,
+        attempt,
+        retries,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
+      if (attempt > retries) {
+        break;
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 router.post('/', async (req: LemonWebhookRequest, res: Response) => {
-  try {
+  let didRespond = false;
+
+  const sendResponse = (status: number, body: string) => {
+    if (didRespond || res.headersSent) {
+      return;
+    }
+
+    didRespond = true;
+    res.status(status).send(body);
+  };
+
+  const processWebhook = async () => {
+    try {
     const rawBody = req.body;
     const signatureHeader = req.headers['x-signature'];
 
@@ -49,7 +103,7 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       console.warn('Webhook missing signature header', {
         ip: req.ip,
       });
-      res.status(401).send('Missing signature');
+      sendResponse(401, 'Missing signature');
       return;
     }
 
@@ -59,7 +113,7 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       console.warn('Webhook secret or raw body missing', {
         ip: req.ip,
       });
-      res.status(401).send('Invalid signature');
+      sendResponse(401, 'Invalid signature');
       return;
     }
 
@@ -78,7 +132,7 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       console.warn('Webhook signature verification failed', {
         ip: req.ip,
       });
-      res.status(401).send('Invalid signature');
+      sendResponse(401, 'Invalid signature');
       return;
     }
 
@@ -95,7 +149,7 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined,
       });
-      res.status(400).send('Invalid payload');
+      sendResponse(400, 'Invalid payload');
       return;
     }
 
@@ -113,31 +167,45 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       console.log('Webhook missing event id', {
         eventName: eventName ?? null,
       });
-      res.status(200).send('OK');
+      sendResponse(200, 'OK');
       return;
     }
 
-    const existing = await db
+    const existing = await withDatabaseRetry('find processed webhook event', async () => db
       .select()
       .from(webhookEventsTable)
       .where(eq(webhookEventsTable.id, eventId))
-      .limit(1);
+      .limit(1));
 
     if (existing.length > 0) {
       console.warn('Duplicate webhook ignored', {
         eventId,
       });
-      res.status(200).send('OK');
+      sendResponse(200, 'OK');
       return;
     }
 
-    await db.insert(webhookEventsTable).values({ id: eventId });
+    try {
+      await withDatabaseRetry('insert processed webhook event', async () => db
+        .insert(webhookEventsTable)
+        .values({ id: eventId }));
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        console.warn('Duplicate webhook ignored', {
+          eventId,
+        });
+        sendResponse(200, 'OK');
+        return;
+      }
+
+      throw error;
+    }
 
     if (!eventName || !VALID_EVENTS.has(eventName)) {
       console.log('Webhook event ignored', {
         eventName: eventName ?? null,
       });
-      res.status(200).send('Ignored');
+      sendResponse(200, 'OK');
       return;
     }
 
@@ -150,19 +218,19 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
         eventId,
         eventName,
       });
-      res.status(200).send('OK');
+      sendResponse(200, 'OK');
       return;
     }
 
     const orgRepository = container.resolve<IOrgRepository>(TYPES.IOrgRepository);
-    const org = await orgRepository.findById(orgId);
+    const org = await withDatabaseRetry('find organization for webhook', async () => orgRepository.findById(orgId));
 
     if (!org) {
       console.log('Invalid orgId', {
         orgId,
         eventId,
       });
-      res.status(200).send('OK');
+      sendResponse(200, 'OK');
       return;
     }
 
@@ -192,14 +260,14 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       renewsAt: renewsAt ?? null,
     });
 
-    await orgRepository.updateOrgSubscription(orgId, {
+    await withDatabaseRetry('update organization subscription from webhook', async () => orgRepository.updateOrgSubscription(orgId, {
       plan,
       subscriptionStatus,
       subscriptionId: event?.data?.id ?? null,
       currentPeriodEnd: renewsAt
         ? new Date(renewsAt)
         : null,
-    });
+    }));
 
     console.log('Org subscription updated', {
       orgId,
@@ -207,13 +275,44 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       subscriptionStatus,
     });
 
-    res.status(200).send('OK');
+      sendResponse(200, 'OK');
+    } catch (error) {
+      console.error('Webhook processing error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      sendResponse(500, 'Internal Server Error');
+    }
+  };
+
+  let timeoutHandle: NodeJS.Timeout | undefined;
+
+  try {
+    await Promise.race([
+      processWebhook(),
+      new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error('Timeout')), WEBHOOK_TIMEOUT_MS);
+      }),
+    ]);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Timeout') {
+      console.error('Webhook processing error', {
+        error: error.message,
+        stack: error.stack,
+      });
+      sendResponse(200, 'OK');
+      return;
+    }
+
     console.error('Webhook processing error', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     });
-    res.status(500).send('Internal Server Error');
+    sendResponse(500, 'Internal Server Error');
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle);
+    }
   }
 });
 
