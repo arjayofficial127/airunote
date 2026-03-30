@@ -5,7 +5,7 @@ import * as dotenv from 'dotenv';
 import { container } from '../core/di/container';
 import { TYPES } from '../core/di/types';
 import { errorMiddleware } from './middleware/errorMiddleware';
-import { apiRateLimit } from './middleware/rateLimitMiddleware';
+import { apiRateLimit, webhookRateLimit } from './middleware/rateLimitMiddleware';
 
 // Routes
 import authRoutes from './routes/auth.routes';
@@ -193,8 +193,13 @@ export function createApp(): Express {
     credentials: true,
   }));
   app.use(cookieParser());
+  app.use(
+    '/api/webhooks/lemonsqueezy',
+    webhookRateLimit,
+    express.raw({ type: 'application/json' }),
+    lemonSqueezyWebhooksRoutes,
+  );
   app.use(apiRateLimit);
-  app.use('/api/webhooks/lemonsqueezy', express.raw({ type: 'application/json' }), lemonSqueezyWebhooksRoutes);
   app.use(express.json());
 
   // Root route

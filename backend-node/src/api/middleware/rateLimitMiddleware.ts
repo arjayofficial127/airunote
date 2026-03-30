@@ -55,3 +55,16 @@ export const apiRateLimit = rateLimit({
   skipSuccessfulRequests: false, // Keep this false to count all requests
 });
 
+export const webhookRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: 'Too many requests',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => req.ip || 'unknown',
+  handler: (req, res) => {
+    console.warn('Webhook rate limit exceeded', { ip: req.ip });
+    res.status(429).send('Too Many Requests');
+  },
+});
+
