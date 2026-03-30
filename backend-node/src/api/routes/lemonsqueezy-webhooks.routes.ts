@@ -73,6 +73,8 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
 
   const orgId = event?.data?.attributes?.custom_data?.orgId;
   const attributes = event?.data?.attributes;
+  const status = attributes?.status;
+  const renewsAt = attributes?.renews_at;
 
   if (!event?.data || !attributes || !orgId) {
     console.log('Webhook missing orgId:', req.body);
@@ -89,21 +91,42 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
     return;
   }
 
+  let plan = org.plan ?? 'free';
+  let subscriptionStatus = status ?? org.subscriptionStatus ?? null;
+
+  if (status === 'active') {
+    plan = 'pro';
+    subscriptionStatus = 'active';
+  } else if (status === 'cancelled') {
+    plan = 'free';
+    subscriptionStatus = 'cancelled';
+  } else if (status === 'expired') {
+    plan = 'free';
+    subscriptionStatus = 'expired';
+  } else {
+    console.log('Webhook received unhandled subscription status:', {
+      orgId,
+      eventName,
+      status: status ?? null,
+    });
+  }
+
   await orgRepository.updateOrgSubscription(orgId, {
-    plan: attributes.status === 'active' ? 'pro' : org.plan ?? 'free',
-    subscriptionStatus: attributes.status ?? null,
+    plan,
+    subscriptionStatus,
     subscriptionId: event?.data?.id ?? null,
-    currentPeriodEnd: attributes.renews_at
-      ? new Date(attributes.renews_at)
+    currentPeriodEnd: renewsAt
+      ? new Date(renewsAt)
       : null,
   });
 
   console.log('Updated org subscription from webhook:', {
     orgId,
     eventName,
-    status: attributes.status ?? null,
+    plan,
+    status: subscriptionStatus,
     subscriptionId: event?.data?.id ?? null,
-    renewsAt: attributes.renews_at ?? null,
+    renewsAt: renewsAt ?? null,
   });
 
   res.status(200).send('OK');
