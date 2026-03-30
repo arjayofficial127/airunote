@@ -1,8 +1,11 @@
 import crypto from 'crypto';
 import { Request, Response, Router } from 'express';
+import { eq } from 'drizzle-orm';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
 import { IOrgRepository } from '../../application/interfaces/IOrgRepository';
+import { db } from '../../infrastructure/db/drizzle/client';
+import { webhookEventsTable } from '../../infrastructure/db/drizzle/schema';
 
 const router: ReturnType<typeof Router> = Router();
 const VALID_EVENTS = new Set([
@@ -14,6 +17,22 @@ const VALID_EVENTS = new Set([
 
 type LemonWebhookRequest = Request & {
   body: Buffer;
+};
+
+type LemonWebhookEvent = {
+  meta?: {
+    event_name?: string;
+  };
+  data?: {
+    id?: string;
+    attributes?: {
+      custom_data?: {
+        orgId?: string;
+      };
+      status?: string;
+      renews_at?: string | null;
+    };
+  };
 };
 
 router.post('/', async (req: LemonWebhookRequest, res: Response) => {
@@ -51,7 +70,7 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
     return;
   }
 
-  let event: any;
+  let event: LemonWebhookEvent;
 
   try {
     event = JSON.parse(rawBody.toString('utf8'));
@@ -64,8 +83,29 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
   console.log('Webhook received:', event);
 
   const eventName = event?.meta?.event_name;
+  const eventId = event?.data?.id;
 
-  if (!VALID_EVENTS.has(eventName)) {
+  if (!eventId) {
+    console.log('Webhook missing event id');
+    res.status(200).send('OK');
+    return;
+  }
+
+  const existing = await db
+    .select()
+    .from(webhookEventsTable)
+    .where(eq(webhookEventsTable.id, eventId))
+    .limit(1);
+
+  if (existing.length > 0) {
+    console.log('Duplicate webhook ignored', { eventId, eventName: eventName ?? null });
+    res.status(200).send('OK');
+    return;
+  }
+
+  await db.insert(webhookEventsTable).values({ id: eventId });
+
+  if (!eventName || !VALID_EVENTS.has(eventName)) {
     console.log('Ignoring unsupported webhook event:', eventName ?? null);
     res.status(200).send('Ignored');
     return;

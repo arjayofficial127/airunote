@@ -60,6 +60,11 @@ export const orgsTable = pgTable('orgs', {
   slugIdx: index('orgs_slug_idx').on(table.slug),
 }));
 
+export const webhookEventsTable = pgTable('webhook_events', {
+  id: varchar('id', { length: 255 }).primaryKey(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 // Role table
 export const rolesTable = pgTable('roles', {
   id: integer('id').primaryKey(),

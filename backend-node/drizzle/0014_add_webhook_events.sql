@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS "webhook_events" (
+  "id" VARCHAR(255) PRIMARY KEY,
+  "created_at" TIMESTAMP NOT NULL DEFAULT now()
+);
