@@ -134,8 +134,39 @@ export default function SettingsPage() {
     window.location.href = buildCheckoutUrl(orgId, successUrl);
   };
 
-  const currentPlan = (orgSession.activeOrg?.plan || org?.plan || 'free').toLowerCase();
+  const activeOrg = orgSession.activeOrg || org;
+  const currentPlan = (activeOrg?.plan || 'free').toLowerCase();
   const isProPlan = currentPlan === 'pro';
+  const rawSubscriptionStatus = activeOrg?.subscriptionStatus?.toLowerCase() ?? null;
+  const subscriptionStatus = rawSubscriptionStatus === 'active'
+    ? 'Active'
+    : rawSubscriptionStatus === 'cancelled'
+      ? 'Cancelled'
+      : rawSubscriptionStatus === 'expired'
+        ? 'Expired'
+        : 'Free';
+  const subscriptionStatusClassName = rawSubscriptionStatus === 'active'
+    ? 'text-emerald-600'
+    : rawSubscriptionStatus === 'cancelled'
+      ? 'text-orange-600'
+      : rawSubscriptionStatus === 'expired'
+        ? 'text-red-600'
+        : 'text-gray-500';
+  const currentPeriodEnd = activeOrg?.currentPeriodEnd
+    ? new Date(activeOrg.currentPeriodEnd)
+    : null;
+  const formattedCurrentPeriodEnd = currentPeriodEnd
+    ? new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(currentPeriodEnd)
+    : null;
+  const periodEndLabel = rawSubscriptionStatus === 'active'
+    ? 'Renews on'
+    : rawSubscriptionStatus === 'cancelled'
+      ? 'Ends on'
+      : null;
 
   // Check permissions - show error if not admin
   if (permissionsLoading) {
@@ -173,15 +204,27 @@ export default function SettingsPage() {
 
   return (
     <div className="p-8 max-w-4xl">
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-8 flex items-start gap-3">
         <h1 className="text-3xl font-bold text-gray-900">Organization Settings</h1>
-        <span
-          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-            isProPlan ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
-          }`}
-        >
-          {isProPlan ? 'Pro' : 'Free'}
-        </span>
+        <div>
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              isProPlan ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
+            }`}
+          >
+            {isProPlan ? 'Pro' : 'Free'}
+          </span>
+          <div className="mt-2 space-y-1 text-xs">
+            <p className={`font-medium ${subscriptionStatusClassName}`}>
+              {subscriptionStatus}
+            </p>
+            {formattedCurrentPeriodEnd && periodEndLabel && (
+              <p className="text-gray-500">
+                {periodEndLabel}: {formattedCurrentPeriodEnd}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">
