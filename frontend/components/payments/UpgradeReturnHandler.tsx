@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
+import { toast } from '@/lib/toast';
 
 export function UpgradeReturnHandler() {
   const router = useRouter();
@@ -26,13 +27,18 @@ export function UpgradeReturnHandler() {
 
     handledUpgradeReturnRef.current = searchKey;
 
-    void refetch().finally(() => {
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete('upgraded');
-      const nextQuery = nextParams.toString();
-      const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
-      router.replace(nextUrl);
-    });
+    void (async () => {
+      try {
+        await refetch();
+        toast("🎉 You're now on Pro!", 'success');
+      } finally {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete('upgraded');
+        const nextQuery = nextParams.toString();
+        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+        router.replace(nextUrl);
+      }
+    })();
   }, [pathname, refetch, router, searchParams]);
 
   return null;

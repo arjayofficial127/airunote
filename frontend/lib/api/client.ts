@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { tokenStorage } from './token';
 import { openUpgradeRequiredPrompt } from '@/lib/payments/upgradeRequiredPrompt';
+import { toast } from '@/lib/toast';
 
 const DEBUG_AUTH = true;
 const AUTH_SESSION_PATHS = ['/auth/me', '/auth/me/full', '/auth/bootstrap'];
@@ -92,8 +93,9 @@ apiClient.interceptors.response.use(
       openUpgradeRequiredPrompt({
         message: errorMessage && errorMessage !== 'UPGRADE_REQUIRED'
           ? errorMessage
-          : 'This action requires a Pro plan. Upgrade to continue.',
+          : "You've reached your free plan limit. Upgrade to Pro to continue creating documents.",
       });
+      toast('Upgrade required to continue', 'info', 2000);
     }
 
     // Only auth session validation endpoints should invalidate the whole session.

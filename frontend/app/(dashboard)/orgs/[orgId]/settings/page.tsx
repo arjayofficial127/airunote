@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [org, setOrg] = useState<Org | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [upgradeRedirecting, setUpgradeRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
@@ -129,7 +130,8 @@ export default function SettingsPage() {
   };
 
   const handleUpgrade = () => {
-    if (!orgId) return;
+    if (!orgId || upgradeRedirecting) return;
+    setUpgradeRedirecting(true);
     const successUrl = `${window.location.origin}${window.location.pathname}?upgraded=1`;
     window.location.href = buildCheckoutUrl(orgId, successUrl);
   };
@@ -236,9 +238,10 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleUpgrade}
-              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
+              disabled={upgradeRedirecting}
+              className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Upgrade
+              {upgradeRedirecting ? 'Redirecting...' : 'Upgrade'}
             </button>
           </div>
 
