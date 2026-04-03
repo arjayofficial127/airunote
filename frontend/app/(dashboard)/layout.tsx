@@ -7,7 +7,6 @@ import { useRouter, usePathname, useParams } from 'next/navigation';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import Link from 'next/link';
-import Image from 'next/image';
 import UserProfileModal from '@/components/user/UserProfileModal';
 import OrgAccessChecker from '@/components/org/OrgAccessChecker';
 import type { Org } from '@/lib/api/orgs';
@@ -20,6 +19,8 @@ import { SessionBoundary } from '@/components/system/SessionBoundary';
 import { OnlineIndicator } from '@/components/system/OnlineIndicator';
 import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
+import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
+import { PlanBadge } from '@/components/payments/PlanBadge';
 
 export default function DashboardLayout({
   children,
@@ -264,11 +265,12 @@ export default function DashboardLayout({
               <div className="flex items-center justify-between h-14 sm:h-16">
                 {/* Left: airunote + Hamburger */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* airunote */}
-                  <Link href="/dashboard" className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-900 hover:text-gray-700 transition">
-                    <Image src="/airunote/airunote_logo.png" alt="" width={20} height={20} className="w-5 h-5 sm:w-6 sm:h-6" />
-                    <span>airunote</span>
-                  </Link>
+                  <AirunoteLogo
+                    href="/dashboard"
+                    iconSize={24}
+                    className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-900 hover:text-gray-700 transition"
+                    textClassName="text-lg font-bold text-gray-900 sm:text-xl"
+                  />
                   {/* Online Indicator */}
                   <OnlineIndicator />
                   
@@ -321,6 +323,7 @@ export default function DashboardLayout({
 
                 {/* Right cluster: Settings + User dropdown (same on mobile and desktop) */}
                 <div className="flex items-center gap-2 sm:gap-3">
+                  {isInOrgContext && <PlanBadge />}
                   {/* Settings button - only show in org context */}
                   {isInOrgContext && orgId && (
                     <Link

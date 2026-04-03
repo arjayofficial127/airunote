@@ -6,21 +6,30 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { authApi, LoginSchema, type LoginInput } from '@/lib/api/auth';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrgSession } from '@/providers/OrgSessionProvider';
 import Link from 'next/link';
 import { AmbientBackground } from '@/components/ui/AmbientBackground';
+import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, refetch } = useAuth();
+  const orgSession = useOrgSession();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      router.push('/dashboard');
+    if (!authLoading && isAuthenticated && orgSession.status === 'ready') {
+      if (orgSession.orgs.length === 0) {
+        router.push('/orgs');
+      } else if (orgSession.activeOrgId) {
+        router.push(`/orgs/${orgSession.activeOrgId}/airunote`);
+      } else {
+        router.push('/dashboard');
+      }
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, orgSession.status, orgSession.orgs.length, orgSession.activeOrgId, router]);
 
   // Autofocus email input
   useEffect(() => {
@@ -73,9 +82,9 @@ export default function LoginPage() {
           // Prime AuthSessionProvider from bootstrap without hitting /auth/me
           await refetch();
 
-          // Redirect directly to Airunote if we have an active org,
-          // otherwise go to org selector.
-          if (activeOrgId) {
+          if (orgs.length === 0) {
+            router.push('/orgs');
+          } else if (activeOrgId) {
             router.push(`/orgs/${activeOrgId}/airunote`);
           } else {
             router.push('/orgs');
@@ -160,9 +169,7 @@ export default function LoginPage() {
       {/* Header */}
       <header className="relative z-10 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-base font-semibold tracking-tight text-gray-900">airunote</span>
-          </Link>
+          <AirunoteLogo href="/" />
           <Link
             href="/"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"

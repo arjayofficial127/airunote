@@ -8,10 +8,11 @@ import { orgsApi, type Org } from '@/lib/api/orgs';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
+import { useOrgSession } from '@/providers/OrgSessionProvider';
 import apiClient from '@/lib/api/client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 
 const CreateOrgSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -37,6 +38,7 @@ export default function OrgsPage() {
   const { isSuperAdmin, loading: superAdminLoading } = useSuperAdmin();
   const { user } = useAuth();
   const authSession = useAuthSession();
+  const orgSession = useOrgSession();
   const logoutAuth = authSession.logout;
   const router = useRouter();
   
@@ -148,7 +150,7 @@ export default function OrgsPage() {
     setCreateError(null);
 
     try {
-      await orgsApi.create(data);
+      const newOrg = await orgsApi.create(data);
       setShowCreateModal(false);
       reset();
       // Reset inline form state
@@ -157,7 +159,12 @@ export default function OrgsPage() {
       setIsSlugCustomized(false);
       setDescription('');
       setSystemTypeCode('');
-      loadOrgs();
+      await orgSession.refetch();
+      if (newOrg?.data?.id) {
+        router.push(`/orgs/${newOrg.data.id}/airunote`);
+      } else {
+        loadOrgs();
+      }
     } catch (err: any) {
       setCreateError(err.response?.data?.error?.message || 'Failed to create organization');
     } finally {
@@ -414,10 +421,13 @@ export default function OrgsPage() {
           <div className="md:hidden bg-[#1E3A8B] flex flex-col items-center justify-center px-6 py-12 min-h-[50vh] relative">
             {/* Logo - Top Left */}
             <div className="absolute top-6 left-6">
-              <Link href="/dashboard" className="flex items-center gap-2">
-                <Image src="/airunote/airunote_logo_white.png" alt="" width={20} height={20} className="w-5 h-5" />
-                <span className="text-lg font-semibold text-white">airunote</span>
-              </Link>
+              <AirunoteLogo
+                href="/dashboard"
+                variant="white"
+                iconSize={20}
+                className="flex items-center gap-2"
+                textClassName="text-lg font-semibold text-white"
+              />
             </div>
             {/* User Dropdown - Top Right */}
             {user?.name && (
@@ -564,10 +574,13 @@ export default function OrgsPage() {
           <div className="hidden md:flex w-full md:w-1/2 bg-[#1E3A8B] flex-col items-center justify-center p-12 lg:p-16 relative overflow-hidden">
             {/* Logo - Top Left */}
             <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
-              <Link href="/dashboard" className="flex items-center gap-2.5">
-                <Image src="/airunote/airunote_logo_white.png" alt="" width={24} height={24} className="w-6 h-6" />
-                <span className="text-xl font-semibold text-white">airunote</span>
-              </Link>
+              <AirunoteLogo
+                href="/dashboard"
+                variant="white"
+                iconSize={24}
+                className="flex items-center gap-2.5"
+                textClassName="text-xl font-semibold text-white"
+              />
             </div>
             {/* User Dropdown - Top Right */}
             {user?.name && (
