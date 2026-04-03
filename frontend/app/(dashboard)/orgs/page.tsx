@@ -64,8 +64,12 @@ export default function OrgsPage() {
   }, [showLogoutDropdown]);
   
   const handleLogout = async () => {
-    await logoutAuth();
-    setShowLogoutDropdown(false);
+    try {
+      await logoutAuth();
+    } finally {
+      setShowLogoutDropdown(false);
+      router.replace('/login');
+    }
   };
   
   // Tab state for onboarding
