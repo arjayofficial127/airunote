@@ -23,6 +23,9 @@ type LemonWebhookRequest = Request & {
 type LemonWebhookEvent = {
   meta?: {
     event_name?: string;
+    custom_data?: {
+      orgId?: string;
+    };
   };
   data?: {
     id?: string;
@@ -155,7 +158,7 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
 
     const eventName = event?.meta?.event_name;
     const eventId = event?.data?.id;
-    const orgId = event?.data?.attributes?.custom_data?.orgId;
+    const orgId = event?.meta?.custom_data?.orgId ?? event?.data?.attributes?.custom_data?.orgId;
 
     console.log('Webhook event parsed', {
       eventName: eventName ?? null,
@@ -217,6 +220,8 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       console.log('Webhook missing orgId', {
         eventId,
         eventName,
+        hasMetaCustomData: !!event?.meta?.custom_data,
+        hasAttributesCustomData: !!event?.data?.attributes?.custom_data,
       });
       sendResponse(200, 'OK');
       return;

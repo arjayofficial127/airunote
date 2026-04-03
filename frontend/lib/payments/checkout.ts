@@ -8,5 +8,15 @@ export function buildCheckoutUrl(orgId: string, successUrl?: string) {
     params.set('checkout[success_url]', successUrl);
   }
 
-  return `${base}?${params.toString()}`;
+  const checkoutUrl = `${base}?${params.toString()}`;
+
+  if (typeof window !== 'undefined') {
+    console.log('[Checkout] Redirecting to Lemon checkout', {
+      orgId,
+      successUrl: successUrl ?? null,
+      checkoutUrl,
+    });
+  }
+
+  return checkoutUrl;
 }
