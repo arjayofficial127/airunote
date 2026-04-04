@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
@@ -17,6 +18,8 @@ import { authMiddleware } from '../middleware/authMiddleware';
 import { requireOrgMembership } from '../middleware/requireOrgMembership';
 import { requireOrgRole } from '../middleware/requireOrgRole';
 import { EmailService } from '../../infrastructure/email/email.service';
+import { db } from '../../infrastructure/db/drizzle/client';
+import { airuDocumentsTable, airuFoldersTable } from '../../infrastructure/db/drizzle/schema';
 
 const router: ReturnType<typeof Router> = Router();
 const createBillingCheckoutIntentSchema = z.object({
@@ -118,6 +121,61 @@ router.get('/limit', async (req: Request, res: Response, next) => {
         maxAllowed: isSuperAdmin ? null : maxOrgsPerUser, // null means unlimited for superadmin
         canCreate: isSuperAdmin || orgs.length < maxOrgsPerUser,
         isSuperAdmin,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:orgId/usage', requireOrgMembership, async (req: Request, res: Response, next) => {
+  try {
+    const { orgId } = req.params;
+    const orgUseCase = container.resolve<IOrgUseCase>(TYPES.IOrgUseCase);
+    const orgResult = await orgUseCase.findById(orgId);
+
+    if (orgResult.isErr()) {
+      return next(orgResult.unwrap());
+    }
+
+    const org = orgResult.unwrap();
+    const freeDocumentLimit = Number(process.env.FREE_PLAN_LIMIT || 10);
+    const freeFolderLimit = Number(process.env.FREE_PLAN_FOLDER_LIMIT || freeDocumentLimit);
+    const isPro = (org.plan || 'free').toLowerCase() === 'pro';
+
+    const [documentUsage] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(airuDocumentsTable)
+      .innerJoin(airuFoldersTable, eq(airuDocumentsTable.folderId, airuFoldersTable.id))
+      .where(eq(airuFoldersTable.orgId, orgId));
+
+    const [folderUsage] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(airuFoldersTable)
+      .where(
+        and(
+          eq(airuFoldersTable.orgId, orgId),
+          sql`${airuFoldersTable.humanId} NOT IN ('__org_root__', '__user_root__')`
+        )
+      );
+
+    const documentsUsed = Number(documentUsage?.count || 0);
+    const foldersUsed = Number(folderUsage?.count || 0);
+
+    res.json({
+      success: true,
+      data: {
+        plan: isPro ? 'pro' : 'free',
+        documents: {
+          used: documentsUsed,
+          limit: isPro ? null : freeDocumentLimit,
+          remaining: isPro ? null : Math.max(freeDocumentLimit - documentsUsed, 0),
+        },
+        folders: {
+          used: foldersUsed,
+          limit: isPro ? null : freeFolderLimit,
+          remaining: isPro ? null : Math.max(freeFolderLimit - foldersUsed, 0),
+        },
       },
     });
   } catch (error) {

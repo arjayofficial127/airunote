@@ -36,6 +36,11 @@ export const usersTable = pgTable('users', {
   name: varchar('name', { length: 255 }).notNull(),
   isActive: boolean('is_active').notNull().default(true),
   defaultOrgId: uuid('default_org_id').references(() => orgsTable.id, { onDelete: 'set null' }),
+  emailVerifiedAt: timestamp('email_verified_at'),
+  registrationMfaCodeHash: varchar('registration_mfa_code_hash', { length: 255 }),
+  registrationMfaExpiresAt: timestamp('registration_mfa_expires_at'),
+  registrationMfaAttemptCount: integer('registration_mfa_attempt_count').notNull().default(0),
+  registrationMfaLastSentAt: timestamp('registration_mfa_last_sent_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   emailIdx: index('users_email_idx').on(table.email),

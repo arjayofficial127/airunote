@@ -1,6 +1,14 @@
 import { Resend } from 'resend';
-import { OrgCreatedEmailPayload, LoginSuccessEmailPayload } from './email.types';
-import { renderOrgCreatedEmail, renderLoginSuccessEmail } from './email.templates';
+import {
+  OrgCreatedEmailPayload,
+  LoginSuccessEmailPayload,
+  RegistrationVerificationEmailPayload,
+} from './email.types';
+import {
+  renderOrgCreatedEmail,
+  renderLoginSuccessEmail,
+  renderRegistrationVerificationEmail,
+} from './email.templates';
 
 export class EmailService {
   private resend: Resend;
@@ -47,6 +55,27 @@ export class EmailService {
       return { success: true, message: 'Email sent successfully' };
     } catch (error) {
       console.error(`[EmailService] ❌ Failed to send login success email to ${payload.to}:`, error);
+      return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async sendRegistrationVerificationEmail(
+    payload: RegistrationVerificationEmailPayload
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const { subject, html } = renderRegistrationVerificationEmail(payload);
+
+      await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'AiruNote <no-reply@airunote.app>',
+        to: payload.to,
+        subject,
+        html,
+      });
+
+      console.log(`[EmailService] ✅ Registration verification email sent successfully to ${payload.to}`);
+      return { success: true, message: 'Email sent successfully' };
+    } catch (error) {
+      console.error(`[EmailService] ❌ Failed to send registration verification email to ${payload.to}:`, error);
       return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

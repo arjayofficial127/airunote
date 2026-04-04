@@ -34,6 +34,18 @@ export interface CreateOrgInput {
   systemTypeCode?: string;
 }
 
+export interface OrgUsageMetric {
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+}
+
+export interface OrgUsage {
+  plan: 'free' | 'pro';
+  documents: OrgUsageMetric;
+  folders: OrgUsageMetric;
+}
+
 export const orgsApi = {
   create: async (input: CreateOrgInput): Promise<{ success: boolean; data: Org }> => {
     const response = await apiClient.post('/orgs', input);
@@ -58,6 +70,11 @@ export const orgsApi = {
 
   getById: async (orgId: string): Promise<{ success: boolean; data: Org }> => {
     const response = await apiClient.get(`/orgs/${orgId}`);
+    return response.data;
+  },
+
+  getUsage: async (orgId: string): Promise<{ success: boolean; data: OrgUsage }> => {
+    const response = await apiClient.get(`/orgs/${orgId}/usage`);
     return response.data;
   },
 

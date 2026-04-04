@@ -79,7 +79,7 @@ export function AirunoteLandingPage() {
             
             <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
               <Link
-                href="/login"
+                href="/register"
                 className="rounded-lg bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 Get Started
@@ -257,7 +257,7 @@ export function AirunoteLandingPage() {
             </p>
             <div className="mt-10">
               <Link
-                href="/login"
+                href="/register"
                 className="inline-block rounded-lg bg-blue-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 Create Workspace

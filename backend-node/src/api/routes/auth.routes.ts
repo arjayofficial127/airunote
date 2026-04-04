@@ -2,7 +2,12 @@ import { Router, Request, Response } from 'express';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
 import { IAuthUseCase } from '../../application/use-cases/AuthUseCase';
-import { RegisterDto, LoginDto } from '../../application/dtos/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  VerifyRegistrationCodeDto,
+  ResendRegistrationCodeDto,
+} from '../../application/dtos/auth.dto';
 import { authRateLimit } from '../middleware/rateLimitMiddleware';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { IUserRepository } from '../../application/interfaces/IUserRepository';
@@ -21,14 +26,7 @@ router.post(
   authRateLimit,
   async (req: Request, res: Response, next) => {
     try {
-      const secret = req.query.secret as string;
-      if (!secret) {
-        return res.status(400).json({
-          success: false,
-          error: { message: 'Registration secret is required', code: 'VALIDATION_ERROR' },
-        });
-      }
-
+      const secret = typeof req.query.secret === 'string' ? req.query.secret : undefined;
       const input = RegisterDto.parse({ ...req.body, secret });
       const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
@@ -38,20 +36,64 @@ router.post(
         return next(result.unwrap());
       }
 
-      const { user, accessToken } = result.unwrap();
+      const challenge = result.unwrap();
 
       res.status(201).json({
         success: true,
-        data: {
-          user,
-          accessToken,
-        },
+        data: challenge,
       });
     } catch (error) {
       next(error);
     }
   }
 );
+
+router.post('/verify-registration', authRateLimit, async (req: Request, res: Response, next) => {
+  try {
+    // Keep email in body so authRateLimit continues using IP + email keys,
+    // which matches the same brute-force protection posture as login.
+    const input = VerifyRegistrationCodeDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.verifyRegistrationCode(input);
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    const { user, accessToken } = result.unwrap();
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        accessToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/resend-registration-code', authRateLimit, async (req: Request, res: Response, next) => {
+  try {
+    const input = ResendRegistrationCodeDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.resendRegistrationCode(input);
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post('/login', authRateLimit, async (req: Request, res: Response, next) => {
   try {

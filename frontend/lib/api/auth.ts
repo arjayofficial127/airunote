@@ -26,6 +26,13 @@ export const RegisterSchema = z.object({
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
+export interface RegistrationChallengeResponse {
+  user: User;
+  email: string;
+  verificationRequired: true;
+  verificationExpiresAt: string;
+}
+
 export interface AuthFullResponse {
   user: User;
   isSuperAdmin: boolean;
@@ -117,30 +124,33 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (input: RegisterInput, secret: string): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {
-    const response = await apiClient.post(`/auth/register?secret=${encodeURIComponent(secret)}`, input);
+  register: async (
+    input: RegisterInput,
+    secret?: string
+  ): Promise<{ success: boolean; data: RegistrationChallengeResponse }> => {
+    const query = secret ? `?secret=${encodeURIComponent(secret)}` : '';
+    const response = await apiClient.post(`/auth/register${query}`, input);
+    return response.data;
+  },
+
+  verifyRegistration: async (
+    input: { email: string; code: string }
+  ): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {
+    const response = await apiClient.post('/auth/verify-registration', input);
     const data = response.data;
-    
-    if (DEBUG_AUTH) {
-      console.log('[AuthAPI] Register response:', data);
-      console.log('[AuthAPI] AccessToken present:', !!data.data?.accessToken);
-    }
-    
-    // Store accessToken from response
+
     if (data.success && data.data?.accessToken) {
       tokenStorage.setToken(data.data.accessToken);
-      
-      if (DEBUG_AUTH) {
-        const storedToken = tokenStorage.getToken();
-        console.log('[AuthAPI] Token stored successfully:', !!storedToken);
-      }
-    } else {
-      if (DEBUG_AUTH) {
-        console.error('[AuthAPI] Token NOT stored - response structure issue');
-      }
     }
-    
+
     return data;
+  },
+
+  resendRegistrationCode: async (
+    email: string
+  ): Promise<{ success: boolean; data: RegistrationChallengeResponse }> => {
+    const response = await apiClient.post('/auth/resend-registration-code', { email });
+    return response.data;
   },
 
   getMe: async (): Promise<{ success: boolean; data: User }> => {

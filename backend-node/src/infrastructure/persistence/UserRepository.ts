@@ -16,6 +16,11 @@ export class UserRepository implements IUserRepository {
         name: user.name,
         isActive: user.isActive,
         defaultOrgId: user.defaultOrgId || null,
+        emailVerifiedAt: user.emailVerifiedAt,
+        registrationMfaCodeHash: user.registrationMfaCodeHash,
+        registrationMfaExpiresAt: user.registrationMfaExpiresAt,
+        registrationMfaAttemptCount: user.registrationMfaAttemptCount,
+        registrationMfaLastSentAt: user.registrationMfaLastSentAt,
       })
       .returning();
 
@@ -26,6 +31,11 @@ export class UserRepository implements IUserRepository {
       created.name,
       created.isActive,
       created.defaultOrgId,
+      created.emailVerifiedAt,
+      created.registrationMfaCodeHash,
+      created.registrationMfaExpiresAt,
+      created.registrationMfaAttemptCount,
+      created.registrationMfaLastSentAt,
       created.createdAt
     );
   }
@@ -46,6 +56,11 @@ export class UserRepository implements IUserRepository {
       user.name,
       user.isActive,
       user.defaultOrgId,
+      user.emailVerifiedAt,
+      user.registrationMfaCodeHash,
+      user.registrationMfaExpiresAt,
+      user.registrationMfaAttemptCount,
+      user.registrationMfaLastSentAt,
       user.createdAt
     );
   }
@@ -66,6 +81,11 @@ export class UserRepository implements IUserRepository {
       user.name,
       user.isActive,
       user.defaultOrgId,
+      user.emailVerifiedAt,
+      user.registrationMfaCodeHash,
+      user.registrationMfaExpiresAt,
+      user.registrationMfaAttemptCount,
+      user.registrationMfaLastSentAt,
       user.createdAt
     );
   }
@@ -77,6 +97,11 @@ export class UserRepository implements IUserRepository {
     if (updates.isActive !== undefined) updateData.isActive = updates.isActive;
     if (updates.passwordHash !== undefined) updateData.passwordHash = updates.passwordHash;
     if (updates.defaultOrgId !== undefined) updateData.defaultOrgId = updates.defaultOrgId;
+    if (updates.emailVerifiedAt !== undefined) updateData.emailVerifiedAt = updates.emailVerifiedAt;
+    if (updates.registrationMfaCodeHash !== undefined) updateData.registrationMfaCodeHash = updates.registrationMfaCodeHash;
+    if (updates.registrationMfaExpiresAt !== undefined) updateData.registrationMfaExpiresAt = updates.registrationMfaExpiresAt;
+    if (updates.registrationMfaAttemptCount !== undefined) updateData.registrationMfaAttemptCount = updates.registrationMfaAttemptCount;
+    if (updates.registrationMfaLastSentAt !== undefined) updateData.registrationMfaLastSentAt = updates.registrationMfaLastSentAt;
 
     const [updated] = await db
       .update(usersTable)
@@ -91,6 +116,11 @@ export class UserRepository implements IUserRepository {
       updated.name,
       updated.isActive,
       updated.defaultOrgId,
+      updated.emailVerifiedAt,
+      updated.registrationMfaCodeHash,
+      updated.registrationMfaExpiresAt,
+      updated.registrationMfaAttemptCount,
+      updated.registrationMfaLastSentAt,
       updated.createdAt
     );
   }

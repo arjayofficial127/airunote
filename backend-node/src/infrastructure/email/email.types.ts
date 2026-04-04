@@ -14,3 +14,10 @@ export interface LoginSuccessEmailPayload extends BaseEmailPayload {
   ipAddress?: string;
   userAgent?: string;
 }
+
+export interface RegistrationVerificationEmailPayload extends BaseEmailPayload {
+  userName: string;
+  verificationCode: string;
+  verificationUrl: string;
+  expiresInMinutes: number;
+}
