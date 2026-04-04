@@ -78,6 +78,29 @@ export class OrgRepository implements IOrgRepository {
     );
   }
 
+  async findBySubscriptionId(subscriptionId: string): Promise<Org | null> {
+    const [org] = await db
+      .select()
+      .from(orgsTable)
+      .where(eq(orgsTable.subscriptionId, subscriptionId))
+      .limit(1);
+
+    if (!org) return null;
+
+    return new Org(
+      org.id,
+      org.name,
+      org.slug,
+      org.description,
+      org.isActive,
+      org.createdAt,
+      org.plan,
+      org.subscriptionStatus,
+      org.subscriptionId,
+      org.currentPeriodEnd
+    );
+  }
+
   async findByUserId(userId: string): Promise<Org[]> {
     const orgs = await db
       .select({

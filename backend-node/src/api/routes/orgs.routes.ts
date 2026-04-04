@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
+import { IBillingUseCase } from '../../application/use-cases/BillingUseCase';
 import { IOrgUseCase } from '../../application/use-cases/OrgUseCase';
 import { CreateOrgDto, UpdateOrgDto } from '../../application/dtos/org.dto';
 import { IOrgUserRepository } from '../../application/interfaces/IOrgUserRepository';
@@ -11,12 +13,27 @@ import { IJoinCodeRepository } from '../../application/interfaces/IJoinCodeRepos
 import { ISuperAdminRepository } from '../../application/interfaces/ISuperAdminRepository';
 import { IJoinRequestUseCase } from '../../application/use-cases/JoinRequestUseCase';
 import { ITeamUseCase } from '../../application/use-cases/TeamUseCase';
-import { ForbiddenError, NotFoundError } from '../../core/errors/AppError';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { requireOrgMembership } from '../middleware/requireOrgMembership';
 import { requireOrgRole } from '../middleware/requireOrgRole';
 import { EmailService } from '../../infrastructure/email/email.service';
 
 const router: ReturnType<typeof Router> = Router();
+const createBillingCheckoutIntentSchema = z.object({
+  targetPlan: z.literal('pro').optional().default('pro'),
+  source: z.string().trim().min(1).max(100).optional().default('unknown'),
+});
+
+const manualRecoverBillingSchema = z.object({
+  targetPlan: z.literal('pro').optional().default('pro'),
+  source: z.string().trim().min(1).max(100).optional().default('manual_recovery'),
+  subscriptionId: z.string().trim().min(1).optional(),
+  orderId: z.string().trim().min(1).optional(),
+  customerId: z.string().trim().min(1).optional(),
+  customerEmail: z.string().email().optional(),
+}).refine((value) => Boolean(value.subscriptionId || value.orderId || value.customerId || value.customerEmail), {
+  message: 'At least one Lemon identifier is required for manual recovery',
+});
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -232,6 +249,65 @@ router.get('/:orgId', async (req: Request, res: Response, next) => {
     res.json({
       success: true,
       data: orgWithJoinCode,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:orgId/billing/checkout-intent', requireOrgMembership, async (req: Request, res: Response, next) => {
+  try {
+    const { orgId } = req.params;
+    const input = createBillingCheckoutIntentSchema.parse(req.body ?? {});
+    const billingUseCase = container.resolve<IBillingUseCase>(TYPES.IBillingUseCase);
+    const result = await billingUseCase.prepareCheckoutIntent({
+      orgId,
+      userId: req.user!.userId,
+      userEmail: req.user!.email,
+      targetPlan: input.targetPlan,
+      source: input.source,
+    });
+
+    if (result.isErr()) {
+      return next(result.error);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        billingIntentId: result.value.billingIntentId,
+        reused: result.value.reused,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:orgId/billing/manual-recover', requireOrgRole(['admin', 'superadmin']), async (req: Request, res: Response, next) => {
+  try {
+    const { orgId } = req.params;
+    const input = manualRecoverBillingSchema.parse(req.body ?? {});
+    const billingUseCase = container.resolve<IBillingUseCase>(TYPES.IBillingUseCase);
+    const result = await billingUseCase.manualRecover({
+      orgId,
+      actorUserId: req.user!.userId,
+      actorEmail: req.user!.email,
+      targetPlan: input.targetPlan,
+      source: input.source,
+      subscriptionId: input.subscriptionId ?? null,
+      orderId: input.orderId ?? null,
+      customerId: input.customerId ?? null,
+      customerEmail: input.customerEmail ?? null,
+    });
+
+    if (result.isErr()) {
+      return next(result.error);
+    }
+
+    res.json({
+      success: true,
+      data: result.value,
     });
   } catch (error) {
     next(error);

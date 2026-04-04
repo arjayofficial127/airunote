@@ -6,11 +6,28 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
-import { orgsApi, type Org } from '@/lib/api/orgs';
+import { billingApi } from '@/lib/api/billing';
+import { orgSettingsApi } from '@/lib/api/org-settings';
 import { buildCheckoutUrl } from '@/lib/payments/checkout';
 import JoinCodeSettings from '@/components/orgs/JoinCodeSettings';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import UnauthorizedError from '@/components/errors/UnauthorizedError';
+
+type SettingsOrg = {
+  id: string;
+  name: string;
+  description: string | null;
+  plan?: string;
+  subscriptionStatus?: string | null;
+  currentPeriodEnd?: string | null;
+  joinCode?: string | null;
+  joinCodeMaxUses?: number | null;
+  joinCodeUsedCount?: number;
+  joinCodeAllowedDomains?: string[] | null;
+  joinCodeIsActive?: boolean;
+  joinCodeExpiresAt?: string | null;
+  joinCodeDefaultRoleId?: number | null;
+};
 
 const UpdateOrgSchema = z.object({
   name: z.string().min(1).max(255),
@@ -23,7 +40,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const orgSession = useOrgSession();
   const orgId = orgSession.activeOrgId;
-  const [org, setOrg] = useState<Org | null>(null);
+  const [org, setOrg] = useState<SettingsOrg | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [upgradeRedirecting, setUpgradeRedirecting] = useState(false);
@@ -91,7 +108,7 @@ export default function SettingsPage() {
     setSuccess(false);
 
     try {
-      await orgsApi.update(orgId, data);
+      await orgSettingsApi.update(orgId, data);
       setSuccess(true);
       // Refresh org data from OrgSessionProvider after update
       await orgSession.refetch();
@@ -122,7 +139,7 @@ export default function SettingsPage() {
     }
 
     try {
-      await orgsApi.delete(orgId);
+      await orgSettingsApi.delete(orgId);
       router.push('/orgs');
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to delete organization');
@@ -130,10 +147,19 @@ export default function SettingsPage() {
   };
 
   const handleUpgrade = () => {
-    if (!orgId || upgradeRedirecting) return;
-    setUpgradeRedirecting(true);
-    const successUrl = `${window.location.origin}${window.location.pathname}?upgraded=1`;
-    window.location.href = buildCheckoutUrl(orgId, successUrl);
+    void (async () => {
+      if (!orgId || upgradeRedirecting) return;
+      setUpgradeRedirecting(true);
+
+      try {
+        const successUrl = `${window.location.origin}${window.location.pathname}?upgraded=1`;
+        const response = await billingApi.createCheckoutIntent(orgId, 'org_settings');
+        window.location.href = buildCheckoutUrl(orgId, response.data.billingIntentId, successUrl);
+      } catch (error) {
+        console.error('Failed to create billing checkout intent', error);
+        setUpgradeRedirecting(false);
+      }
+    })();
   };
 
   const activeOrg = orgSession.activeOrg || org;

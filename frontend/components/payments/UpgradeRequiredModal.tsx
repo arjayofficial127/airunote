@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
+import { billingApi } from '@/lib/api/billing';
 import { buildCheckoutUrl } from '@/lib/payments/checkout';
 import { UPGRADE_REQUIRED_EVENT, type UpgradeRequiredDetail } from '@/lib/payments/upgradeRequiredPrompt';
 
@@ -76,14 +77,20 @@ export function UpgradeRequiredModal() {
           </button>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               if (!activeOrgId || isRedirecting) {
                 return;
               }
 
               setIsRedirecting(true);
-              const successUrl = `${window.location.origin}${window.location.pathname}?upgraded=1`;
-              window.location.href = buildCheckoutUrl(activeOrgId, successUrl);
+              try {
+                const successUrl = `${window.location.origin}${window.location.pathname}?upgraded=1`;
+                const response = await billingApi.createCheckoutIntent(activeOrgId, 'upgrade_required_modal');
+                window.location.href = buildCheckoutUrl(activeOrgId, response.data.billingIntentId, successUrl);
+              } catch (error) {
+                console.error('Failed to create billing checkout intent', error);
+                setIsRedirecting(false);
+              }
             }}
             disabled={!activeOrgId || isRedirecting}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"

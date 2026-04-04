@@ -13,11 +13,20 @@ import {
   primaryKey,
   unique,
   index,
+  uniqueIndex,
   bigint,
   jsonb,
   numeric,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+
+export const billingIntentStatusEnum = pgEnum('billing_intent_status', [
+  'pending',
+  'completed',
+  'failed',
+  'cancelled',
+  'expired',
+]);
 
 // User table
 export const usersTable = pgTable('users', {
@@ -64,6 +73,47 @@ export const webhookEventsTable = pgTable('webhook_events', {
   id: varchar('id', { length: 255 }).primaryKey(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
+
+export const billingIntentsTable = pgTable('billing_intents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  createdByUserId: uuid('created_by_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  userEmail: varchar('user_email', { length: 255 }).notNull(),
+  targetPlan: varchar('target_plan', { length: 50 }).notNull().default('pro'),
+  source: varchar('source', { length: 100 }).notNull().default('unknown'),
+  status: billingIntentStatusEnum('status').notNull().default('pending'),
+  lemonSubscriptionId: varchar('lemon_subscription_id', { length: 255 }),
+  lemonOrderId: varchar('lemon_order_id', { length: 255 }),
+  lemonCustomerId: varchar('lemon_customer_id', { length: 255 }),
+  lemonCustomerEmail: varchar('lemon_customer_email', { length: 255 }),
+  lastEventName: varchar('last_event_name', { length: 100 }),
+  failureReason: text('failure_reason'),
+  completedAt: timestamp('completed_at'),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  orgStatusIdx: index('billing_intents_org_status_idx').on(table.orgId, table.status),
+  userStatusIdx: index('billing_intents_user_status_idx').on(table.createdByUserId, table.status),
+  subscriptionIdx: index('billing_intents_subscription_idx').on(table.lemonSubscriptionId),
+  subscriptionUniqueIdx: uniqueIndex('billing_intents_subscription_unique')
+    .on(table.lemonSubscriptionId)
+    .where(sql`${table.lemonSubscriptionId} IS NOT NULL`),
+  orderIdx: index('billing_intents_order_idx').on(table.lemonOrderId),
+  orderUniqueIdx: uniqueIndex('billing_intents_order_unique')
+    .on(table.lemonOrderId)
+    .where(sql`${table.lemonOrderId} IS NOT NULL`),
+  customerIdx: index('billing_intents_customer_idx').on(table.lemonCustomerId),
+  userEmailIdx: index('billing_intents_user_email_idx').on(table.userEmail),
+  customerEmailIdx: index('billing_intents_customer_email_idx').on(table.lemonCustomerEmail),
+  activePendingIdx: uniqueIndex('billing_intents_active_pending_unique')
+    .on(table.orgId, table.createdByUserId, table.targetPlan)
+    .where(sql`${table.status} = 'pending'::billing_intent_status`),
+}));
 
 // Role table
 export const rolesTable = pgTable('roles', {

@@ -6,6 +6,8 @@ export const TYPES = {
   // Repositories
   IUserRepository: Symbol('IUserRepository'),
   IOrgRepository: Symbol('IOrgRepository'),
+  IBillingIntentRepository: Symbol('IBillingIntentRepository'),
+  IWebhookEventRepository: Symbol('IWebhookEventRepository'),
   IPostRepository: Symbol('IPostRepository'),
   ICommentRepository: Symbol('ICommentRepository'),
   ILikeRepository: Symbol('ILikeRepository'),
@@ -32,6 +34,7 @@ export const TYPES = {
 
   // Use Cases
   IAuthUseCase: Symbol('IAuthUseCase'),
+  IBillingUseCase: Symbol('IBillingUseCase'),
   IOrgUseCase: Symbol('IOrgUseCase'),
   IPostUseCase: Symbol('IPostUseCase'),
   ICommentUseCase: Symbol('ICommentUseCase'),

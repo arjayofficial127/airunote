@@ -1,11 +1,8 @@
 import crypto from 'crypto';
 import { Request, Response, Router } from 'express';
-import { eq } from 'drizzle-orm';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
-import { IOrgRepository } from '../../application/interfaces/IOrgRepository';
-import { db } from '../../infrastructure/db/drizzle/client';
-import { webhookEventsTable } from '../../infrastructure/db/drizzle/schema';
+import { IBillingUseCase } from '../../application/use-cases/BillingUseCase';
 
 const router: ReturnType<typeof Router> = Router();
 const WEBHOOK_TIMEOUT_MS = 5000;
@@ -25,6 +22,7 @@ type LemonWebhookEvent = {
     event_name?: string;
     custom_data?: {
       orgId?: string;
+      billingIntentId?: string;
     };
   };
   data?: {
@@ -32,52 +30,38 @@ type LemonWebhookEvent = {
     attributes?: {
       custom_data?: {
         orgId?: string;
+        billingIntentId?: string;
       };
       status?: string;
       renews_at?: string | null;
+      order_id?: number | string | null;
+      first_order_item?: {
+        order_id?: number | string | null;
+      } | null;
+      customer_id?: number | string | null;
+      user_email?: string | null;
+      customer_email?: string | null;
+      email?: string | null;
     };
   };
 };
 
-type DatabaseErrorLike = {
-  code?: string;
-  message?: string;
-};
-
-function isDuplicateKeyError(error: unknown): error is DatabaseErrorLike {
-  return typeof error === 'object'
-    && error !== null
-    && 'code' in error
-    && (error as DatabaseErrorLike).code === '23505';
-}
-
-async function withDatabaseRetry<T>(
-  operation: string,
-  task: () => Promise<T>,
-  retries = 2,
-): Promise<T> {
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
-    try {
-      return await task();
-    } catch (error) {
-      lastError = error;
-      console.error('Webhook database operation failed', {
-        operation,
-        attempt,
-        retries,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-
-      if (attempt > retries) {
-        break;
-      }
-    }
+function asNullableString(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
   }
 
-  throw lastError;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
+}
+
+function normalizeEmail(value: unknown): string | null {
+  const normalized = asNullableString(value);
+  return normalized ? normalized.toLowerCase() : null;
 }
 
 router.post('/', async (req: LemonWebhookRequest, res: Response) => {
@@ -143,6 +127,11 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       valid: true,
     });
 
+    const webhookEventKey = crypto
+      .createHash('sha256')
+      .update(rawBody)
+      .digest('hex');
+
     let event: LemonWebhookEvent;
 
     try {
@@ -157,52 +146,20 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
     }
 
     const eventName = event?.meta?.event_name;
-    const eventId = event?.data?.id;
-    const orgId = event?.meta?.custom_data?.orgId ?? event?.data?.attributes?.custom_data?.orgId;
-
-    console.log('Webhook event parsed', {
-      eventName: eventName ?? null,
-      eventId: eventId ?? null,
-      orgId: orgId ?? null,
-    });
-
-    if (!eventId) {
-      console.log('Webhook missing event id', {
-        eventName: eventName ?? null,
-      });
-      sendResponse(200, 'OK');
-      return;
-    }
-
-    const existing = await withDatabaseRetry('find processed webhook event', async () => db
-      .select()
-      .from(webhookEventsTable)
-      .where(eq(webhookEventsTable.id, eventId))
-      .limit(1));
-
-    if (existing.length > 0) {
-      console.warn('Duplicate webhook ignored', {
-        eventId,
-      });
-      sendResponse(200, 'OK');
-      return;
-    }
-
-    try {
-      await withDatabaseRetry('insert processed webhook event', async () => db
-        .insert(webhookEventsTable)
-        .values({ id: eventId }));
-    } catch (error) {
-      if (isDuplicateKeyError(error)) {
-        console.warn('Duplicate webhook ignored', {
-          eventId,
-        });
-        sendResponse(200, 'OK');
-        return;
-      }
-
-      throw error;
-    }
+    const resourceId = event?.data?.id ?? null;
+    const attributes = event?.data?.attributes;
+    const status = attributes?.status;
+    const renewsAt = attributes?.renews_at;
+    const billingIntentId = event?.meta?.custom_data?.billingIntentId
+      ?? event?.data?.attributes?.custom_data?.billingIntentId
+      ?? null;
+    const customDataOrgId = event?.meta?.custom_data?.orgId ?? event?.data?.attributes?.custom_data?.orgId ?? null;
+    const subscriptionId = asNullableString(resourceId);
+    const orderId = asNullableString(attributes?.order_id) ?? asNullableString(attributes?.first_order_item?.order_id);
+    const customerId = asNullableString(attributes?.customer_id);
+    const customerEmail = normalizeEmail(attributes?.customer_email)
+      ?? normalizeEmail(attributes?.user_email)
+      ?? normalizeEmail(attributes?.email);
 
     if (!eventName || !VALID_EVENTS.has(eventName)) {
       console.log('Webhook event ignored', {
@@ -212,73 +169,23 @@ router.post('/', async (req: LemonWebhookRequest, res: Response) => {
       return;
     }
 
-    const attributes = event?.data?.attributes;
-    const status = attributes?.status;
-    const renewsAt = attributes?.renews_at;
-
-    if (!event?.data || !attributes || !orgId) {
-      console.log('Webhook missing orgId', {
-        eventId,
-        eventName,
-        hasMetaCustomData: !!event?.meta?.custom_data,
-        hasAttributesCustomData: !!event?.data?.attributes?.custom_data,
-      });
-      sendResponse(200, 'OK');
-      return;
-    }
-
-    const orgRepository = container.resolve<IOrgRepository>(TYPES.IOrgRepository);
-    const org = await withDatabaseRetry('find organization for webhook', async () => orgRepository.findById(orgId));
-
-    if (!org) {
-      console.log('Invalid orgId', {
-        orgId,
-        eventId,
-      });
-      sendResponse(200, 'OK');
-      return;
-    }
-
-    let plan = org.plan ?? 'free';
-    let subscriptionStatus = status ?? org.subscriptionStatus ?? null;
-
-    if (status === 'active') {
-      plan = 'pro';
-      subscriptionStatus = 'active';
-    } else if (status === 'cancelled') {
-      plan = 'free';
-      subscriptionStatus = 'cancelled';
-    } else if (status === 'expired') {
-      plan = 'free';
-      subscriptionStatus = 'expired';
-    } else {
-      console.log('Webhook received unhandled subscription status', {
-        orgId,
-        eventName,
-        status: status ?? null,
-      });
-    }
-
-    console.log('Updating org subscription', {
-      orgId,
-      status: status ?? null,
-      renewsAt: renewsAt ?? null,
+    const billingUseCase = container.resolve<IBillingUseCase>(TYPES.IBillingUseCase);
+    const result = await billingUseCase.processWebhook({
+      eventKey: webhookEventKey,
+      eventName,
+      billingIntentId,
+      orgId: customDataOrgId,
+      subscriptionId,
+      orderId,
+      customerId,
+      customerEmail,
+      status,
+      renewsAt,
     });
 
-    await withDatabaseRetry('update organization subscription from webhook', async () => orgRepository.updateOrgSubscription(orgId, {
-      plan,
-      subscriptionStatus,
-      subscriptionId: event?.data?.id ?? null,
-      currentPeriodEnd: renewsAt
-        ? new Date(renewsAt)
-        : null,
-    }));
-
-    console.log('Org subscription updated', {
-      orgId,
-      plan,
-      subscriptionStatus,
-    });
+    if (result.isErr()) {
+      throw result.error;
+    }
 
       sendResponse(200, 'OK');
     } catch (error) {
