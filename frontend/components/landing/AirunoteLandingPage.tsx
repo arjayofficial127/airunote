@@ -59,7 +59,7 @@ export function AirunoteLandingPage() {
             <div 
               className="absolute inset-0 -z-10"
               style={{
-                background: 'radial-gradient(60% 50% at 50% 50%, rgba(59, 130, 246, 0.08), transparent 70%)',
+                background: 'radial-gradient(60% 50% at 50% 50%, rgba(30, 58, 139, 0.08), transparent 70%)',
               }}
             />
             

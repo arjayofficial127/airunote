@@ -12,7 +12,7 @@ export interface Theme {
 }
 
 const defaultTheme: Theme = {
-  primaryColor: '#2563eb', // blue-600
+  primaryColor: '#1E3A8B',
   secondaryColor: '#64748b', // slate-500
   backgroundColor: '#ffffff',
   fontHeading: 'Inter',

@@ -1,5 +1,19 @@
 import type { Config } from 'tailwindcss';
 
+const airunoteBlue = {
+  50: '#eef4ff',
+  100: '#dbe7ff',
+  200: '#bed3ff',
+  300: '#93b4ff',
+  400: '#5f8dff',
+  500: '#345fd1',
+  600: '#1E3A8B',
+  700: '#182f70',
+  800: '#132654',
+  900: '#0f1b3d',
+  950: '#0a1025',
+};
+
 const config: Config = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,6 +23,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        blue: airunoteBlue,
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -67,7 +82,7 @@ const config: Config = {
         'micro': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
         'micro-hover': '0 2px 4px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
         // Glow line for active block
-        'glow-line': '0 0 0 1px rgba(59, 130, 246, 0.5), 0 0 8px 2px rgba(59, 130, 246, 0.2)',
+        'glow-line': '0 0 0 1px rgba(30, 58, 139, 0.5), 0 0 8px 2px rgba(30, 58, 139, 0.2)',
       },
       // Smooth transitions
       transitionDuration: {

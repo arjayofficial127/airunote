@@ -51,7 +51,11 @@ function redirectToLogin(): void {
   }
 
   const pathname = window.location.pathname;
-  const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/verify';
+  const isAuthPage =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/verify' ||
+    pathname === '/forgot-password';
 
   if (!isAuthPage) {
     window.location.href = '/login';
