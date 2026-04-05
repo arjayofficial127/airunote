@@ -123,118 +123,92 @@ function VerifyForm() {
         enableGrain={false}
         gradientOpacity={0.08}
       />
+      <main className="relative flex min-h-screen items-center justify-center px-6 py-16 sm:px-8 sm:py-24">
+        <div className="w-full max-w-md">
+          <div className="relative">
+            <div
+              className="absolute inset-0 -z-10"
+              style={{
+                background: 'radial-gradient(60% 50% at 50% 50%, rgba(30, 58, 139, 0.072), transparent 70%)',
+              }}
+            />
 
-      <header className="relative z-10 border-b border-gray-200/50 bg-white/80 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
-          <AirunoteLogo href="/" />
-          <Link
-            href="/register"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            Back to register
-          </Link>
-        </div>
-      </header>
-
-      <main className="relative">
-        <div className="mx-auto max-w-7xl px-6 py-16 sm:py-24 lg:py-32">
-          <div className="mx-auto max-w-6xl grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16 items-center">
-            <div className="hidden lg:block">
-              <div className="relative">
-                <div
-                  className="absolute inset-0 -z-10"
-                  style={{
-                    background: 'radial-gradient(60% 50% at 50% 50%, rgba(30, 58, 139, 0.08), transparent 70%)',
-                  }}
-                />
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Account verification</p>
-                <h1 className="mt-4 text-5xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-                  Confirm once.
-                  <br />
-                  <span className="text-blue-600">Step straight into your workspace.</span>
+            <div className="rounded-[28px] border border-gray-200/75 bg-white/92 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-10">
+              <div className="mb-8 text-center">
+                <div className="mb-4 flex justify-center">
+                  <AirunoteLogo
+                    href="/"
+                    iconSize={46}
+                    className="inline-flex flex-col items-center gap-2"
+                    textClassName="text-sm font-semibold tracking-tight text-gray-700"
+                  />
+                </div>
+                <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-[2.6rem]">
+                  Verify your account.
                 </h1>
-                <p className="mt-6 text-lg leading-8 text-gray-600">
-                  Enter the 8-digit code we sent to your inbox. Successful verification signs you in and routes directly to organization setup.
+                <p className="mt-3 text-base text-gray-600">
+                  Enter the 8-digit code sent to {email || 'your email'}.
                 </p>
               </div>
-            </div>
 
-            <div className="w-full max-w-md mx-auto lg:mx-0">
-              <div className="relative rounded-3xl border border-gray-200/70 bg-white/85 p-8 shadow-[0_30px_90px_rgba(15,23,42,0.08)] backdrop-blur-sm">
-                <div className="hidden lg:block mb-8">
-                  <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                    Verify your account.
-                  </h2>
-                  <p className="mt-2 text-base text-gray-600">
-                    Enter the code sent to {email || 'your email'}.
-                  </p>
-                </div>
+              <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm leading-6 text-slate-600">
+                Need a fresh code? Use resend after lockout or expiration. Verification attempts are limited for security.
+              </div>
 
-                <div className="lg:hidden mb-8 text-center">
-                  <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-                    Verify your account.
-                  </h1>
-                  <p className="mt-4 text-base text-gray-600">
-                    Enter the 8-digit code sent to {email || 'your email'}.
-                  </p>
-                </div>
-
-                <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Need a fresh code? Use resend after lockout or expiration. Verification attempts are limited for security.
-                </div>
-
-                <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
-                  {error && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                      {error}
-                    </div>
-                  )}
-
-                  {info && (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                      {info}
-                    </div>
-                  )}
-
-                  <div>
-                    <label htmlFor="code" className="sr-only">
-                      Verification code
-                    </label>
-                    <input
-                      {...register('code')}
-                      type="text"
-                      id="code"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={8}
-                      placeholder="8-digit code"
-                      className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-center text-2xl font-semibold tracking-[0.35em] text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    />
-                    {errors.code && <p className="mt-2 text-sm text-red-600">{errors.code.message}</p>}
+              <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+                {error && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
                   </div>
+                )}
 
-                  <button
-                    type="submit"
-                    disabled={loading || !email}
-                    className="w-full rounded-2xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-blue-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {loading ? 'Verifying...' : 'Verify and continue'}
-                  </button>
-                </form>
+                {info && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {info}
+                  </div>
+                )}
 
-                <div className="mt-6 flex items-center justify-between gap-4 text-sm">
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resending || !email}
-                    className="font-medium text-gray-900 transition-colors hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {resending ? 'Sending new code...' : 'Request new code'}
-                  </button>
-                  <Link href="/login" className="text-gray-500 hover:text-gray-900 transition-colors">
-                    Sign in instead
-                  </Link>
+                <div>
+                  <label htmlFor="code" className="sr-only">
+                    Verification code
+                  </label>
+                  <input
+                    {...register('code')}
+                    type="text"
+                    id="code"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={8}
+                    placeholder="8-digit code"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-center text-2xl font-semibold tracking-[0.35em] text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  {errors.code && <p className="mt-2 text-sm text-red-600">{errors.code.message}</p>}
                 </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !email}
+                  className="w-full rounded-2xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? 'Verifying...' : 'Verify and continue'}
+                </button>
+              </form>
+
+              <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-200/90 pt-5 text-sm text-gray-500">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending || !email}
+                  className="font-medium text-blue-600 underline decoration-blue-200 underline-offset-4 transition-colors hover:text-blue-700 hover:decoration-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resending ? 'Sending new code...' : 'Request new code'}
+                </button>
+                <Link
+                  href="/login"
+                  className="font-medium text-blue-600 underline decoration-blue-200 underline-offset-4 transition-colors hover:text-blue-700 hover:decoration-blue-500"
+                >
+                  Sign in instead
+                </Link>
               </div>
             </div>
           </div>

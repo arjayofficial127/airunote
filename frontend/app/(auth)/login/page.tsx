@@ -157,25 +157,24 @@ export default function LoginPage() {
 
       <main className="relative flex min-h-screen items-center justify-center px-6 py-16 sm:px-8 sm:py-24">
         <div className="w-full max-w-md">
-          <div className="mb-8 flex justify-center">
-            <AirunoteLogo
-              href="/"
-              iconSize={28}
-              className="inline-flex items-center gap-3"
-              textClassName="text-lg font-semibold tracking-tight text-gray-900"
-            />
-          </div>
-
           <div className="relative">
             <div
               className="absolute inset-0 -z-10"
               style={{
-                background: 'radial-gradient(60% 50% at 50% 50%, rgba(30, 58, 139, 0.08), transparent 70%)',
+                background: 'radial-gradient(60% 50% at 50% 50%, rgba(30, 58, 139, 0.072), transparent 70%)',
               }}
             />
 
-            <div className="rounded-[28px] border border-gray-200/70 bg-white/88 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-10">
+            <div className="rounded-[28px] border border-gray-200/75 bg-white/92 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-sm sm:p-10">
               <div className="mb-8 text-center">
+                <div className="mb-4 flex justify-center">
+                  <AirunoteLogo
+                    href="/"
+                    iconSize={46}
+                    className="inline-flex flex-col items-center gap-2"
+                    textClassName="text-sm font-semibold tracking-tight text-gray-700"
+                  />
+                </div>
                 <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-[2.6rem]">
                   Welcome back.
                 </h1>
@@ -201,7 +200,7 @@ export default function LoginPage() {
                     id="email"
                     autoComplete="email"
                     placeholder="Email"
-                    className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   {errors.email && (
                     <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>
@@ -218,7 +217,7 @@ export default function LoginPage() {
                     id="password"
                     autoComplete="current-password"
                     placeholder="Password"
-                    className="w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
                   {errors.password && (
                     <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
@@ -228,7 +227,7 @@ export default function LoginPage() {
                 <div className="flex justify-end">
                   <Link
                     href="/forgot-password"
-                    className="text-sm font-medium text-gray-500 transition-colors hover:text-gray-900"
+                    className="text-sm font-medium text-blue-600 underline decoration-blue-200 underline-offset-4 transition-colors hover:text-blue-700 hover:decoration-blue-500"
                   >
                     Forgot password?
                   </Link>
@@ -243,11 +242,11 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <div className="mt-6 border-t border-gray-200 pt-5 text-center text-sm text-gray-500">
+              <div className="mt-6 border-t border-gray-200/90 pt-5 text-center text-sm text-gray-500">
                 Don&apos;t have an account?{' '}
                 <Link
                   href="/register"
-                  className="font-medium text-gray-900 transition-colors hover:text-blue-600"
+                  className="font-medium text-blue-600 underline decoration-blue-200 underline-offset-4 transition-colors hover:text-blue-700 hover:decoration-blue-500"
                 >
                   Create an account
                 </Link>
