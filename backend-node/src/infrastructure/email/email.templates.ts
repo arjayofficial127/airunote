@@ -164,7 +164,7 @@ export function renderLoginSuccessEmail(
 export function renderRegistrationVerificationEmail(
   payload: RegistrationVerificationEmailPayload
 ): { subject: string; html: string } {
-  const { userName, verificationCode, verificationUrl, expiresInMinutes } = payload;
+  const { userName, verificationCode, resumeUrl, expiresInMinutes } = payload;
 
   const subject = 'Verify your AiruNote account';
 
@@ -207,12 +207,15 @@ export function renderRegistrationVerificationEmail(
               <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 22px; color: #64748b;">
                 This code expires in ${expiresInMinutes} minutes. If you enter the wrong code too many times, request a new one from the verification screen.
               </p>
+              <p style="margin: 0; font-size: 14px; line-height: 22px; color: #64748b;">
+                The button below resumes your current registration session, but you still need to enter the code to continue.
+              </p>
             </td>
           </tr>
           <tr>
             <td style="padding: 0 40px 40px 40px; text-align: center;">
-              <a href="${verificationUrl}" style="display: inline-block; padding: 14px 32px; background-color: #1E3A8B; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500; letter-spacing: 0.3px;">
-                Verify account
+              <a href="${resumeUrl}" style="display: inline-block; padding: 14px 32px; background-color: #1E3A8B; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 500; letter-spacing: 0.3px;">
+                Continue setup
               </a>
             </td>
           </tr>

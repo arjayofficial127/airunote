@@ -55,6 +55,7 @@ function redirectToLogin(): void {
     pathname === '/login' ||
     pathname === '/register' ||
     pathname === '/verify' ||
+    pathname === '/complete-registration' ||
     pathname === '/forgot-password';
 
   if (!isAuthPage) {

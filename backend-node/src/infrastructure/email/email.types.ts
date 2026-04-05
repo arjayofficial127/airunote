@@ -18,6 +18,6 @@ export interface LoginSuccessEmailPayload extends BaseEmailPayload {
 export interface RegistrationVerificationEmailPayload extends BaseEmailPayload {
   userName: string;
   verificationCode: string;
-  verificationUrl: string;
+  resumeUrl: string;
   expiresInMinutes: number;
 }

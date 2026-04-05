@@ -14,6 +14,10 @@ export const LoginSchema = z.object({
 });
 
 export const RegisterSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const CompleteRegistrationSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255, 'Name must be 255 characters or less'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -25,12 +29,27 @@ export const RegisterSchema = z.object({
 
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type CompleteRegistrationInput = z.infer<typeof CompleteRegistrationSchema>;
 
 export interface RegistrationChallengeResponse {
-  user: User;
   email: string;
+  registrationSessionId: string | null;
+  verificationRequired: true;
+  verificationExpiresAt: string | null;
+}
+
+export interface ResumeRegistrationResponse {
+  email: string;
+  registrationSessionId: string;
   verificationRequired: true;
   verificationExpiresAt: string;
+}
+
+export interface RegistrationVerificationResponse {
+  email: string;
+  registrationSessionId: string;
+  verified: true;
+  setupToken: string;
 }
 
 export interface AuthFullResponse {
@@ -133,10 +152,34 @@ export const authApi = {
     return response.data;
   },
 
+  resumeRegistration: async (
+    resumeToken: string
+  ): Promise<{ success: boolean; data: ResumeRegistrationResponse }> => {
+    const response = await apiClient.post('/auth/resume-registration', { resumeToken });
+    return response.data;
+  },
+
   verifyRegistration: async (
-    input: { email: string; code: string }
-  ): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {
+    input: { registrationSessionId: string; email: string; code: string }
+  ): Promise<{ success: boolean; data: RegistrationVerificationResponse }> => {
     const response = await apiClient.post('/auth/verify-registration', input);
+    return response.data;
+  },
+
+  resendRegistrationCode: async (
+    input: { registrationSessionId: string; email: string }
+  ): Promise<{ success: boolean; data: RegistrationChallengeResponse }> => {
+    const response = await apiClient.post('/auth/resend-registration-code', input);
+    return response.data;
+  },
+
+  completeRegistration: async (
+    input: Omit<CompleteRegistrationInput, 'confirmPassword'> & {
+      registrationSessionId: string;
+      setupToken: string;
+    }
+  ): Promise<{ success: boolean; data: { user: User; accessToken: string } }> => {
+    const response = await apiClient.post('/auth/complete-registration', input);
     const data = response.data;
 
     if (data.success && data.data?.accessToken) {
@@ -144,13 +187,6 @@ export const authApi = {
     }
 
     return data;
-  },
-
-  resendRegistrationCode: async (
-    email: string
-  ): Promise<{ success: boolean; data: RegistrationChallengeResponse }> => {
-    const response = await apiClient.post('/auth/resend-registration-code', { email });
-    return response.data;
   },
 
   getMe: async (): Promise<{ success: boolean; data: User }> => {

@@ -10,36 +10,34 @@ import { AmbientBackground } from '@/components/ui/AmbientBackground';
 import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 import { authApi } from '@/lib/api/auth';
 import { useAuth } from '@/hooks/useAuth';
-import { useOrgSession } from '@/providers/OrgSessionProvider';
 
 const VerifySchema = z.object({
   code: z.string().regex(/^\d{8}$/, 'Enter the 8-digit verification code'),
 });
 
 type VerifyInput = z.infer<typeof VerifySchema>;
+const setupTokenStorageKey = (registrationSessionId: string) =>
+  `airunote_registration_setup_token:${registrationSessionId}`;
 
 function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isAuthenticated, loading: authLoading, refetch } = useAuth();
-  const orgSession = useOrgSession();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const email = useMemo(() => searchParams.get('email')?.trim() || '', [searchParams]);
+  const registrationSessionId = useMemo(
+    () => searchParams.get('registrationSessionId')?.trim() || '',
+    [searchParams]
+  );
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && orgSession.status === 'ready') {
-      if (orgSession.orgs.length === 0) {
-        router.push('/orgs');
-      } else if (orgSession.activeOrgId) {
-        router.push(`/orgs/${orgSession.activeOrgId}/airunote`);
-      } else {
-        router.push('/dashboard');
-      }
+    if (!authLoading && isAuthenticated) {
+      router.push('/dashboard');
     }
-  }, [authLoading, isAuthenticated, orgSession.status, orgSession.orgs.length, orgSession.activeOrgId, router]);
+  }, [authLoading, isAuthenticated, router]);
 
   const {
     register,
@@ -49,34 +47,8 @@ function VerifyForm() {
     resolver: zodResolver(VerifySchema),
   });
 
-  const completeAuthenticatedRedirect = async () => {
-    const bootstrapResponse = await authApi.bootstrap();
-
-    if (bootstrapResponse.success && typeof window !== 'undefined') {
-      const { user, orgs, activeOrgId } = bootstrapResponse.data;
-      window.sessionStorage.setItem('airunote_bootstrap_user', JSON.stringify(user));
-      window.sessionStorage.setItem(
-        'airunote_bootstrap_orgs',
-        JSON.stringify({ orgs, activeOrgId })
-      );
-
-      await refetch();
-
-      if (orgs.length === 0) {
-        router.push('/orgs');
-      } else if (activeOrgId) {
-        router.push(`/orgs/${activeOrgId}/airunote`);
-      } else {
-        router.push('/orgs');
-      }
-      return;
-    }
-
-    router.push('/dashboard');
-  };
-
   const onSubmit = async (data: VerifyInput) => {
-    if (!email) {
+    if (!email || !registrationSessionId) {
       setError('Missing verification email. Register again to continue.');
       return;
     }
@@ -86,8 +58,22 @@ function VerifyForm() {
     setInfo(null);
 
     try {
-      await authApi.verifyRegistration({ email, code: data.code });
-      await completeAuthenticatedRedirect();
+      const response = await authApi.verifyRegistration({
+        registrationSessionId,
+        email,
+        code: data.code,
+      });
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(
+          setupTokenStorageKey(response.data.registrationSessionId),
+          response.data.setupToken
+        );
+      }
+      router.push(
+        `/complete-registration?email=${encodeURIComponent(email)}&registrationSessionId=${encodeURIComponent(
+          registrationSessionId
+        )}`
+      );
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Verification failed');
     } finally {
@@ -96,7 +82,7 @@ function VerifyForm() {
   };
 
   const handleResend = async () => {
-    if (!email) {
+    if (!email || !registrationSessionId) {
       setError('Missing verification email. Register again to continue.');
       return;
     }
@@ -106,10 +92,10 @@ function VerifyForm() {
     setInfo(null);
 
     try {
-      await authApi.resendRegistrationCode(email);
+      await authApi.resendRegistrationCode({ registrationSessionId, email });
       setInfo(`A new 8-digit code was sent to ${email}.`);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Could not resend code');
+      setError(err.response?.data?.error?.message || 'We could not send your verification code. Please try again.');
     } finally {
       setResending(false);
     }
@@ -187,7 +173,7 @@ function VerifyForm() {
 
                 <button
                   type="submit"
-                  disabled={loading || !email}
+                  disabled={loading || !email || !registrationSessionId}
                   className="w-full rounded-2xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? 'Verifying...' : 'Verify and continue'}
@@ -198,7 +184,7 @@ function VerifyForm() {
                 <button
                   type="button"
                   onClick={handleResend}
-                  disabled={resending || !email}
+                  disabled={resending || !email || !registrationSessionId}
                   className="font-medium text-blue-600 underline decoration-blue-200 underline-offset-4 transition-colors hover:text-blue-700 hover:decoration-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {resending ? 'Sending new code...' : 'Request new code'}

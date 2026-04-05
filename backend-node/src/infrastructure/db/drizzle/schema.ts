@@ -28,6 +28,15 @@ export const billingIntentStatusEnum = pgEnum('billing_intent_status', [
   'expired',
 ]);
 
+export const pendingUserStatusEnum = pgEnum('pending_user_status', [
+  'email_sent',
+  'verified',
+  'completed',
+  'expired',
+  'locked',
+  'superseded',
+]);
+
 // User table
 export const usersTable = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -45,6 +54,28 @@ export const usersTable = pgTable('users', {
 }, (table) => ({
   emailIdx: index('users_email_idx').on(table.email),
   defaultOrgIdx: index('users_default_org_idx').on(table.defaultOrgId),
+}));
+
+export const pendingUsersTable = pgTable('pending_users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  registrationSessionId: uuid('registration_session_id').notNull().defaultRandom(),
+  email: varchar('email', { length: 255 }).notNull(),
+  verificationCodeHash: varchar('verification_code_hash', { length: 255 }).notNull(),
+  codeExpiresAt: timestamp('code_expires_at').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  lastSentAt: timestamp('last_sent_at').notNull().defaultNow(),
+  verifiedAt: timestamp('verified_at'),
+  completedAt: timestamp('completed_at'),
+  status: pendingUserStatusEnum('status').notNull().default('email_sent'),
+  tokenVersion: integer('token_version').notNull().default(1),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  sessionIdx: uniqueIndex('pending_users_session_unique').on(table.registrationSessionId),
+  emailIdx: index('pending_users_email_idx').on(table.email),
+  expiresIdx: index('pending_users_code_expires_idx').on(table.codeExpiresAt),
+  verifiedIdx: index('pending_users_verified_idx').on(table.verifiedAt),
+  statusIdx: index('pending_users_status_idx').on(table.status),
 }));
 
 // SuperAdmin table

@@ -16,6 +16,7 @@ function RegisterForm() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const [secret, setSecret] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -28,6 +29,47 @@ function RegisterForm() {
     const secretParam = searchParams.get('secret');
     setSecret(secretParam || undefined);
   }, [searchParams]);
+
+  useEffect(() => {
+    const resumeToken = searchParams.get('resumeToken');
+    if (!resumeToken) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const resumeRegistration = async () => {
+      setResuming(true);
+      setError(null);
+
+      try {
+        const response = await authApi.resumeRegistration(resumeToken);
+        if (cancelled) {
+          return;
+        }
+
+        router.replace(
+          `/verify?email=${encodeURIComponent(response.data.email)}&registrationSessionId=${encodeURIComponent(
+            response.data.registrationSessionId
+          )}`
+        );
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.response?.data?.error?.message || 'Could not restore registration');
+        }
+      } finally {
+        if (!cancelled) {
+          setResuming(false);
+        }
+      }
+    };
+
+    void resumeRegistration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router, searchParams]);
 
   const {
     register,
@@ -44,7 +86,12 @@ function RegisterForm() {
     try {
       const response = await authApi.register(data, secret);
       const email = response.data.email || data.email;
-      router.push(`/verify?email=${encodeURIComponent(email)}`);
+      const registrationSessionId = response.data.registrationSessionId;
+      router.push(
+        `/verify?email=${encodeURIComponent(email)}&registrationSessionId=${encodeURIComponent(
+          registrationSessionId || ''
+        )}`
+      );
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Registration failed');
     } finally {
@@ -64,6 +111,27 @@ function RegisterForm() {
         <div className="relative flex min-h-screen items-center justify-center">
           <div className="text-center">
             <div className="mb-2 text-gray-600">Checking authentication...</div>
+            <div className="flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (resuming) {
+    return (
+      <div className="relative min-h-screen overflow-hidden bg-white text-gray-900">
+        <AmbientBackground
+          gridSize={64}
+          lightCount={0}
+          enableGrain={false}
+          gradientOpacity={0.08}
+        />
+        <div className="relative flex min-h-screen items-center justify-center">
+          <div className="text-center">
+            <div className="mb-2 text-gray-600">Restoring registration...</div>
             <div className="flex justify-center">
               <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
             </div>
@@ -127,7 +195,7 @@ function RegisterForm() {
                   Create your account.
                 </h1>
                 <p className="mt-3 text-base text-gray-600">
-                  We&apos;ll send an 8-digit verification code before Base setup.
+                  Enter your email and we&apos;ll send an 8-digit verification code.
                 </p>
               </div>
 
@@ -145,20 +213,6 @@ function RegisterForm() {
                 )}
 
                 <div>
-                  <label htmlFor="name" className="sr-only">
-                    Name
-                  </label>
-                  <input
-                    {...register('name')}
-                    type="text"
-                    id="name"
-                    placeholder="Name"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name.message}</p>}
-                </div>
-
-                <div>
                   <label htmlFor="email" className="sr-only">
                     Email
                   </label>
@@ -173,44 +227,12 @@ function RegisterForm() {
                   {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email.message}</p>}
                 </div>
 
-                <div>
-                  <label htmlFor="password" className="sr-only">
-                    Password
-                  </label>
-                  <input
-                    {...register('password')}
-                    type="password"
-                    id="password"
-                    autoComplete="new-password"
-                    placeholder="Password"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>}
-                </div>
-
-                <div>
-                  <label htmlFor="confirmPassword" className="sr-only">
-                    Confirm password
-                  </label>
-                  <input
-                    {...register('confirmPassword')}
-                    type="password"
-                    id="confirmPassword"
-                    autoComplete="new-password"
-                    placeholder="Confirm password"
-                    className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-gray-900 placeholder:text-gray-400 transition-all duration-150 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                  {errors.confirmPassword && (
-                    <p className="mt-2 text-sm text-red-600">{errors.confirmPassword.message}</p>
-                  )}
-                </div>
-
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full rounded-2xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-500 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading ? 'Creating account...' : 'Continue to verification'}
+                  {loading ? 'Sending code...' : 'Continue'}
                 </button>
               </form>
 

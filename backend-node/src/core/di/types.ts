@@ -5,6 +5,7 @@
 export const TYPES = {
   // Repositories
   IUserRepository: Symbol('IUserRepository'),
+  IPendingUserRepository: Symbol('IPendingUserRepository'),
   IOrgRepository: Symbol('IOrgRepository'),
   IBillingIntentRepository: Symbol('IBillingIntentRepository'),
   IWebhookEventRepository: Symbol('IWebhookEventRepository'),
@@ -30,6 +31,7 @@ export const TYPES = {
   // Services
   IPasswordHasherService: Symbol('IPasswordHasherService'),
   ITokenService: Symbol('ITokenService'),
+  IEmailService: Symbol('IEmailService'),
   IFileStorageService: Symbol('IFileStorageService'),
 
   // Use Cases

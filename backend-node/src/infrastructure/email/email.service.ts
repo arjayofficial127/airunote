@@ -1,3 +1,4 @@
+import { injectable } from 'tsyringe';
 import { Resend } from 'resend';
 import {
   OrgCreatedEmailPayload,
@@ -10,7 +11,16 @@ import {
   renderRegistrationVerificationEmail,
 } from './email.templates';
 
-export class EmailService {
+export interface IEmailService {
+  sendOrgCreatedEmail(payload: OrgCreatedEmailPayload): Promise<{ success: boolean; message: string }>;
+  sendLoginSuccessEmail(payload: LoginSuccessEmailPayload): Promise<{ success: boolean; message: string }>;
+  sendRegistrationVerificationEmail(
+    payload: RegistrationVerificationEmailPayload
+  ): Promise<{ success: boolean; message: string }>;
+}
+
+@injectable()
+export class EmailService implements IEmailService {
   private resend: Resend;
 
   constructor() {

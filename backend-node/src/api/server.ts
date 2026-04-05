@@ -26,6 +26,8 @@ import airunoteRoutes from './routes/airunote.routes';
 import '../core/di/container';
 import { IUserRepository } from '../application/interfaces/IUserRepository';
 import { UserRepository } from '../infrastructure/persistence/UserRepository';
+import { IPendingUserRepository } from '../application/interfaces/IPendingUserRepository';
+import { PendingUserRepository } from '../infrastructure/persistence/PendingUserRepository';
 import { IOrgRepository } from '../application/interfaces/IOrgRepository';
 import { OrgRepository } from '../infrastructure/persistence/OrgRepository';
 import { IBillingIntentRepository } from '../application/interfaces/IBillingIntentRepository';
@@ -44,6 +46,7 @@ import { IPasswordHasherService } from '../infrastructure/services/PasswordHashe
 import { PasswordHasherService } from '../infrastructure/services/PasswordHasherService';
 import { ITokenService } from '../infrastructure/services/TokenService';
 import { TokenService } from '../infrastructure/services/TokenService';
+import { IEmailService, EmailService } from '../infrastructure/email/email.service';
 import { IAuthUseCase } from '../application/use-cases/AuthUseCase';
 import { AuthUseCase } from '../application/use-cases/AuthUseCase';
 import { IBillingUseCase, BillingUseCase } from '../application/use-cases/BillingUseCase';
@@ -104,6 +107,7 @@ dotenv.config();
 
 // Register all dependencies
 container.registerSingleton<IUserRepository>(TYPES.IUserRepository, UserRepository);
+container.registerSingleton<IPendingUserRepository>(TYPES.IPendingUserRepository, PendingUserRepository);
 container.registerSingleton<IOrgRepository>(TYPES.IOrgRepository, OrgRepository);
 container.registerSingleton<IBillingIntentRepository>(TYPES.IBillingIntentRepository, BillingIntentRepository);
 container.registerSingleton<IWebhookEventRepository>(TYPES.IWebhookEventRepository, WebhookEventRepository);
@@ -117,6 +121,7 @@ container.registerSingleton<IOrgUserRoleRepository>(TYPES.IOrgUserRoleRepository
 container.registerSingleton<ISuperAdminRepository>(TYPES.ISuperAdminRepository, SuperAdminRepository);
 container.registerSingleton<IPasswordHasherService>(TYPES.IPasswordHasherService, PasswordHasherService);
 container.registerSingleton<ITokenService>(TYPES.ITokenService, TokenService);
+container.registerSingleton<IEmailService>(TYPES.IEmailService, EmailService);
 container.registerSingleton<IAuthUseCase>(TYPES.IAuthUseCase, AuthUseCase);
 container.registerSingleton<IBillingUseCase>(TYPES.IBillingUseCase, BillingUseCase);
 container.registerSingleton<IOrgUseCase>(TYPES.IOrgUseCase, OrgUseCase);

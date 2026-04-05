@@ -5,8 +5,10 @@ import { IAuthUseCase } from '../../application/use-cases/AuthUseCase';
 import {
   RegisterDto,
   LoginDto,
+  ResumeRegistrationDto,
   VerifyRegistrationCodeDto,
   ResendRegistrationCodeDto,
+  CompleteRegistrationDto,
 } from '../../application/dtos/auth.dto';
 import { authRateLimit } from '../middleware/rateLimitMiddleware';
 import { authMiddleware } from '../middleware/authMiddleware';
@@ -20,6 +22,70 @@ import { IJoinCodeRepository } from '../../application/interfaces/IJoinCodeRepos
 import { EmailService } from '../../infrastructure/email/email.service';
 
 const router: ReturnType<typeof Router> = Router();
+
+const handleVerifyRegistration = async (req: Request, res: Response, next: (error?: unknown) => void) => {
+  try {
+    const input = VerifyRegistrationCodeDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.verifyRegistrationCode(input);
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const handleResumeRegistration = async (req: Request, res: Response, next: (error?: unknown) => void) => {
+  try {
+    const input = ResumeRegistrationDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.resumeRegistration(input);
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const handleResendRegistrationCode = async (
+  req: Request,
+  res: Response,
+  next: (error?: unknown) => void
+) => {
+  try {
+    const input = ResendRegistrationCodeDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.resendRegistrationCode(input);
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 router.post(
   '/register',
@@ -48,14 +114,19 @@ router.post(
   }
 );
 
-router.post('/verify-registration', authRateLimit, async (req: Request, res: Response, next) => {
+router.post('/verify-registration', authRateLimit, handleVerifyRegistration);
+router.post('/verify', authRateLimit, handleVerifyRegistration);
+router.post('/resume-registration', authRateLimit, handleResumeRegistration);
+
+router.post('/resend-registration-code', authRateLimit, handleResendRegistrationCode);
+router.post('/resend-code', authRateLimit, handleResendRegistrationCode);
+
+router.post('/complete-registration', authRateLimit, async (req: Request, res: Response, next) => {
   try {
-    // Keep email in body so authRateLimit continues using IP + email keys,
-    // which matches the same brute-force protection posture as login.
-    const input = VerifyRegistrationCodeDto.parse(req.body);
+    const input = CompleteRegistrationDto.parse(req.body);
     const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
-    const result = await authUseCase.verifyRegistrationCode(input);
+    const result = await authUseCase.completeRegistration(input);
 
     if (result.isErr()) {
       return next(result.unwrap());
@@ -63,32 +134,12 @@ router.post('/verify-registration', authRateLimit, async (req: Request, res: Res
 
     const { user, accessToken } = result.unwrap();
 
-    res.json({
+    res.status(201).json({
       success: true,
       data: {
         user,
         accessToken,
       },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/resend-registration-code', authRateLimit, async (req: Request, res: Response, next) => {
-  try {
-    const input = ResendRegistrationCodeDto.parse(req.body);
-    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
-
-    const result = await authUseCase.resendRegistrationCode(input);
-
-    if (result.isErr()) {
-      return next(result.unwrap());
-    }
-
-    res.json({
-      success: true,
-      data: result.unwrap(),
     });
   } catch (error) {
     next(error);
