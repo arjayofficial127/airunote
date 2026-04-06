@@ -25,6 +25,8 @@ export class PendingUserRepository implements IPendingUserRepository {
       .values({
         registrationSessionId: pendingUser.registrationSessionId,
         email: pendingUser.email,
+        ipAddress: pendingUser.ipAddress,
+        userAgentHash: pendingUser.userAgentHash,
         verificationCodeHash: pendingUser.verificationCodeHash,
         codeExpiresAt: pendingUser.codeExpiresAt,
         attempts: pendingUser.attempts,
@@ -104,6 +106,8 @@ export class PendingUserRepository implements IPendingUserRepository {
 
     if (updates.registrationSessionId !== undefined) updateData.registrationSessionId = updates.registrationSessionId;
     if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.ipAddress !== undefined) updateData.ipAddress = updates.ipAddress;
+    if (updates.userAgentHash !== undefined) updateData.userAgentHash = updates.userAgentHash;
     if (updates.verificationCodeHash !== undefined) updateData.verificationCodeHash = updates.verificationCodeHash;
     if (updates.codeExpiresAt !== undefined) updateData.codeExpiresAt = updates.codeExpiresAt;
     if (updates.attempts !== undefined) updateData.attempts = updates.attempts;
@@ -126,8 +130,11 @@ export class PendingUserRepository implements IPendingUserRepository {
   async verifyCode(input: {
     registrationSessionId: string;
     email: string;
+    ipAddress: string | null;
+    userAgentHash: string | null;
     code: string;
     maxAttempts: number;
+    maxDeviceMismatches: number;
     verifyCode: (code: string, hash: string) => Promise<boolean>;
   }): Promise<PendingUserVerificationResult> {
     return db.transaction(async (tx) => {
@@ -136,6 +143,8 @@ export class PendingUserRepository implements IPendingUserRepository {
           id,
           registration_session_id,
           email,
+          ip_address,
+          user_agent_hash,
           verification_code_hash,
           code_expires_at,
           attempts,
@@ -155,6 +164,8 @@ export class PendingUserRepository implements IPendingUserRepository {
         id: string;
         registration_session_id: string;
         email: string;
+        ip_address: string | null;
+        user_agent_hash: string | null;
         verification_code_hash: string;
         code_expires_at: Date;
         attempts: number;
@@ -175,6 +186,8 @@ export class PendingUserRepository implements IPendingUserRepository {
         record.id,
         record.registration_session_id,
         record.email,
+        record.ip_address,
+        record.user_agent_hash,
         record.verification_code_hash,
         record.code_expires_at,
         record.attempts,
@@ -217,6 +230,22 @@ export class PendingUserRepository implements IPendingUserRepository {
 
       if (pendingUser.email !== input.email) {
         return { status: 'email-mismatch' };
+      }
+
+      if (this.isDeviceBindingMismatch(pendingUser, input.ipAddress, input.userAgentHash)) {
+        const attempts = Math.min(pendingUser.attempts + 1, input.maxAttempts);
+        const shouldLock = attempts >= input.maxAttempts || attempts > input.maxDeviceMismatches;
+
+        await tx
+          .update(pendingUsersTable)
+          .set({
+            attempts,
+            status: shouldLock ? 'locked' : pendingUser.status,
+            updatedAt: new Date(),
+          })
+          .where(eq(pendingUsersTable.id, pendingUser.id));
+
+        return { status: 'device-mismatch', attempts };
       }
 
       const isValidCode = await input.verifyCode(input.code, pendingUser.verificationCodeHash);
@@ -266,9 +295,12 @@ export class PendingUserRepository implements IPendingUserRepository {
   async completeRegistration(input: {
     registrationSessionId: string;
     email: string;
+    ipAddress: string | null;
+    userAgentHash: string | null;
     name: string;
     passwordHash: string;
     tokenVersion: number;
+    maxDeviceMismatches: number;
   }): Promise<PendingUserCompletionResult> {
     // User creation and session completion happen in one transaction to prevent duplicate or half-finished registration state.
     return db.transaction(async (tx) => {
@@ -277,6 +309,8 @@ export class PendingUserRepository implements IPendingUserRepository {
           id,
           registration_session_id,
           email,
+          ip_address,
+          user_agent_hash,
           verification_code_hash,
           code_expires_at,
           attempts,
@@ -296,6 +330,8 @@ export class PendingUserRepository implements IPendingUserRepository {
         id: string;
         registration_session_id: string;
         email: string;
+        ip_address: string | null;
+        user_agent_hash: string | null;
         verification_code_hash: string;
         code_expires_at: Date;
         attempts: number;
@@ -324,6 +360,40 @@ export class PendingUserRepository implements IPendingUserRepository {
 
       if (record.email !== input.email) {
         return { status: 'email-mismatch' };
+      }
+
+      const pendingUser = new PendingUser(
+        record.id,
+        record.registration_session_id,
+        record.email,
+        record.ip_address,
+        record.user_agent_hash,
+        record.verification_code_hash,
+        record.code_expires_at,
+        record.attempts,
+        record.last_sent_at,
+        record.verified_at,
+        record.completed_at,
+        record.status,
+        record.token_version,
+        record.created_at,
+        record.updated_at
+      );
+
+      if (this.isDeviceBindingMismatch(pendingUser, input.ipAddress, input.userAgentHash)) {
+        const attempts = Math.min(record.attempts + 1, 5);
+        const shouldLock = attempts > input.maxDeviceMismatches;
+
+        await tx
+          .update(pendingUsersTable)
+          .set({
+            attempts,
+            status: shouldLock ? 'locked' : record.status,
+            updatedAt: new Date(),
+          })
+          .where(eq(pendingUsersTable.id, record.id));
+
+        return { status: 'device-mismatch', attempts };
       }
 
       if (record.token_version !== input.tokenVersion) {
@@ -374,6 +444,8 @@ export class PendingUserRepository implements IPendingUserRepository {
       record.id,
       record.registrationSessionId,
       record.email,
+      record.ipAddress,
+      record.userAgentHash,
       record.verificationCodeHash,
       record.codeExpiresAt,
       record.attempts,
@@ -401,6 +473,17 @@ export class PendingUserRepository implements IPendingUserRepository {
       record.registrationMfaAttemptCount,
       record.registrationMfaLastSentAt,
       record.createdAt
+    );
+  }
+
+  private isDeviceBindingMismatch(
+    pendingUser: PendingUser,
+    ipAddress: string | null,
+    userAgentHash: string | null
+  ): boolean {
+    return (
+      pendingUser.ipAddress !== ipAddress ||
+      pendingUser.userAgentHash !== userAgentHash
     );
   }
 }

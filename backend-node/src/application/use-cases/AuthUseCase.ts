@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { injectable, inject } from 'tsyringe';
 import { Result } from '../../core/result/Result';
 import {
@@ -28,20 +28,24 @@ import {
 import { TYPES } from '../../core/di/types';
 
 export interface IAuthUseCase {
-  register(input: RegisterInput): Promise<Result<RegistrationChallengeResponse, Error>>;
-  resumeRegistration(input: ResumeRegistrationInput): Promise<Result<ResumeRegistrationResponse, Error>>;
-  verifyRegistrationCode(input: VerifyRegistrationCodeInput): Promise<Result<RegistrationVerificationResponse, Error>>;
-  resendRegistrationCode(input: ResendRegistrationCodeInput): Promise<Result<RegistrationChallengeResponse, Error>>;
-  completeRegistration(input: CompleteRegistrationInput): Promise<Result<AuthResponse, Error>>;
+  register(input: RegisterInput, requestContext?: RegistrationRequestContext): Promise<Result<RegistrationChallengeResponse, Error>>;
+  resumeRegistration(input: ResumeRegistrationInput, requestContext?: RegistrationRequestContext): Promise<Result<ResumeRegistrationResponse, Error>>;
+  verifyRegistrationCode(input: VerifyRegistrationCodeInput, requestContext?: RegistrationRequestContext): Promise<Result<RegistrationVerificationResponse, Error>>;
+  resendRegistrationCode(input: ResendRegistrationCodeInput, requestContext?: RegistrationRequestContext): Promise<Result<RegistrationChallengeResponse, Error>>;
+  completeRegistration(input: CompleteRegistrationInput, requestContext?: RegistrationRequestContext): Promise<Result<AuthResponse, Error>>;
   login(input: LoginInput): Promise<Result<AuthResponse, Error>>;
   refreshToken(refreshToken: string): Promise<Result<AuthResponse, Error>>;
 }
 
+interface RegistrationRequestContext {
+  ipAddress?: string | null;
+  userAgent?: string | null;
+}
+
 const REGISTRATION_CODE_EXPIRY_MINUTES = 10;
 const MAX_REGISTRATION_CODE_ATTEMPTS = 5;
+const MAX_DEVICE_MISMATCH_ATTEMPTS = 2;
 const REGISTRATION_RESEND_COOLDOWN_MS = 60 * 1000;
-const GENERIC_REGISTRATION_SESSION_ERROR = 'Invalid or expired registration session. Start again.';
-const GENERIC_VERIFICATION_ERROR = 'Invalid or expired verification code. Request a new code and try again.';
 
 @injectable()
 export class AuthUseCase implements IAuthUseCase {
@@ -56,16 +60,41 @@ export class AuthUseCase implements IAuthUseCase {
     @inject(TYPES.IEmailService) private emailService: IEmailService
   ) {}
 
-  async register(input: RegisterInput): Promise<Result<RegistrationChallengeResponse, Error>> {
+  async register(
+    input: RegisterInput,
+    requestContext?: RegistrationRequestContext
+  ): Promise<Result<RegistrationChallengeResponse, Error>> {
     const normalizedEmail = this.normalizeEmail(input.email);
+    const deviceBinding = this.toDeviceBinding(requestContext);
+    this.logRegistrationAudit('REGISTER_ATTEMPT', {
+      sessionId: null,
+      email: normalizedEmail,
+      ipAddress: deviceBinding.ipAddress,
+      success: false,
+      reason: 'started',
+    });
 
     const registrationSecretValidation = await this.validateRegistrationSecret(input.secret);
     if (registrationSecretValidation.isErr()) {
-      return Result.err(registrationSecretValidation.error);
+      this.logRegistrationAudit('REGISTER_ATTEMPT', {
+        sessionId: null,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const existingUser = await this.userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
+      this.logRegistrationAudit('REGISTER_ATTEMPT', {
+        sessionId: null,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: true,
+        reason: 'generic_response',
+      });
       return Result.ok(this.toGenericRegistrationChallengeResponse(normalizedEmail));
     }
 
@@ -91,6 +120,8 @@ export class AuthUseCase implements IAuthUseCase {
     const pendingUser = await this.pendingUserRepository.createRegistrationSession({
       registrationSessionId: randomUUID(),
       email: normalizedEmail,
+      ipAddress: deviceBinding.ipAddress,
+      userAgentHash: deviceBinding.userAgentHash,
       verificationCodeHash: challenge.codeHash,
       codeExpiresAt: challenge.expiresAt,
       attempts: 0,
@@ -98,13 +129,28 @@ export class AuthUseCase implements IAuthUseCase {
       verifiedAt: null,
       completedAt: null,
       status: 'email_sent',
-      tokenVersion: 1,
+      // Prevents replay of old tokens after session mutation.
+      tokenVersion: (activePendingUser?.tokenVersion ?? 0) + 1,
     });
 
     const sendResult = await this.sendRegistrationVerification(pendingUser, challenge.code);
     if (sendResult.isErr()) {
-      return Result.err(sendResult.error);
+      this.logRegistrationAudit('REGISTER_ATTEMPT', {
+        sessionId: pendingUser.registrationSessionId,
+        email: pendingUser.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
+
+    this.logRegistrationAudit('REGISTER_ATTEMPT', {
+      sessionId: pendingUser.registrationSessionId,
+      email: pendingUser.email,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
+    });
 
     return Result.ok(
       this.toRegistrationChallengeResponse(
@@ -116,16 +162,17 @@ export class AuthUseCase implements IAuthUseCase {
   }
 
   async resumeRegistration(
-    input: ResumeRegistrationInput
+    input: ResumeRegistrationInput,
+    requestContext?: RegistrationRequestContext
   ): Promise<Result<ResumeRegistrationResponse, Error>> {
     const payload = this.tokenService.verifyResumeRegistrationToken(input.resumeToken);
     if (!payload) {
-      return Result.err(this.invalidRegistrationSessionError());
+      return Result.err(this.invalidRequestError());
     }
 
     const pendingUser = await this.pendingUserRepository.findByRegistrationSessionId(payload.sessionId);
     if (!pendingUser) {
-      return Result.err(this.invalidRegistrationSessionError());
+      return Result.err(this.invalidRequestError());
     }
 
     const refreshedPendingUser = await this.expirePendingUserIfNeeded(pendingUser);
@@ -134,7 +181,7 @@ export class AuthUseCase implements IAuthUseCase {
       refreshedPendingUser.email !== payload.email ||
       refreshedPendingUser.tokenVersion !== payload.tokenVersion
     ) {
-      return Result.err(this.invalidRegistrationSessionError());
+      return Result.err(this.invalidRequestError());
     }
 
     return Result.ok({
@@ -146,25 +193,44 @@ export class AuthUseCase implements IAuthUseCase {
   }
 
   async verifyRegistrationCode(
-    input: VerifyRegistrationCodeInput
+    input: VerifyRegistrationCodeInput,
+    requestContext?: RegistrationRequestContext
   ): Promise<Result<RegistrationVerificationResponse, Error>> {
     const normalizedEmail = this.normalizeEmail(input.email);
+    const deviceBinding = this.toDeviceBinding(requestContext);
     const verificationResult = await this.pendingUserRepository.verifyCode({
       registrationSessionId: input.registrationSessionId,
       email: normalizedEmail,
+      ipAddress: deviceBinding.ipAddress,
+      userAgentHash: deviceBinding.userAgentHash,
       code: input.code,
       maxAttempts: MAX_REGISTRATION_CODE_ATTEMPTS,
+      maxDeviceMismatches: MAX_DEVICE_MISMATCH_ATTEMPTS,
       verifyCode: (code, hash) => this.passwordHasher.verify(code, hash),
     });
 
     if (verificationResult.status !== 'verified') {
-      return Result.err(this.invalidVerificationError());
+      this.logRegistrationAudit('VERIFY_ATTEMPT', {
+        sessionId: input.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: verificationResult.status,
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const setupToken = this.tokenService.generateSetupRegistrationToken({
       sessionId: verificationResult.pendingUser.registrationSessionId,
       email: verificationResult.pendingUser.email,
       tokenVersion: verificationResult.pendingUser.tokenVersion,
+    });
+
+    this.logRegistrationAudit('VERIFY_ATTEMPT', {
+      sessionId: verificationResult.pendingUser.registrationSessionId,
+      email: verificationResult.pendingUser.email,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
     });
 
     return Result.ok({
@@ -176,41 +242,67 @@ export class AuthUseCase implements IAuthUseCase {
   }
 
   async resendRegistrationCode(
-    input: ResendRegistrationCodeInput
+    input: ResendRegistrationCodeInput,
+    requestContext?: RegistrationRequestContext
   ): Promise<Result<RegistrationChallengeResponse, Error>> {
     const normalizedEmail = this.normalizeEmail(input.email);
+    const deviceBinding = this.toDeviceBinding(requestContext);
     const pendingUser = await this.pendingUserRepository.findByRegistrationSessionId(
       input.registrationSessionId
     );
 
     if (!pendingUser || pendingUser.email !== normalizedEmail) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('RESEND_ATTEMPT', {
+        sessionId: input.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const refreshedPendingUser = await this.expirePendingUserIfNeeded(pendingUser);
 
     const existingUser = await this.userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('RESEND_ATTEMPT', {
+        sessionId: pendingUser.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
-    if (!['email_sent', 'verified', 'expired'].includes(refreshedPendingUser.status)) {
-      return Result.err(this.invalidRegistrationSessionError());
+    if (refreshedPendingUser.status !== 'email_sent') {
+      this.logRegistrationAudit('RESEND_ATTEMPT', {
+        sessionId: refreshedPendingUser.registrationSessionId,
+        email: refreshedPendingUser.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: refreshedPendingUser.status,
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const cooldownEndsAt = refreshedPendingUser.lastSentAt.getTime() + REGISTRATION_RESEND_COOLDOWN_MS;
     if (cooldownEndsAt > Date.now()) {
-      return Result.err(
-        new AppError(
-          'Please wait before requesting a new code.',
-          429,
-          'RESEND_COOLDOWN'
-        )
-      );
+      this.logRegistrationAudit('RESEND_ATTEMPT', {
+        sessionId: refreshedPendingUser.registrationSessionId,
+        email: refreshedPendingUser.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'cooldown',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const challenge = await this.createRegistrationChallenge();
     const updatedPendingUser = await this.pendingUserRepository.update(refreshedPendingUser.id, {
+      ipAddress: deviceBinding.ipAddress,
+      userAgentHash: deviceBinding.userAgentHash,
       verificationCodeHash: challenge.codeHash,
       codeExpiresAt: challenge.expiresAt,
       attempts: 0,
@@ -223,8 +315,22 @@ export class AuthUseCase implements IAuthUseCase {
 
     const sendResult = await this.sendRegistrationVerification(updatedPendingUser, challenge.code);
     if (sendResult.isErr()) {
-      return Result.err(sendResult.error);
+      this.logRegistrationAudit('RESEND_ATTEMPT', {
+        sessionId: updatedPendingUser.registrationSessionId,
+        email: updatedPendingUser.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
+
+    this.logRegistrationAudit('RESEND_ATTEMPT', {
+      sessionId: updatedPendingUser.registrationSessionId,
+      email: updatedPendingUser.email,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
+    });
 
     return Result.ok(
       this.toRegistrationChallengeResponse(
@@ -236,28 +342,51 @@ export class AuthUseCase implements IAuthUseCase {
   }
 
   async completeRegistration(
-    input: CompleteRegistrationInput
+    input: CompleteRegistrationInput,
+    requestContext?: RegistrationRequestContext
   ): Promise<Result<AuthResponse, Error>> {
     const normalizedEmail = this.normalizeEmail(input.email);
     const normalizedName = input.name.trim();
+    const deviceBinding = this.toDeviceBinding(requestContext);
 
     const setupTokenPayload = this.tokenService.verifySetupRegistrationToken(input.setupToken);
     if (!setupTokenPayload) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+        sessionId: input.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     if (
       setupTokenPayload.sessionId !== input.registrationSessionId ||
       setupTokenPayload.email !== normalizedEmail
     ) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+        sessionId: input.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'token_mismatch',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const pendingUser = await this.pendingUserRepository.findByRegistrationSessionId(
       input.registrationSessionId
     );
     if (!pendingUser) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+        sessionId: input.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const refreshedPendingUser = await this.expirePendingUserIfNeeded(pendingUser);
@@ -266,25 +395,49 @@ export class AuthUseCase implements IAuthUseCase {
       refreshedPendingUser.status !== 'verified' ||
       refreshedPendingUser.tokenVersion !== setupTokenPayload.tokenVersion
     ) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+        sessionId: refreshedPendingUser.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: refreshedPendingUser.status,
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const existingUser = await this.userRepository.findByEmail(normalizedEmail);
     if (existingUser) {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+        sessionId: refreshedPendingUser.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const passwordHash = await this.passwordHasher.hash(input.password);
     const completionResult = await this.pendingUserRepository.completeRegistration({
       registrationSessionId: input.registrationSessionId,
       email: normalizedEmail,
+      ipAddress: deviceBinding.ipAddress,
+      userAgentHash: deviceBinding.userAgentHash,
       name: normalizedName,
       passwordHash,
       tokenVersion: setupTokenPayload.tokenVersion,
+      maxDeviceMismatches: MAX_DEVICE_MISMATCH_ATTEMPTS,
     });
 
     if (completionResult.status !== 'created') {
-      return Result.err(this.invalidRegistrationSessionError());
+      this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+        sessionId: input.registrationSessionId,
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: completionResult.status,
+      });
+      return Result.err(this.invalidRequestError());
     }
 
     const createdUser = completionResult.user;
@@ -295,6 +448,13 @@ export class AuthUseCase implements IAuthUseCase {
     const refreshToken = this.tokenService.generateRefreshToken({
       userId: createdUser.id,
       email: createdUser.email,
+    });
+
+    this.logRegistrationAudit('COMPLETE_ATTEMPT', {
+      sessionId: input.registrationSessionId,
+      email: normalizedEmail,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
     });
 
     return Result.ok({
@@ -403,17 +563,15 @@ export class AuthUseCase implements IAuthUseCase {
     const expectedSecret = registrationSecret || process.env.REGISTRATION_SECRET || '';
 
     if (!expectedSecret) {
-      return Result.err(
-        new AppError('Registration secret is not configured', 503, 'REGISTRATION_UNAVAILABLE')
-      );
+      return Result.err(this.invalidRequestError());
     }
 
     if (!secret) {
-      return Result.err(new ValidationError('Registration secret is required'));
+      return Result.err(this.invalidRequestError());
     }
 
     if (secret !== expectedSecret) {
-      return Result.err(new ValidationError('Invalid registration secret'));
+      return Result.err(this.invalidRequestError());
     }
 
     return Result.ok(undefined);
@@ -468,24 +626,12 @@ export class AuthUseCase implements IAuthUseCase {
       });
 
       if (!result.success) {
-        return Result.err(
-          new AppError(
-            'We could not send your verification code. Please try again.',
-            503,
-            'EMAIL_SEND_FAILED'
-          )
-        );
+        return Result.err(this.invalidRequestError());
       }
 
       return Result.ok(undefined);
     } catch {
-      return Result.err(
-        new AppError(
-          'We could not send your verification code. Please try again.',
-          503,
-          'EMAIL_SEND_FAILED'
-        )
-      );
+      return Result.err(this.invalidRequestError());
     }
   }
 
@@ -513,12 +659,25 @@ export class AuthUseCase implements IAuthUseCase {
     };
   }
 
-  private invalidRegistrationSessionError(): Error {
-    return new UnauthorizedError(GENERIC_REGISTRATION_SESSION_ERROR);
+  // Prevents account enumeration and probing attacks.
+  private invalidRequestError(): Error {
+    return new AppError('INVALID_REQUEST', 400, 'INVALID_REQUEST');
   }
 
-  private invalidVerificationError(): Error {
-    return new ValidationError(GENERIC_VERIFICATION_ERROR);
+  private toDeviceBinding(requestContext?: RegistrationRequestContext): {
+    ipAddress: string | null;
+    userAgentHash: string | null;
+  } {
+    const ipAddress = requestContext?.ipAddress?.trim() || null;
+    const userAgent = requestContext?.userAgent?.trim() || null;
+
+    return {
+      ipAddress,
+      // Bind session to originating device to reduce token/session hijacking risk.
+      userAgentHash: userAgent
+        ? createHash('sha256').update(userAgent).digest('hex')
+        : null,
+    };
   }
 
   private async expirePendingUserIfNeeded(pendingUser: PendingUser): Promise<PendingUser> {
@@ -530,9 +689,35 @@ export class AuthUseCase implements IAuthUseCase {
       return pendingUser;
     }
 
+    // Hard invalidation prevents reuse of expired sessions.
     return this.pendingUserRepository.update(pendingUser.id, {
       status: 'expired',
     });
+  }
+
+  // Audit trail enables abuse detection and incident tracing.
+  private logRegistrationAudit(
+    event: 'REGISTER_ATTEMPT' | 'VERIFY_ATTEMPT' | 'COMPLETE_ATTEMPT' | 'RESEND_ATTEMPT',
+    payload: {
+      sessionId: string | null;
+      email: string;
+      ipAddress: string | null;
+      success: boolean;
+      reason?: string;
+    }
+  ): void {
+    console.log(
+      '[AuthAudit]',
+      JSON.stringify({
+        event,
+        sessionId: payload.sessionId,
+        email: payload.email,
+        ipAddress: payload.ipAddress,
+        success: payload.success,
+        reason: payload.reason,
+        timestamp: new Date().toISOString(),
+      })
+    );
   }
 }
 

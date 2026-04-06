@@ -86,6 +86,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
       `pending-${this.nextId++}`,
       pendingUser.registrationSessionId,
       pendingUser.email,
+      pendingUser.ipAddress,
+      pendingUser.userAgentHash,
       pendingUser.verificationCodeHash,
       pendingUser.codeExpiresAt,
       pendingUser.attempts,
@@ -168,6 +170,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
       existing.id,
       updates.registrationSessionId ?? existing.registrationSessionId,
       updates.email ?? existing.email,
+      updates.ipAddress ?? existing.ipAddress,
+      updates.userAgentHash ?? existing.userAgentHash,
       updates.verificationCodeHash ?? existing.verificationCodeHash,
       updates.codeExpiresAt ?? existing.codeExpiresAt,
       updates.attempts ?? existing.attempts,
@@ -188,8 +192,11 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
   async verifyCode(input: {
     registrationSessionId: string;
     email: string;
+    ipAddress: string | null;
+    userAgentHash: string | null;
     code: string;
     maxAttempts: number;
+    maxDeviceMismatches: number;
     verifyCode: (code: string, hash: string) => Promise<boolean>;
   }): Promise<PendingUserVerificationResult> {
     const pendingUser = this.pendingUsers.get(input.registrationSessionId);
@@ -249,6 +256,34 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
       return { status: 'email-mismatch' };
     }
 
+    if (
+      pendingUser.ipAddress !== input.ipAddress ||
+      pendingUser.userAgentHash !== input.userAgentHash
+    ) {
+      const attempts = pendingUser.attempts + 1;
+      this.pendingUsers.set(
+        pendingUser.registrationSessionId,
+        new PendingUser(
+          pendingUser.id,
+          pendingUser.registrationSessionId,
+          pendingUser.email,
+          pendingUser.ipAddress,
+          pendingUser.userAgentHash,
+          pendingUser.verificationCodeHash,
+          pendingUser.codeExpiresAt,
+          attempts,
+          pendingUser.lastSentAt,
+          pendingUser.verifiedAt,
+          pendingUser.completedAt,
+          attempts > input.maxDeviceMismatches ? 'locked' : pendingUser.status,
+          pendingUser.tokenVersion,
+          pendingUser.createdAt,
+          new Date()
+        )
+      );
+      return { status: 'device-mismatch', attempts };
+    }
+
     const isValidCode = await input.verifyCode(input.code, pendingUser.verificationCodeHash);
     if (!isValidCode) {
       const attempts = pendingUser.attempts + 1;
@@ -258,6 +293,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
           pendingUser.id,
           pendingUser.registrationSessionId,
           pendingUser.email,
+          pendingUser.ipAddress,
+          pendingUser.userAgentHash,
           pendingUser.verificationCodeHash,
           pendingUser.codeExpiresAt,
           attempts,
@@ -282,6 +319,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
       pendingUser.id,
       pendingUser.registrationSessionId,
       pendingUser.email,
+      pendingUser.ipAddress,
+      pendingUser.userAgentHash,
       pendingUser.verificationCodeHash,
       pendingUser.codeExpiresAt,
       0,
@@ -301,9 +340,12 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
   async completeRegistration(input: {
     registrationSessionId: string;
     email: string;
+    ipAddress: string | null;
+    userAgentHash: string | null;
     name: string;
     passwordHash: string;
     tokenVersion: number;
+    maxDeviceMismatches: number;
   }): Promise<PendingUserCompletionResult> {
     const pendingUser = this.pendingUsers.get(input.registrationSessionId);
     if (!pendingUser) {
@@ -316,6 +358,34 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
 
     if (pendingUser.email !== input.email) {
       return { status: 'email-mismatch' };
+    }
+
+    if (
+      pendingUser.ipAddress !== input.ipAddress ||
+      pendingUser.userAgentHash !== input.userAgentHash
+    ) {
+      const attempts = pendingUser.attempts + 1;
+      this.pendingUsers.set(
+        pendingUser.registrationSessionId,
+        new PendingUser(
+          pendingUser.id,
+          pendingUser.registrationSessionId,
+          pendingUser.email,
+          pendingUser.ipAddress,
+          pendingUser.userAgentHash,
+          pendingUser.verificationCodeHash,
+          pendingUser.codeExpiresAt,
+          attempts,
+          pendingUser.lastSentAt,
+          pendingUser.verifiedAt,
+          pendingUser.completedAt,
+          attempts > input.maxDeviceMismatches ? 'locked' : pendingUser.status,
+          pendingUser.tokenVersion,
+          pendingUser.createdAt,
+          new Date()
+        )
+      );
+      return { status: 'device-mismatch', attempts };
     }
 
     if (pendingUser.tokenVersion !== input.tokenVersion) {
@@ -345,6 +415,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
         pendingUser.id,
         pendingUser.registrationSessionId,
         pendingUser.email,
+        pendingUser.ipAddress,
+        pendingUser.userAgentHash,
         pendingUser.verificationCodeHash,
         pendingUser.codeExpiresAt,
         pendingUser.attempts,
@@ -479,6 +551,9 @@ describe('AuthUseCase pending registration flow', () => {
   it('stores pending registrations without creating a user record', async () => {
     const result = await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     expect(result.isOk()).toBe(true);
@@ -490,6 +565,9 @@ describe('AuthUseCase pending registration flow', () => {
   it('supersedes an older session and only the latest session can verify', async () => {
     const firstResult = await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     const firstPendingUser = await pendingUserRepository.findByRegistrationSessionId(
@@ -503,6 +581,9 @@ describe('AuthUseCase pending registration flow', () => {
 
     await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     const latestPendingUser = await pendingUserRepository.findActiveByEmail('ada@example.com');
@@ -512,17 +593,23 @@ describe('AuthUseCase pending registration flow', () => {
       registrationSessionId: firstPendingUser!.registrationSessionId,
       email: 'ada@example.com',
       code: firstCode,
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     expect(oldCodeResult.isErr()).toBe(true);
     expect((oldCodeResult as { error: Error }).error.message).toBe(
-      'Invalid or expired verification code. Request a new code and try again.'
+      'INVALID_REQUEST'
     );
 
     const latestCodeResult = await authUseCase.verifyRegistrationCode({
       registrationSessionId: latestPendingUser!.registrationSessionId,
       email: 'ada@example.com',
       code: latestCode,
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     expect(latestCodeResult.isOk()).toBe(true);
@@ -533,21 +620,30 @@ describe('AuthUseCase pending registration flow', () => {
   it('enforces a resend cooldown for pending registrations', async () => {
     const registerResult = await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     const result = await authUseCase.resendRegistrationCode({
       registrationSessionId: registerResult.unwrap().registrationSessionId!,
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     expect(result.isErr()).toBe(true);
-    expect((result as { error: { code?: string; message: string } }).error.code).toBe('RESEND_COOLDOWN');
-    expect((result as { error: Error }).error.message).toBe('Please wait before requesting a new code.');
+    expect((result as { error: { code?: string; message: string } }).error.code).toBe('INVALID_REQUEST');
+    expect((result as { error: Error }).error.message).toBe('INVALID_REQUEST');
   });
 
   it('locks verification after five invalid attempts', async () => {
     const registerResult = await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     for (let attempt = 1; attempt < 5; attempt += 1) {
@@ -555,11 +651,14 @@ describe('AuthUseCase pending registration flow', () => {
         registrationSessionId: registerResult.unwrap().registrationSessionId!,
         email: 'ada@example.com',
         code: '00000000',
+      }, {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest-agent',
       });
 
       expect(result.isErr()).toBe(true);
       expect((result as { error: Error }).error.message).toBe(
-        'Invalid or expired verification code. Request a new code and try again.'
+        'INVALID_REQUEST'
       );
     }
 
@@ -567,17 +666,23 @@ describe('AuthUseCase pending registration flow', () => {
       registrationSessionId: registerResult.unwrap().registrationSessionId!,
       email: 'ada@example.com',
       code: '00000000',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     expect(lockedResult.isErr()).toBe(true);
     expect((lockedResult as { error: Error }).error.message).toBe(
-      'Invalid or expired verification code. Request a new code and try again.'
+      'INVALID_REQUEST'
     );
   });
 
   it('creates the user only after complete registration', async () => {
     const registerResult = await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     const pendingUser = await pendingUserRepository.findByRegistrationSessionId(
@@ -589,6 +694,9 @@ describe('AuthUseCase pending registration flow', () => {
       registrationSessionId: pendingUser!.registrationSessionId,
       email: 'ada@example.com',
       code,
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     const completionResult = await authUseCase.completeRegistration({
@@ -597,6 +705,9 @@ describe('AuthUseCase pending registration flow', () => {
       email: 'ada@example.com',
       name: 'Ada Lovelace',
       password: 'password-123',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     expect(completionResult.isOk()).toBe(true);
@@ -609,6 +720,9 @@ describe('AuthUseCase pending registration flow', () => {
   it('resumes only with a valid signed resume token', async () => {
     const registerResult = await authUseCase.register({
       email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
     });
 
     const resumeResult = await authUseCase.resumeRegistration({
@@ -619,5 +733,37 @@ describe('AuthUseCase pending registration flow', () => {
     expect(resumeResult.unwrap().registrationSessionId).toBe(
       registerResult.unwrap().registrationSessionId
     );
+  });
+
+  it('rejects repeated device mismatches and locks the session', async () => {
+    const registerResult = await authUseCase.register({
+      email: 'ada@example.com',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest-agent',
+    });
+
+    const pendingUser = await pendingUserRepository.findByRegistrationSessionId(
+      registerResult.unwrap().registrationSessionId!
+    );
+    const code = pendingUser!.verificationCodeHash.replace('hash:', '');
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const result = await authUseCase.verifyRegistrationCode({
+        registrationSessionId: pendingUser!.registrationSessionId,
+        email: 'ada@example.com',
+        code,
+      }, {
+        ipAddress: '10.0.0.99',
+        userAgent: 'different-agent',
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect((result as { error: Error }).error.message).toBe('INVALID_REQUEST');
+    }
+
+    expect(
+      (await pendingUserRepository.findByRegistrationSessionId(pendingUser!.registrationSessionId))?.status
+    ).toBe('locked');
   });
 });

@@ -60,6 +60,8 @@ export const pendingUsersTable = pgTable('pending_users', {
   id: uuid('id').defaultRandom().primaryKey(),
   registrationSessionId: uuid('registration_session_id').notNull().defaultRandom(),
   email: varchar('email', { length: 255 }).notNull(),
+  ipAddress: varchar('ip_address', { length: 255 }),
+  userAgentHash: varchar('user_agent_hash', { length: 255 }),
   verificationCodeHash: varchar('verification_code_hash', { length: 255 }).notNull(),
   codeExpiresAt: timestamp('code_expires_at').notNull(),
   attempts: integer('attempts').notNull().default(0),

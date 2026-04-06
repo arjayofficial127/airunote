@@ -7,6 +7,7 @@ export type PendingUserVerificationResult =
   | { status: 'expired' }
   | { status: 'too-many-attempts' }
   | { status: 'email-mismatch' }
+  | { status: 'device-mismatch'; attempts: number }
   | { status: 'invalid-code'; attempts: number }
   | { status: 'verified'; pendingUser: PendingUser };
 
@@ -15,6 +16,7 @@ export type PendingUserCompletionResult =
   | { status: 'not-found' }
   | { status: 'invalid-state' }
   | { status: 'email-mismatch' }
+  | { status: 'device-mismatch'; attempts: number }
   | { status: 'token-version-mismatch' }
   | { status: 'user-exists' };
 
@@ -30,15 +32,21 @@ export interface IPendingUserRepository {
   verifyCode(input: {
     registrationSessionId: string;
     email: string;
+    ipAddress: string | null;
+    userAgentHash: string | null;
     code: string;
     maxAttempts: number;
+    maxDeviceMismatches: number;
     verifyCode: (code: string, hash: string) => Promise<boolean>;
   }): Promise<PendingUserVerificationResult>;
   completeRegistration(input: {
     registrationSessionId: string;
     email: string;
+    ipAddress: string | null;
+    userAgentHash: string | null;
     name: string;
     passwordHash: string;
     tokenVersion: number;
+    maxDeviceMismatches: number;
   }): Promise<PendingUserCompletionResult>;
 }

@@ -11,6 +11,8 @@ export class PendingUser {
     public readonly id: string,
     public readonly registrationSessionId: string,
     public readonly email: string,
+    public readonly ipAddress: string | null,
+    public readonly userAgentHash: string | null,
     public readonly verificationCodeHash: string,
     public readonly codeExpiresAt: Date,
     public readonly attempts: number,

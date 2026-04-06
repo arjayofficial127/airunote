@@ -23,12 +23,17 @@ import { EmailService } from '../../infrastructure/email/email.service';
 
 const router: ReturnType<typeof Router> = Router();
 
+const getRegistrationRequestContext = (req: Request) => ({
+  ipAddress: req.ip || null,
+  userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
+});
+
 const handleVerifyRegistration = async (req: Request, res: Response, next: (error?: unknown) => void) => {
   try {
     const input = VerifyRegistrationCodeDto.parse(req.body);
     const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
-    const result = await authUseCase.verifyRegistrationCode(input);
+    const result = await authUseCase.verifyRegistrationCode(input, getRegistrationRequestContext(req));
 
     if (result.isErr()) {
       return next(result.unwrap());
@@ -48,7 +53,7 @@ const handleResumeRegistration = async (req: Request, res: Response, next: (erro
     const input = ResumeRegistrationDto.parse(req.body);
     const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
-    const result = await authUseCase.resumeRegistration(input);
+    const result = await authUseCase.resumeRegistration(input, getRegistrationRequestContext(req));
 
     if (result.isErr()) {
       return next(result.unwrap());
@@ -72,7 +77,7 @@ const handleResendRegistrationCode = async (
     const input = ResendRegistrationCodeDto.parse(req.body);
     const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
-    const result = await authUseCase.resendRegistrationCode(input);
+    const result = await authUseCase.resendRegistrationCode(input, getRegistrationRequestContext(req));
 
     if (result.isErr()) {
       return next(result.unwrap());
@@ -96,7 +101,7 @@ router.post(
       const input = RegisterDto.parse({ ...req.body, secret });
       const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
-      const result = await authUseCase.register(input);
+      const result = await authUseCase.register(input, getRegistrationRequestContext(req));
 
       if (result.isErr()) {
         return next(result.unwrap());
@@ -126,7 +131,7 @@ router.post('/complete-registration', authRateLimit, async (req: Request, res: R
     const input = CompleteRegistrationDto.parse(req.body);
     const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
 
-    const result = await authUseCase.completeRegistration(input);
+    const result = await authUseCase.completeRegistration(input, getRegistrationRequestContext(req));
 
     if (result.isErr()) {
       return next(result.unwrap());
