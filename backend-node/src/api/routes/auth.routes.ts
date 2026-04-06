@@ -9,6 +9,9 @@ import {
   VerifyRegistrationCodeDto,
   ResendRegistrationCodeDto,
   CompleteRegistrationDto,
+  RequestPasswordResetDto,
+  VerifyResetTokenDto,
+  ResetPasswordDto,
 } from '../../application/dtos/auth.dto';
 import { authRateLimit } from '../middleware/rateLimitMiddleware';
 import { authMiddleware } from '../middleware/authMiddleware';
@@ -145,6 +148,66 @@ router.post('/complete-registration', authRateLimit, async (req: Request, res: R
         user,
         accessToken,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/request-password-reset', authRateLimit, async (req: Request, res: Response, next) => {
+  try {
+    const input = RequestPasswordResetDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.requestPasswordReset(input, getRegistrationRequestContext(req));
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/verify-reset-token', authRateLimit, async (req: Request, res: Response, next) => {
+  try {
+    const input = VerifyResetTokenDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.verifyResetToken(input, getRegistrationRequestContext(req));
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/reset-password', authRateLimit, async (req: Request, res: Response, next) => {
+  try {
+    const input = ResetPasswordDto.parse(req.body);
+    const authUseCase = container.resolve<IAuthUseCase>(TYPES.IAuthUseCase);
+
+    const result = await authUseCase.resetPassword(input, getRegistrationRequestContext(req));
+
+    if (result.isErr()) {
+      return next(result.unwrap());
+    }
+
+    res.json({
+      success: true,
+      data: result.unwrap(),
     });
   } catch (error) {
     next(error);

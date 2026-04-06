@@ -6,6 +6,7 @@ export const TYPES = {
   // Repositories
   IUserRepository: Symbol('IUserRepository'),
   IPendingUserRepository: Symbol('IPendingUserRepository'),
+  IPasswordResetRepository: Symbol('IPasswordResetRepository'),
   IOrgRepository: Symbol('IOrgRepository'),
   IBillingIntentRepository: Symbol('IBillingIntentRepository'),
   IWebhookEventRepository: Symbol('IWebhookEventRepository'),

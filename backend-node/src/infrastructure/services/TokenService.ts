@@ -14,6 +14,13 @@ export interface RegistrationTokenPayload {
   tokenVersion: number;
 }
 
+export interface PasswordResetTokenPayload {
+  purpose: 'password-reset';
+  userId: string;
+  email: string;
+  nonce: string;
+}
+
 export interface ITokenService {
   generateAccessToken(payload: TokenPayload): string;
   generateRefreshToken(payload: TokenPayload): string;
@@ -23,10 +30,14 @@ export interface ITokenService {
   generateSetupRegistrationToken(
     payload: Omit<RegistrationTokenPayload, 'purpose'>
   ): string;
+  generatePasswordResetToken(
+    payload: Omit<PasswordResetTokenPayload, 'purpose'>
+  ): string;
   verifyAccessToken(token: string): TokenPayload | null;
   verifyRefreshToken(token: string): TokenPayload | null;
   verifyResumeRegistrationToken(token: string): RegistrationTokenPayload | null;
   verifySetupRegistrationToken(token: string): RegistrationTokenPayload | null;
+  verifyPasswordResetToken(token: string): PasswordResetTokenPayload | null;
 }
 
 @injectable()
@@ -34,19 +45,23 @@ export class TokenService implements ITokenService {
   private readonly accessSecret: string;
   private readonly refreshSecret: string;
   private readonly registrationSecret: string;
+  private readonly passwordResetSecret: string;
   private readonly accessExpiresIn: string;
   private readonly refreshExpiresIn: string;
   private readonly registrationResumeExpiresIn: string;
   private readonly registrationSetupExpiresIn: string;
+  private readonly passwordResetExpiresIn: string;
 
   constructor() {
     this.accessSecret = process.env.JWT_ACCESS_SECRET || '';
     this.refreshSecret = process.env.JWT_REFRESH_SECRET || '';
     this.registrationSecret = process.env.JWT_REGISTRATION_SECRET || this.accessSecret;
+    this.passwordResetSecret = process.env.JWT_PASSWORD_RESET_SECRET || this.registrationSecret;
     this.accessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN || '15m';
     this.refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
     this.registrationResumeExpiresIn = process.env.JWT_REGISTRATION_RESUME_EXPIRES_IN || '15m';
     this.registrationSetupExpiresIn = process.env.JWT_REGISTRATION_SETUP_EXPIRES_IN || '15m';
+    this.passwordResetExpiresIn = process.env.JWT_PASSWORD_RESET_EXPIRES_IN || '15m';
 
     if (!this.accessSecret || !this.refreshSecret) {
       throw new Error('JWT secrets must be set in environment variables');
@@ -91,6 +106,23 @@ export class TokenService implements ITokenService {
     );
   }
 
+  generatePasswordResetToken(
+    payload: Omit<PasswordResetTokenPayload, 'purpose'>
+  ): string {
+    const options: SignOptions = {
+      expiresIn: this.passwordResetExpiresIn as any,
+    };
+
+    return jwt.sign(
+      {
+        ...payload,
+        purpose: 'password-reset',
+      },
+      this.passwordResetSecret,
+      options
+    );
+  }
+
   verifyAccessToken(token: string): TokenPayload | null {
     try {
       return jwt.verify(token, this.accessSecret) as TokenPayload;
@@ -123,6 +155,19 @@ export class TokenService implements ITokenService {
     }
 
     return payload;
+  }
+
+  verifyPasswordResetToken(token: string): PasswordResetTokenPayload | null {
+    try {
+      const payload = jwt.verify(token, this.passwordResetSecret) as PasswordResetTokenPayload;
+      if (payload.purpose !== 'password-reset') {
+        return null;
+      }
+
+      return payload;
+    } catch {
+      return null;
+    }
   }
 
   private generateRegistrationToken(

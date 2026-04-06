@@ -76,6 +76,25 @@ export const pendingUsersTable = pgTable('pending_users', {
   statusIdx: index('pending_users_status_idx').on(table.status),
 }));
 
+export const passwordResetRequestsTable = pgTable('password_reset_requests', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  resetTokenHash: varchar('reset_token_hash', { length: 255 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  emailIdx: index('password_reset_requests_email_idx').on(table.email),
+  expiresIdx: index('password_reset_requests_expires_idx').on(table.expiresAt),
+  userIdx: index('password_reset_requests_user_id_idx').on(table.userId),
+  tokenHashIdx: index('password_reset_requests_token_hash_idx').on(table.resetTokenHash),
+}));
+
 // SuperAdmin table
 export const superAdminsTable = pgTable('super_admins', {
   id: uuid('id').defaultRandom().primaryKey(),

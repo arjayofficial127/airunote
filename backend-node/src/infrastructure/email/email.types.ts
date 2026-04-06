@@ -21,3 +21,9 @@ export interface RegistrationVerificationEmailPayload extends BaseEmailPayload {
   resumeUrl: string;
   expiresInMinutes: number;
 }
+
+export interface PasswordResetEmailPayload extends BaseEmailPayload {
+  userName: string;
+  resetUrl: string;
+  expiresInMinutes: number;
+}

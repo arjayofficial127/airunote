@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 import { injectable, inject } from 'tsyringe';
 import { Result } from '../../core/result/Result';
 import {
@@ -7,8 +7,10 @@ import {
   UnauthorizedError,
 } from '../../core/errors/AppError';
 import { PendingUser } from '../../domain/entities/PendingUser';
+import { PasswordResetRequest } from '../../domain/entities/PasswordResetRequest';
 import { IUserRepository } from '../interfaces/IUserRepository';
 import { IPendingUserRepository } from '../interfaces/IPendingUserRepository';
+import { IPasswordResetRepository } from '../interfaces/IPasswordResetRepository';
 import { IAppSettingRepository } from '../interfaces/IAppSettingRepository';
 import { IPasswordHasherService } from '../../infrastructure/services/PasswordHasherService';
 import { ITokenService } from '../../infrastructure/services/TokenService';
@@ -24,6 +26,11 @@ import {
   VerifyRegistrationCodeInput,
   ResendRegistrationCodeInput,
   CompleteRegistrationInput,
+  RequestPasswordResetInput,
+  VerifyResetTokenInput,
+  ResetPasswordInput,
+  GenericSuccessResponse,
+  ResetTokenVerificationResponse,
 } from '../dtos/auth.dto';
 import { TYPES } from '../../core/di/types';
 
@@ -33,6 +40,9 @@ export interface IAuthUseCase {
   verifyRegistrationCode(input: VerifyRegistrationCodeInput, requestContext?: RegistrationRequestContext): Promise<Result<RegistrationVerificationResponse, Error>>;
   resendRegistrationCode(input: ResendRegistrationCodeInput, requestContext?: RegistrationRequestContext): Promise<Result<RegistrationChallengeResponse, Error>>;
   completeRegistration(input: CompleteRegistrationInput, requestContext?: RegistrationRequestContext): Promise<Result<AuthResponse, Error>>;
+  requestPasswordReset(input: RequestPasswordResetInput, requestContext?: RegistrationRequestContext): Promise<Result<GenericSuccessResponse, Error>>;
+  verifyResetToken(input: VerifyResetTokenInput, requestContext?: RegistrationRequestContext): Promise<Result<ResetTokenVerificationResponse, Error>>;
+  resetPassword(input: ResetPasswordInput, requestContext?: RegistrationRequestContext): Promise<Result<GenericSuccessResponse, Error>>;
   login(input: LoginInput): Promise<Result<AuthResponse, Error>>;
   refreshToken(refreshToken: string): Promise<Result<AuthResponse, Error>>;
 }
@@ -46,12 +56,14 @@ const REGISTRATION_CODE_EXPIRY_MINUTES = 10;
 const MAX_REGISTRATION_CODE_ATTEMPTS = 5;
 const MAX_DEVICE_MISMATCH_ATTEMPTS = 2;
 const REGISTRATION_RESEND_COOLDOWN_MS = 60 * 1000;
+const PASSWORD_RESET_EXPIRY_MINUTES = 15;
 
 @injectable()
 export class AuthUseCase implements IAuthUseCase {
   constructor(
     @inject(TYPES.IUserRepository) private userRepository: IUserRepository,
     @inject(TYPES.IPendingUserRepository) private pendingUserRepository: IPendingUserRepository,
+    @inject(TYPES.IPasswordResetRepository) private passwordResetRepository: IPasswordResetRepository,
     @inject(TYPES.IAppSettingRepository)
     private appSettingRepository: IAppSettingRepository,
     @inject(TYPES.IPasswordHasherService)
@@ -515,6 +527,172 @@ export class AuthUseCase implements IAuthUseCase {
     });
   }
 
+  async requestPasswordReset(
+    input: RequestPasswordResetInput,
+    requestContext?: RegistrationRequestContext
+  ): Promise<Result<GenericSuccessResponse, Error>> {
+    const normalizedEmail = this.normalizeEmail(input.email);
+    const deviceBinding = this.toDeviceBinding(requestContext);
+    const user = await this.userRepository.findByEmail(normalizedEmail);
+
+    if (!user || !user.isActive || !user.emailVerifiedAt) {
+      this.logPasswordResetAudit('REQUEST_ATTEMPT', {
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: true,
+        reason: 'generic_response',
+      });
+      return Result.ok({ success: true });
+    }
+
+    try {
+      const resetToken = this.createPasswordResetToken(user.id, user.email);
+      const resetTokenHash = this.hashResetToken(resetToken);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + PASSWORD_RESET_EXPIRY_MINUTES * 60 * 1000);
+
+      await this.passwordResetRepository.createRequest({
+        userId: user.id,
+        email: user.email,
+        resetTokenHash,
+        expiresAt,
+        attempts: 0,
+        usedAt: null,
+      });
+
+      const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+      const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+      await this.emailService.sendPasswordResetEmail({
+        to: user.email,
+        userName: user.name || 'there',
+        resetUrl,
+        expiresInMinutes: PASSWORD_RESET_EXPIRY_MINUTES,
+      });
+    } catch {
+      this.logPasswordResetAudit('REQUEST_ATTEMPT', {
+        email: normalizedEmail,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'send_failed',
+      });
+
+      return Result.ok({ success: true });
+    }
+
+    this.logPasswordResetAudit('REQUEST_ATTEMPT', {
+      email: normalizedEmail,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
+    });
+
+    return Result.ok({ success: true });
+  }
+
+  async verifyResetToken(
+    input: VerifyResetTokenInput,
+    requestContext?: RegistrationRequestContext
+  ): Promise<Result<ResetTokenVerificationResponse, Error>> {
+    const deviceBinding = this.toDeviceBinding(requestContext);
+    const tokenPayload = this.tokenService.verifyPasswordResetToken(input.token);
+    if (!tokenPayload) {
+      this.logPasswordResetAudit('VERIFY_ATTEMPT', {
+        email: 'unknown',
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
+    }
+
+    const resetRequest = await this.passwordResetRepository.findValidByTokenHash(
+      this.hashResetToken(input.token)
+    );
+
+    if (!resetRequest || !this.isResetTokenBound(resetRequest, tokenPayload.userId, tokenPayload.email)) {
+      this.logPasswordResetAudit('VERIFY_ATTEMPT', {
+        email: tokenPayload.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
+    }
+
+    const user = await this.userRepository.findById(resetRequest.userId);
+    if (!user || !user.isActive || !user.emailVerifiedAt) {
+      this.logPasswordResetAudit('VERIFY_ATTEMPT', {
+        email: tokenPayload.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
+    }
+
+    this.logPasswordResetAudit('VERIFY_ATTEMPT', {
+      email: tokenPayload.email,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
+    });
+
+    return Result.ok({ valid: true });
+  }
+
+  async resetPassword(
+    input: ResetPasswordInput,
+    requestContext?: RegistrationRequestContext
+  ): Promise<Result<GenericSuccessResponse, Error>> {
+    const deviceBinding = this.toDeviceBinding(requestContext);
+    const tokenPayload = this.tokenService.verifyPasswordResetToken(input.token);
+    if (!tokenPayload) {
+      this.logPasswordResetAudit('RESET_ATTEMPT', {
+        email: 'unknown',
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
+    }
+
+    const resetRequest = await this.passwordResetRepository.findValidByTokenHash(
+      this.hashResetToken(input.token)
+    );
+
+    if (!resetRequest || !this.isResetTokenBound(resetRequest, tokenPayload.userId, tokenPayload.email)) {
+      this.logPasswordResetAudit('RESET_ATTEMPT', {
+        email: tokenPayload.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
+    }
+
+    const user = await this.userRepository.findById(resetRequest.userId);
+    if (!user || !user.isActive || !user.emailVerifiedAt) {
+      this.logPasswordResetAudit('RESET_ATTEMPT', {
+        email: tokenPayload.email,
+        ipAddress: deviceBinding.ipAddress,
+        success: false,
+        reason: 'invalid_request',
+      });
+      return Result.err(this.invalidRequestError());
+    }
+
+    const passwordHash = await this.passwordHasher.hash(input.newPassword);
+    await this.userRepository.update(user.id, { passwordHash });
+    await this.passwordResetRepository.markUsed(resetRequest.id);
+
+    this.logPasswordResetAudit('RESET_ATTEMPT', {
+      email: tokenPayload.email,
+      ipAddress: deviceBinding.ipAddress,
+      success: true,
+    });
+
+    return Result.ok({ success: true });
+  }
+
   async refreshToken(refreshToken: string): Promise<Result<AuthResponse, Error>> {
     const payload = this.tokenService.verifyRefreshToken(refreshToken);
 
@@ -599,6 +777,18 @@ export class AuthUseCase implements IAuthUseCase {
 
   private generateRegistrationCode(): string {
     return Math.floor(10000000 + Math.random() * 90000000).toString();
+  }
+
+  private createPasswordResetToken(userId: string, email: string): string {
+    return this.tokenService.generatePasswordResetToken({
+      userId,
+      email,
+      nonce: randomBytes(32).toString('hex'),
+    });
+  }
+
+  private hashResetToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   // Email delivery is intentionally isolated from persistence so failed sends do not produce partial user creation.
@@ -695,6 +885,14 @@ export class AuthUseCase implements IAuthUseCase {
     });
   }
 
+  private isResetTokenBound(
+    resetRequest: PasswordResetRequest,
+    userId: string,
+    email: string
+  ): boolean {
+    return resetRequest.userId === userId && resetRequest.email === email;
+  }
+
   // Audit trail enables abuse detection and incident tracing.
   private logRegistrationAudit(
     event: 'REGISTER_ATTEMPT' | 'VERIFY_ATTEMPT' | 'COMPLETE_ATTEMPT' | 'RESEND_ATTEMPT',
@@ -711,6 +909,28 @@ export class AuthUseCase implements IAuthUseCase {
       JSON.stringify({
         event,
         sessionId: payload.sessionId,
+        email: payload.email,
+        ipAddress: payload.ipAddress,
+        success: payload.success,
+        reason: payload.reason,
+        timestamp: new Date().toISOString(),
+      })
+    );
+  }
+
+  private logPasswordResetAudit(
+    event: 'REQUEST_ATTEMPT' | 'VERIFY_ATTEMPT' | 'RESET_ATTEMPT',
+    payload: {
+      email: string;
+      ipAddress: string | null;
+      success: boolean;
+      reason?: string;
+    }
+  ): void {
+    console.log(
+      '[PasswordResetAudit]',
+      JSON.stringify({
+        event,
         email: payload.email,
         ipAddress: payload.ipAddress,
         success: payload.success,

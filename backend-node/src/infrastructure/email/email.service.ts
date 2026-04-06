@@ -4,11 +4,13 @@ import {
   OrgCreatedEmailPayload,
   LoginSuccessEmailPayload,
   RegistrationVerificationEmailPayload,
+  PasswordResetEmailPayload,
 } from './email.types';
 import {
   renderOrgCreatedEmail,
   renderLoginSuccessEmail,
   renderRegistrationVerificationEmail,
+  renderPasswordResetEmail,
 } from './email.templates';
 
 export interface IEmailService {
@@ -16,6 +18,9 @@ export interface IEmailService {
   sendLoginSuccessEmail(payload: LoginSuccessEmailPayload): Promise<{ success: boolean; message: string }>;
   sendRegistrationVerificationEmail(
     payload: RegistrationVerificationEmailPayload
+  ): Promise<{ success: boolean; message: string }>;
+  sendPasswordResetEmail(
+    payload: PasswordResetEmailPayload
   ): Promise<{ success: boolean; message: string }>;
 }
 
@@ -86,6 +91,27 @@ export class EmailService implements IEmailService {
       return { success: true, message: 'Email sent successfully' };
     } catch (error) {
       console.error(`[EmailService] ❌ Failed to send registration verification email to ${payload.to}:`, error);
+      return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  async sendPasswordResetEmail(
+    payload: PasswordResetEmailPayload
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const { subject, html } = renderPasswordResetEmail(payload);
+
+      await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'AiruNote <no-reply@airunote.app>',
+        to: payload.to,
+        subject,
+        html,
+      });
+
+      console.log(`[EmailService] ✅ Password reset email sent successfully to ${payload.to}`);
+      return { success: true, message: 'Email sent successfully' };
+    } catch (error) {
+      console.error(`[EmailService] ❌ Failed to send password reset email to ${payload.to}:`, error);
       return { success: false, message: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

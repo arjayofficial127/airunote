@@ -28,6 +28,19 @@ export const CompleteRegistrationDto = z.object({
   password: z.string().min(8),
 });
 
+export const RequestPasswordResetDto = z.object({
+  email: z.string().email(),
+});
+
+export const VerifyResetTokenDto = z.object({
+  token: z.string().min(1),
+});
+
+export const ResetPasswordDto = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8),
+});
+
 export const LoginDto = z.object({
   email: z.string().email(),
   password: z.string().min(1),
@@ -38,6 +51,9 @@ export type ResumeRegistrationInput = z.infer<typeof ResumeRegistrationDto>;
 export type VerifyRegistrationCodeInput = z.infer<typeof VerifyRegistrationCodeDto>;
 export type ResendRegistrationCodeInput = z.infer<typeof ResendRegistrationCodeDto>;
 export type CompleteRegistrationInput = z.infer<typeof CompleteRegistrationDto>;
+export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetDto>;
+export type VerifyResetTokenInput = z.infer<typeof VerifyResetTokenDto>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordDto>;
 export type LoginInput = z.infer<typeof LoginDto>;
 
 export interface RegistrationChallengeResponse {
@@ -59,6 +75,14 @@ export interface RegistrationVerificationResponse {
   registrationSessionId: string;
   verified: true;
   setupToken: string;
+}
+
+export interface GenericSuccessResponse {
+  success: true;
+}
+
+export interface ResetTokenVerificationResponse {
+  valid: true;
 }
 
 export interface AuthResponse {

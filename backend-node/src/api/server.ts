@@ -28,6 +28,8 @@ import { IUserRepository } from '../application/interfaces/IUserRepository';
 import { UserRepository } from '../infrastructure/persistence/UserRepository';
 import { IPendingUserRepository } from '../application/interfaces/IPendingUserRepository';
 import { PendingUserRepository } from '../infrastructure/persistence/PendingUserRepository';
+import { IPasswordResetRepository } from '../application/interfaces/IPasswordResetRepository';
+import { PasswordResetRepository } from '../infrastructure/persistence/PasswordResetRepository';
 import { IOrgRepository } from '../application/interfaces/IOrgRepository';
 import { OrgRepository } from '../infrastructure/persistence/OrgRepository';
 import { IBillingIntentRepository } from '../application/interfaces/IBillingIntentRepository';
@@ -108,6 +110,7 @@ dotenv.config();
 // Register all dependencies
 container.registerSingleton<IUserRepository>(TYPES.IUserRepository, UserRepository);
 container.registerSingleton<IPendingUserRepository>(TYPES.IPendingUserRepository, PendingUserRepository);
+container.registerSingleton<IPasswordResetRepository>(TYPES.IPasswordResetRepository, PasswordResetRepository);
 container.registerSingleton<IOrgRepository>(TYPES.IOrgRepository, OrgRepository);
 container.registerSingleton<IBillingIntentRepository>(TYPES.IBillingIntentRepository, BillingIntentRepository);
 container.registerSingleton<IWebhookEventRepository>(TYPES.IWebhookEventRepository, WebhookEventRepository);
