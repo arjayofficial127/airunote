@@ -409,10 +409,6 @@ export class PendingUserRepository implements IPendingUserRepository {
           isActive: true,
           defaultOrgId: null,
           emailVerifiedAt: record.verified_at,
-          registrationMfaCodeHash: null,
-          registrationMfaExpiresAt: null,
-          registrationMfaAttemptCount: 0,
-          registrationMfaLastSentAt: null,
         })
         .onConflictDoNothing({
           target: usersTable.email,
@@ -468,10 +464,6 @@ export class PendingUserRepository implements IPendingUserRepository {
       record.isActive,
       record.defaultOrgId,
       record.emailVerifiedAt,
-      record.registrationMfaCodeHash,
-      record.registrationMfaExpiresAt,
-      record.registrationMfaAttemptCount,
-      record.registrationMfaLastSentAt,
       record.createdAt
     );
   }

@@ -27,10 +27,6 @@ class InMemoryUserRepository implements IUserRepository {
       user.isActive,
       user.defaultOrgId,
       user.emailVerifiedAt,
-      user.registrationMfaCodeHash,
-      user.registrationMfaExpiresAt,
-      user.registrationMfaAttemptCount,
-      user.registrationMfaLastSentAt,
       new Date()
     );
     this.users.set(created.email, created);
@@ -59,10 +55,6 @@ class InMemoryUserRepository implements IUserRepository {
       updates.isActive ?? existing.isActive,
       updates.defaultOrgId ?? existing.defaultOrgId,
       updates.emailVerifiedAt ?? existing.emailVerifiedAt,
-      updates.registrationMfaCodeHash ?? existing.registrationMfaCodeHash,
-      updates.registrationMfaExpiresAt ?? existing.registrationMfaExpiresAt,
-      updates.registrationMfaAttemptCount ?? existing.registrationMfaAttemptCount,
-      updates.registrationMfaLastSentAt ?? existing.registrationMfaLastSentAt,
       existing.createdAt
     );
 
@@ -403,10 +395,6 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
       isActive: true,
       defaultOrgId: null,
       emailVerifiedAt: pendingUser.verifiedAt,
-      registrationMfaCodeHash: null,
-      registrationMfaExpiresAt: null,
-      registrationMfaAttemptCount: 0,
-      registrationMfaLastSentAt: null,
     });
 
     this.pendingUsers.set(
