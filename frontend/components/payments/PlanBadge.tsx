@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { orgsApi, type OrgUsage } from '@/lib/api/orgs';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
+import { useOrgUsage } from '@/hooks/useOrgUsage';
 
 function formatRemaining(value: number | null): string {
   if (value === null) {
@@ -15,53 +14,47 @@ function formatRemaining(value: number | null): string {
 export function PlanBadge() {
   const orgSession = useOrgSession();
   const activeOrg = orgSession.activeOrg;
-  const plan = (activeOrg?.plan || 'free').toLowerCase();
+  const rawPlan = typeof activeOrg?.plan === 'string' ? activeOrg.plan.toLowerCase() : null;
+  const isPlanKnown = rawPlan === 'free' || rawPlan === 'pro';
+  const isPendingPlan = !isPlanKnown && (!orgSession.hasAuthoritativeData || orgSession.isRefreshing);
+  const plan = isPlanKnown ? rawPlan : null;
   const isPro = plan === 'pro';
-  const [usage, setUsage] = useState<OrgUsage | null>(null);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const loadUsage = async () => {
-      if (!activeOrg?.id) {
-        setUsage(null);
-        return;
-      }
-
-      try {
-        const response = await orgsApi.getUsage(activeOrg.id);
-        if (isActive) {
-          setUsage(response.data);
-        }
-      } catch (error) {
-        if (isActive) {
-          setUsage(null);
-        }
-      }
-    };
-
-    loadUsage();
-
-    return () => {
-      isActive = false;
-    };
-  }, [activeOrg?.id]);
+  const usage = useOrgUsage(activeOrg?.id);
 
   if (!activeOrg) {
     return null;
   }
 
+  const toneClassName = isPendingPlan
+    ? 'border-sky-200 bg-sky-50/90 text-sky-950'
+    : isPro
+      ? 'border-emerald-200 bg-emerald-50/85 text-emerald-950'
+      : 'border-slate-200 bg-slate-50/95 text-slate-900';
+
+  const pillClassName = isPendingPlan
+    ? 'bg-sky-600 text-white'
+    : isPro
+      ? 'bg-emerald-600 text-white'
+      : 'bg-slate-900 text-white';
+
+  const planLabel = isPendingPlan ? 'Syncing' : isPro ? 'Pro' : plan === 'free' ? 'Free' : 'Plan';
+  const planDescription = isPendingPlan
+    ? 'Confirming workspace plan'
+    : isPro
+      ? 'Pro workspace'
+      : plan === 'free'
+        ? 'Free workspace'
+        : 'Workspace plan';
+
   return (
     <>
       <div
-        className={`flex sm:hidden items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs shadow-sm ${
-          isPro
-            ? 'border-emerald-200 bg-emerald-50/80 text-emerald-950'
-            : 'border-slate-200 bg-slate-50/90 text-slate-900'
-        }`}
+        className={`flex min-w-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs shadow-sm sm:hidden ${toneClassName}`}
       >
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${isPro ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'}`}>
-          {isPro ? 'Pro' : 'Free'}
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${pillClassName}`}
+        >
+          {planLabel}
         </span>
         <span className="text-[11px] font-medium text-slate-600">
           D {usage ? `${usage.documents.used}/${usage.documents.limit ?? '∞'}` : '...'}
@@ -72,46 +65,44 @@ export function PlanBadge() {
       </div>
 
       <div
-        className={`hidden sm:flex items-center gap-2 rounded-2xl border px-3 py-2 shadow-sm ${
-          isPro
-            ? 'border-emerald-200 bg-emerald-50/80 text-emerald-950'
-            : 'border-slate-200 bg-slate-50/90 text-slate-900'
-        }`}
+        className={`hidden md:flex min-w-0 items-stretch overflow-hidden rounded-[22px] border shadow-sm ${toneClassName}`}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 px-3 py-2.5 lg:px-4">
           <span
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-              isPro ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white'
-            }`}
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${pillClassName}`}
           >
-            {isPro ? 'Pro' : 'Free'}
+            {planLabel}
           </span>
-          <div className="leading-tight">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Current plan</div>
-            <div className="text-sm font-semibold">{isPro ? 'Pro workspace' : 'Free workspace'}</div>
+          <div className="min-w-0 leading-tight">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Workspace</div>
+            <div className="truncate text-sm font-semibold">{planDescription}</div>
           </div>
         </div>
 
-        <div className="hidden h-9 w-px bg-slate-200 lg:block" />
+        <div className="h-auto w-px bg-white/70" />
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="rounded-xl bg-white/90 px-3 py-2 ring-1 ring-slate-200">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Documents</div>
+        <div className="hidden items-center lg:flex">
+          <div className="px-3 py-2.5 xl:px-4">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Documents</div>
             <div className="text-sm font-semibold text-slate-900">
-              {usage ? `${usage.documents.used} used` : '...'}
+              {usage ? `${usage.documents.used} used` : 'Loading'}
             </div>
             <div className="text-xs text-slate-500">
-              {usage ? formatRemaining(usage.documents.remaining) : 'Loading'}
+              {usage ? formatRemaining(usage.documents.remaining) : 'Syncing limit'}
             </div>
           </div>
+        </div>
 
-          <div className="rounded-xl bg-white/90 px-3 py-2 ring-1 ring-slate-200">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Folders</div>
+        <div className="hidden h-auto w-px bg-white/70 xl:block" />
+
+        <div className="hidden items-center xl:flex">
+          <div className="px-4 py-2.5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Folders</div>
             <div className="text-sm font-semibold text-slate-900">
-              {usage ? `${usage.folders.used} used` : '...'}
+              {usage ? `${usage.folders.used} used` : 'Loading'}
             </div>
             <div className="text-xs text-slate-500">
-              {usage ? formatRemaining(usage.folders.remaining) : 'Loading'}
+              {usage ? formatRemaining(usage.folders.remaining) : 'Syncing limit'}
             </div>
           </div>
         </div>

@@ -31,6 +31,8 @@ interface OrgSessionState {
   activeOrg: Org | null;
   orgUser: OrgUser | null;
   roles: string[];
+  isRefreshing: boolean;
+  hasAuthoritativeData: boolean;
   error: string | null;
 }
 
@@ -77,6 +79,8 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
   const [activeOrg, setActiveOrg] = useState<Org | null>(null);
   const [orgUser, setOrgUser] = useState<OrgUser | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasAuthoritativeData, setHasAuthoritativeData] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Track route orgId from params (INPUT, NOT authority)
@@ -112,6 +116,8 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       setActiveOrg(null);
       setOrgUser(null);
       setRoles([]);
+      setIsRefreshing(false);
+      setHasAuthoritativeData(false);
       setError(null);
       // Clear in-flight request
       inFlightRequestRef.current = null;
@@ -128,17 +134,23 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
    * - Otherwise creates new request and stores it
    * - Safe for SSR/SSG (catches all errors)
    */
-  const loadOrgs = useCallback(async () => {
+  const loadOrgs = useCallback(async (options?: { background?: boolean }) => {
     // If there's already an in-flight request, wait for it
     if (inFlightRequestRef.current) {
       await inFlightRequestRef.current;
       return;
     }
 
+    const isBackgroundRefresh = options?.background === true;
+
     // Create new request promise
     const requestPromise = (async () => {
       try {
-        setStatus('loading');
+        if (isBackgroundRefresh) {
+          setIsRefreshing(true);
+        } else {
+          setStatus('loading');
+        }
         setError(null);
 
         const res = await orgsApi.list();
@@ -187,17 +199,24 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
           }
         }
 
+        setHasAuthoritativeData(true);
         setStatus('ready');
       } catch (err: any) {
         console.error('[OrgSessionProvider] Failed to load orgs:', err);
-        setError(err.response?.data?.error?.message || 'Failed to load organizations');
-        setStatus('error');
-        setOrgs([]);
-        setActiveOrgId(null);
-        setActiveOrg(null);
-        setOrgUser(null);
-        setRoles([]);
+        if (isBackgroundRefresh) {
+          setError(null);
+        } else {
+          setError(err.response?.data?.error?.message || 'Failed to load organizations');
+          setStatus('error');
+          setOrgs([]);
+          setActiveOrgId(null);
+          setActiveOrg(null);
+          setOrgUser(null);
+          setRoles([]);
+          setHasAuthoritativeData(false);
+        }
       } finally {
+        setIsRefreshing(false);
         // Clear in-flight request
         inFlightRequestRef.current = null;
       }
@@ -222,6 +241,7 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       setActiveOrg(null);
       setOrgUser(null);
       setRoles([]);
+      setHasAuthoritativeData(false);
       // If we're on an org route and syncRoute is true, redirect to org selector
       if (syncRoute && pathname?.startsWith('/orgs/')) {
         isSyncingRouteRef.current = true;
@@ -277,6 +297,7 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       setActiveOrg(null);
       setOrgUser(null);
       setRoles([]);
+      setHasAuthoritativeData(false);
       // Redirect to org selector
       if (syncRoute && pathname?.startsWith('/orgs/')) {
         isSyncingRouteRef.current = true;
@@ -319,6 +340,8 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       setActiveOrg(null);
       setOrgUser(null);
       setRoles([]);
+      setIsRefreshing(false);
+      setHasAuthoritativeData(false);
       setError(null);
       return;
     }
@@ -371,11 +394,14 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
           setRoles([]);
         }
 
+        setHasAuthoritativeData(false);
         setStatus('ready');
         setError(null);
 
         // Clear bootstrap data once consumed to avoid stale reuse
         window.sessionStorage.removeItem('airunote_bootstrap_orgs');
+
+        void loadOrgs({ background: true });
 
         return;
       }
@@ -397,6 +423,8 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       setActiveOrg(null);
       setOrgUser(null);
       setRoles([]);
+      setIsRefreshing(false);
+      setHasAuthoritativeData(false);
       setError(null);
       // Clear in-flight request
       inFlightRequestRef.current = null;
@@ -471,6 +499,8 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
     activeOrg,
     orgUser,
     roles,
+    isRefreshing,
+    hasAuthoritativeData,
     error,
     setActiveOrg: setActiveOrgHandler,
     refetch,

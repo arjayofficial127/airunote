@@ -76,6 +76,7 @@ export default function LoginPage() {
           );
 
           await refetch();
+          await orgSession.refetch();
 
           if (orgs.length === 0) {
             router.push('/orgs');

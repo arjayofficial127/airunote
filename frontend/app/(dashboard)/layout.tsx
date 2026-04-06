@@ -9,7 +9,6 @@ import { useOrgSession } from '@/providers/OrgSessionProvider';
 import Link from 'next/link';
 import UserProfileModal from '@/components/user/UserProfileModal';
 import OrgAccessChecker from '@/components/org/OrgAccessChecker';
-import type { Org } from '@/lib/api/orgs';
 import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 import { UnifiedSidebar } from '@/components/layout/UnifiedSidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
@@ -195,6 +194,25 @@ export default function DashboardLayout({
 
   const contextDisplay = getContextDisplay();
 
+  const getUserLabel = () => {
+    if (user?.name?.trim()) {
+      return user.name.trim();
+    }
+
+    return user?.email || 'User';
+  };
+
+  const getUserInitials = () => {
+    const label = getUserLabel();
+    const parts = label.split(/\s+/).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+    }
+
+    return label.slice(0, 2).toUpperCase();
+  };
+
   // Prepare provider states for SessionBoundary
   // Only include org/metadata if we're in org context
   const providerStates = isInOrgContext
@@ -260,7 +278,7 @@ export default function DashboardLayout({
         <OrgAccessChecker>
         <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
           {!isOrgsOnboardingPage && (
-          <nav className="bg-white border-b border-gray-200 flex-shrink-0 fixed top-0 left-0 right-0 z-30">
+          <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
             <div className="w-full px-3 sm:px-4 lg:px-8">
               <div className="flex items-center justify-between h-14 sm:h-16">
                 {/* Left: airunote + Hamburger */}
@@ -322,13 +340,26 @@ export default function DashboardLayout({
                 </div>
 
                 {/* Right cluster: Settings + User dropdown (same on mobile and desktop) */}
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-2.5">
+                  {isInOrgContext && org && (
+                    <div className="hidden min-w-0 items-center gap-3 rounded-full border border-slate-200/80 bg-white/92 px-3 py-1.5 shadow-sm lg:flex">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                        {org.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 leading-tight">
+                        <div className="truncate text-sm font-semibold text-slate-900">{org.name}</div>
+                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{role}</div>
+                      </div>
+                    </div>
+                  )}
+
                   {isInOrgContext && <PlanBadge />}
+
                   {/* Settings button - only show in org context */}
                   {isInOrgContext && orgId && (
                     <Link
                       href={`/orgs/${orgId}/settings`}
-                      className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 hover:bg-white"
                       aria-label="Settings"
                       title="Settings"
                     >
@@ -344,24 +375,34 @@ export default function DashboardLayout({
                     <div className="relative" ref={userDropdownRef}>
                       <button
                         onClick={() => setShowUserDropdown(!showUserDropdown)}
-                        className="flex items-center gap-1.5 text-sm font-medium text-gray-900 px-2 sm:px-3 py-1.5 rounded hover:bg-gray-100 transition cursor-pointer"
+                        className="flex min-w-0 items-center gap-2 rounded-full border border-slate-200/80 bg-white/92 px-2 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white sm:px-2.5"
                       >
-                        <span className="max-w-[120px] truncate">{user.name || user.email || 'User'}</span>
+                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                          {getUserInitials()}
+                        </span>
+                        <span className="hidden max-w-[140px] truncate text-left sm:block">{getUserLabel()}</span>
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
 
                       {showUserDropdown && (
-                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                        <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-slate-200 bg-white/98 py-2 shadow-[0_20px_50px_rgba(15,23,42,0.16)] backdrop-blur-xl">
                           {/* User Info Section */}
-                          <div className="px-4 py-3 border-b border-gray-200">
-                            <div className="text-sm font-semibold text-gray-900">{user.name || 'User'}</div>
-                            <div className="text-xs text-gray-600 mt-0.5">{user.email}</div>
+                          <div className="border-b border-slate-200 px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                                {getUserInitials()}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-semibold text-slate-900">{getUserLabel()}</div>
+                                <div className="mt-0.5 truncate text-xs text-slate-600">{user.email}</div>
+                              </div>
+                            </div>
                             {org && (
                               <>
-                                <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">{org.name}</div>
-                                <div className="text-xs text-gray-500 mt-0.5">
+                                <div className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">{org.name}</div>
+                                <div className="mt-0.5 text-xs text-slate-500">
                                   {isSuperAdmin ? 'Super Admin' : isAdmin ? 'Admin' : 'Member'}
                                 </div>
                               </>
@@ -374,7 +415,7 @@ export default function DashboardLayout({
                                 setIsProfileModalOpen(true);
                                 setShowUserDropdown(false);
                               }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+                              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -386,7 +427,7 @@ export default function DashboardLayout({
                                 handleLogout();
                                 setShowUserDropdown(false);
                               }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

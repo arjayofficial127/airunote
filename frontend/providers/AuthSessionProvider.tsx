@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authApi, type User } from '@/lib/api/auth';
-import { tokenStorage } from '@/lib/api/token';
+import { subscribeToAuthStorageEvents, tokenStorage, type AuthStorageEvent } from '@/lib/api/token';
 
 /**
  * Auth session status lifecycle
@@ -37,6 +37,24 @@ interface AuthSessionContextValue extends AuthSessionState {
 }
 
 const AuthSessionContext = createContext<AuthSessionContextValue | null>(null);
+
+function redirectToLoginIfNeeded(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const pathname = window.location.pathname;
+  const isAuthPage =
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/verify' ||
+    pathname === '/complete-registration' ||
+    pathname === '/forgot-password';
+
+  if (!isAuthPage) {
+    window.location.href = '/login';
+  }
+}
 
 /**
  * AuthSessionProvider
@@ -357,6 +375,33 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const handleAuthStorageEvent = (event: AuthStorageEvent) => {
+      if (event === 'token-set') {
+        inFlightRequestRef.current = null;
+        void checkAuth();
+        return;
+      }
+
+      setUser(null);
+      setSystemRole(null);
+      setError(null);
+      setStatus('ready');
+      setIsOfflineLimited(false);
+      isOfflineRef.current = false;
+      userRef.current = null;
+      inFlightRequestRef.current = null;
+      setAuthInvalidateKey((prev) => prev + 1);
+      redirectToLoginIfNeeded();
+    };
+
+    return subscribeToAuthStorageEvents(handleAuthStorageEvent);
+  }, [checkAuth]);
 
   /**
    * Refetch authentication data
