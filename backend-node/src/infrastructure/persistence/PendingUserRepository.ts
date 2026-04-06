@@ -12,6 +12,23 @@ import { User } from '../../domain/entities/User';
 
 type PendingUserRow = typeof pendingUsersTable.$inferSelect;
 type UserRow = typeof usersTable.$inferSelect;
+type LockedPendingUserRow = {
+  id: string;
+  registration_session_id: string;
+  email: string;
+  ip_address: string | null;
+  user_agent_hash: string | null;
+  verification_code_hash: string;
+  code_expires_at: unknown;
+  attempts: number;
+  last_sent_at: unknown;
+  verified_at: unknown;
+  completed_at: unknown;
+  status: PendingUserStatus;
+  token_version: number;
+  created_at: unknown;
+  updated_at: unknown;
+};
 
 @injectable()
 export class PendingUserRepository implements IPendingUserRepository {
@@ -160,45 +177,13 @@ export class PendingUserRepository implements IPendingUserRepository {
         FOR UPDATE
       `);
 
-      const record = lockedRows[0] as {
-        id: string;
-        registration_session_id: string;
-        email: string;
-        ip_address: string | null;
-        user_agent_hash: string | null;
-        verification_code_hash: string;
-        code_expires_at: Date;
-        attempts: number;
-        last_sent_at: Date;
-        verified_at: Date | null;
-        completed_at: Date | null;
-        status: PendingUserStatus;
-        token_version: number;
-        created_at: Date;
-        updated_at: Date;
-      } | undefined;
+      const record = lockedRows[0] as LockedPendingUserRow | undefined;
 
       if (!record) {
         return { status: 'not-found' };
       }
 
-      const pendingUser = new PendingUser(
-        record.id,
-        record.registration_session_id,
-        record.email,
-        record.ip_address,
-        record.user_agent_hash,
-        record.verification_code_hash,
-        record.code_expires_at,
-        record.attempts,
-        record.last_sent_at,
-        record.verified_at,
-        record.completed_at,
-        record.status,
-        record.token_version,
-        record.created_at,
-        record.updated_at
-      );
+      const pendingUser = this.mapLockedPendingUser(record);
 
       if (pendingUser.status !== 'email_sent') {
         return { status: 'invalid-state' };
@@ -326,23 +311,7 @@ export class PendingUserRepository implements IPendingUserRepository {
         FOR UPDATE
       `);
 
-      const record = lockedRows[0] as {
-        id: string;
-        registration_session_id: string;
-        email: string;
-        ip_address: string | null;
-        user_agent_hash: string | null;
-        verification_code_hash: string;
-        code_expires_at: Date;
-        attempts: number;
-        last_sent_at: Date;
-        verified_at: Date | null;
-        completed_at: Date | null;
-        status: PendingUserStatus;
-        token_version: number;
-        created_at: Date;
-        updated_at: Date;
-      } | undefined;
+      const record = lockedRows[0] as LockedPendingUserRow | undefined;
 
       if (!record) {
         return { status: 'not-found' };
@@ -362,23 +331,7 @@ export class PendingUserRepository implements IPendingUserRepository {
         return { status: 'email-mismatch' };
       }
 
-      const pendingUser = new PendingUser(
-        record.id,
-        record.registration_session_id,
-        record.email,
-        record.ip_address,
-        record.user_agent_hash,
-        record.verification_code_hash,
-        record.code_expires_at,
-        record.attempts,
-        record.last_sent_at,
-        record.verified_at,
-        record.completed_at,
-        record.status,
-        record.token_version,
-        record.created_at,
-        record.updated_at
-      );
+      const pendingUser = this.mapLockedPendingUser(record);
 
       if (this.isDeviceBindingMismatch(pendingUser, input.ipAddress, input.userAgentHash)) {
         const attempts = Math.min(record.attempts + 1, 5);
@@ -408,7 +361,7 @@ export class PendingUserRepository implements IPendingUserRepository {
           name: input.name,
           isActive: true,
           defaultOrgId: null,
-          emailVerifiedAt: record.verified_at,
+          emailVerifiedAt: pendingUser.verifiedAt,
         })
         .onConflictDoNothing({
           target: usersTable.email,
@@ -443,15 +396,35 @@ export class PendingUserRepository implements IPendingUserRepository {
       record.ipAddress,
       record.userAgentHash,
       record.verificationCodeHash,
-      record.codeExpiresAt,
+      this.toDate(record.codeExpiresAt),
       record.attempts,
-      record.lastSentAt,
-      record.verifiedAt,
-      record.completedAt,
+      this.toDate(record.lastSentAt),
+      record.verifiedAt ? this.toDate(record.verifiedAt) : null,
+      record.completedAt ? this.toDate(record.completedAt) : null,
       record.status,
       record.tokenVersion,
-      record.createdAt,
-      record.updatedAt
+      this.toDate(record.createdAt),
+      this.toDate(record.updatedAt)
+    );
+  }
+
+  private mapLockedPendingUser(record: LockedPendingUserRow): PendingUser {
+    return new PendingUser(
+      record.id,
+      record.registration_session_id,
+      record.email,
+      record.ip_address,
+      record.user_agent_hash,
+      record.verification_code_hash,
+      this.toDate(record.code_expires_at),
+      record.attempts,
+      this.toDate(record.last_sent_at),
+      record.verified_at ? this.toDate(record.verified_at) : null,
+      record.completed_at ? this.toDate(record.completed_at) : null,
+      record.status,
+      record.token_version,
+      this.toDate(record.created_at),
+      this.toDate(record.updated_at)
     );
   }
 
@@ -477,5 +450,10 @@ export class PendingUserRepository implements IPendingUserRepository {
       pendingUser.ipAddress !== ipAddress ||
       pendingUser.userAgentHash !== userAgentHash
     );
+  }
+
+  private toDate(value: unknown): Date {
+    if (value instanceof Date) return value;
+    return new Date(value as string | number);
   }
 }
