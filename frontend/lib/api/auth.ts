@@ -27,9 +27,23 @@ export const CompleteRegistrationSchema = z.object({
   path: ['confirmPassword'],
 });
 
+export const RequestPasswordResetSchema = z.object({
+  email: z.string().email('Enter a valid email address'),
+});
+
+export const ResetPasswordSchema = z.object({
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type CompleteRegistrationInput = z.infer<typeof CompleteRegistrationSchema>;
+export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetSchema>;
+export type ResetPasswordFormInput = z.infer<typeof ResetPasswordSchema>;
 
 export interface RegistrationChallengeResponse {
   email: string;
@@ -50,6 +64,14 @@ export interface RegistrationVerificationResponse {
   registrationSessionId: string;
   verified: true;
   setupToken: string;
+}
+
+export interface GenericSuccessResponse {
+  success: true;
+}
+
+export interface ResetTokenVerificationResponse {
+  valid: true;
 }
 
 export interface AuthFullResponse {
@@ -187,6 +209,27 @@ export const authApi = {
     }
 
     return data;
+  },
+
+  requestPasswordReset: async (
+    input: RequestPasswordResetInput
+  ): Promise<{ success: boolean; data: GenericSuccessResponse }> => {
+    const response = await apiClient.post('/auth/request-password-reset', input);
+    return response.data;
+  },
+
+  verifyResetToken: async (
+    input: { token: string }
+  ): Promise<{ success: boolean; data: ResetTokenVerificationResponse }> => {
+    const response = await apiClient.post('/auth/verify-reset-token', input);
+    return response.data;
+  },
+
+  resetPassword: async (
+    input: { token: string; newPassword: string }
+  ): Promise<{ success: boolean; data: GenericSuccessResponse }> => {
+    const response = await apiClient.post('/auth/reset-password', input);
+    return response.data;
   },
 
   getMe: async (): Promise<{ success: boolean; data: User }> => {

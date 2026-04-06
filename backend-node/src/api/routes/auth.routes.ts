@@ -26,8 +26,33 @@ import { EmailService } from '../../infrastructure/email/email.service';
 
 const router: ReturnType<typeof Router> = Router();
 
+const getFirstHeaderValue = (value: string | string[] | undefined): string | null => {
+  if (Array.isArray(value)) {
+    return value[0]?.trim() || null;
+  }
+
+  return typeof value === 'string' ? value.trim() || null : null;
+};
+
+const extractClientIp = (req: Request): string | null => {
+  const cfConnectingIp = getFirstHeaderValue(req.headers['cf-connecting-ip']);
+  if (cfConnectingIp) {
+    return cfConnectingIp;
+  }
+
+  const xForwardedFor = getFirstHeaderValue(req.headers['x-forwarded-for']);
+  if (xForwardedFor) {
+    const forwardedIp = xForwardedFor.split(',')[0]?.trim();
+    if (forwardedIp) {
+      return forwardedIp;
+    }
+  }
+
+  return req.ip || null;
+};
+
 const getRegistrationRequestContext = (req: Request) => ({
-  ipAddress: req.ip || null,
+  ipAddress: extractClientIp(req),
   userAgent: typeof req.headers['user-agent'] === 'string' ? req.headers['user-agent'] : null,
 });
 
