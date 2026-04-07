@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { InlineCanvasDocumentCard } from '../components/InlineCanvasDocumentCard';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import type { AiruDocument, AiruDocumentMetadata } from '../types';
@@ -202,21 +202,30 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
       .map((document) => document.id);
   };
 
-  const getNeighborDocIds = (docId: string) => {
+  const getNeighborDocIds = useCallback((docId: string) => {
     const neighborIds = new Set<string>();
+    const document = documentsById.get(docId);
 
-    for (const relatedDocId of getRelatedDocIds(docId)) {
-      neighborIds.add(relatedDocId);
+    if (document) {
+      const relatedDocIds = document.studyMeta?.relatedDocIds || [];
+
+      for (const relatedDocId of relatedDocIds) {
+        if (relatedDocId !== docId && documentsById.has(relatedDocId)) {
+          neighborIds.add(relatedDocId);
+        }
+      }
     }
 
-    for (const parentDocId of getParentDocIds(docId)) {
+    for (const parentDocId of documents
+      .filter((document) => (document.studyMeta?.relatedDocIds || []).includes(docId) && document.id !== docId)
+      .map((document) => document.id)) {
       neighborIds.add(parentDocId);
     }
 
     return Array.from(neighborIds);
-  };
+  }, [documents, documentsById]);
 
-  const getConnectedDocs = (docId: string): Set<string> => {
+  const getConnectedDocs = useCallback((docId: string): Set<string> => {
     const visited = new Set<string>([docId]);
     const connected = new Set<string>();
     const directNeighbors = getNeighborDocIds(docId);
@@ -246,7 +255,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     traverse(docId);
 
     return connected;
-  };
+  }, [getNeighborDocIds, markTreeEnabled]);
 
   const directConnectedDocIds = useMemo(() => {
     if (!selectedDocId) {
@@ -254,7 +263,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     }
 
     return new Set(getNeighborDocIds(selectedDocId));
-  }, [documents, documentsById, selectedDocId]);
+  }, [getNeighborDocIds, selectedDocId]);
 
   const connectedDocIds = useMemo(() => {
     if (!selectedDocId) {
@@ -262,7 +271,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     }
 
     return getConnectedDocs(selectedDocId);
-  }, [documents, documentsById, markTreeEnabled, selectedDocId]);
+  }, [getConnectedDocs, selectedDocId]);
 
   const filteredDocuments = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
