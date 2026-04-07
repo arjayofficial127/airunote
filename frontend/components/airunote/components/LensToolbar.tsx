@@ -33,6 +33,7 @@ const typeLabels: Record<string, string> = {
   board: 'Board',
   canvas: 'Canvas',
   book: 'Book',
+  study: 'Study',
   desktop: 'Desktop',
   saved: 'Saved',
 };
@@ -76,10 +77,10 @@ export function LensToolbar({
   const availableLenses = lenses.filter((lens) => {
     if (folderId) {
       // Folder lenses
-      return ['box', 'board', 'canvas', 'book'].includes(lens.type);
+      return ['box', 'board', 'canvas', 'book', 'study'].includes(lens.type);
     } else {
       // Desktop/saved lenses
-      return ['desktop', 'saved', 'canvas', 'board'].includes(lens.type);
+      return ['desktop', 'saved', 'canvas', 'board', 'study'].includes(lens.type);
     }
   });
 

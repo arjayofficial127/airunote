@@ -27,6 +27,7 @@ const typeLabels: Record<string, string> = {
   board: 'Board',
   canvas: 'Canvas',
   book: 'Book',
+  study: 'Study',
 };
 
 export function ViewSwitcher({
@@ -56,7 +57,7 @@ export function ViewSwitcher({
 
   // Filter available lenses (box, board, canvas, book)
   const availableLenses = lenses.filter((lens) =>
-    ['box', 'board', 'canvas', 'book'].includes(lens.type)
+    ['box', 'board', 'canvas', 'book', 'study'].includes(lens.type)
   );
 
   // Determine active lens

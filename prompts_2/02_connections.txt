@@ -1,0 +1,50 @@
+PROMPT 2 — CONNECTION SYSTEM (PHASE 2)
+
+Act as a Principal Engineer.
+
+Goal:
+Add connection system using relatedDocIds for Study Lens.
+
+Scope:
+- Only extend StudyLensRenderer
+- No backend changes
+
+Requirements:
+
+1. Data:
+   documents[].studyMeta.relatedDocIds?: string[]
+
+2. Selection:
+   - Clicking a document:
+     - sets selectedDocId
+     - highlights connected docs
+
+3. Mark Tree:
+   - Toggle: markTreeEnabled
+   - When ON:
+     - recursively traverse relatedDocIds
+
+4. Traversal Rules:
+   - Use visited Set
+   - Prevent cycles
+   - If revisited → show as pointer (↺)
+
+5. UI:
+
+   Highlight:
+   - selected = strong highlight
+   - connected = softer highlight
+
+   Tabs:
+   [ Parent ] [ Current ] [ Child A ] [ Child B ]
+
+6. Connected Only toggle:
+   - hides non-connected documents
+
+7. State:
+   - selectedDocId
+   - markTreeEnabled
+   - connectedOnly
+
+Output:
+- Updated StudyLensRenderer.tsx with connection logic

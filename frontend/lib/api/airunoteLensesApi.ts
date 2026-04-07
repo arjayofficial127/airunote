@@ -6,7 +6,7 @@
 import apiClient from './client';
 import type { AirunoteApiResponse } from '@/components/airunote/types';
 
-export type AiruLensType = 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+export type AiruLensType = 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved';
 
 export interface AiruLens {
   id: string;

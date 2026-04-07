@@ -320,7 +320,7 @@ export const airunoteApi = {
     userId: string,
     payload: {
       name: string;
-      type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+      type: 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved';
       metadata?: Record<string, unknown>;
       query?: Record<string, unknown> | null;
     }
@@ -342,7 +342,7 @@ export const airunoteApi = {
     userId: string,
     partialData: {
       name?: string;
-      type?: 'box' | 'board' | 'canvas' | 'book';
+      type?: 'box' | 'board' | 'canvas' | 'book' | 'study';
       metadata?: Record<string, unknown>;
       query?: Record<string, unknown> | null;
     }

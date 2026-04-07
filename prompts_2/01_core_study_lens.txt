@@ -1,0 +1,57 @@
+PROMPT 1 — CORE STUDY LENS UI (PHASE 1)
+
+Act as a Principal Frontend Engineer working on AiruNote.
+
+Goal:
+Implement a new Lens type called "Study Lens" with a clean, minimal accordion UI and fast search.
+
+Scope (STRICT):
+- Do NOT modify existing lenses behavior
+- Do NOT introduce backend changes
+- Use already loaded folder/document data
+- Keep performance simple and fast
+
+Requirements:
+
+1. Create:
+   StudyLensRenderer.tsx
+
+2. UI Layout:
+   Top bar:
+   - Search input: "Search..."
+   - Debounced (200ms optional)
+
+   List:
+   - Show all documents in current folder
+   - Each item:
+     ▶ Title   ● color   #tags
+   - Default collapsed
+   - Multiple expand allowed
+
+3. Accordion Behavior:
+   - Click expands inline
+   - Shows full document content (reuse existing renderer if possible)
+
+4. Search Logic:
+   Match against:
+   - title
+   - content
+   - tags
+
+   Simple includes (case insensitive)
+
+   Ranking:
+   1. title match
+   2. tag match
+   3. content match
+
+5. State (local only):
+   - searchQuery
+   - expandedIds (Set)
+
+6. Edge cases:
+   - Empty results → "No matching documents"
+
+Output:
+- Full StudyLensRenderer.tsx
+- Minimal integration hook into existing lens switch system

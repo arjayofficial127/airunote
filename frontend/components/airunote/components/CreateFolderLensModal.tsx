@@ -20,13 +20,14 @@ interface CreateFolderLensModalProps {
   userId: string;
 }
 
-type LensType = 'box' | 'board' | 'canvas' | 'book';
+type LensType = 'box' | 'board' | 'canvas' | 'book' | 'study';
 
 const LENS_TYPE_LABELS: Record<LensType, string> = {
   box: 'Box',
   board: 'Board',
   canvas: 'Canvas',
   book: 'Book',
+  study: 'Study',
 };
 
 export function CreateFolderLensModal({

@@ -32,6 +32,12 @@ export interface AiruDocument {
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
   attributes: Record<string, any>; // Phase 7: Hybrid Attribute Engine
+  studyMeta?: {
+    order?: number;
+    tags?: string[];
+    relatedDocIds?: string[];
+    color?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +51,12 @@ export interface AiruDocumentMetadata {
   visibility: 'private' | 'org' | 'public';
   state: 'active' | 'archived' | 'trashed';
   attributes: Record<string, any>; // Phase 7: Hybrid Attribute Engine
+  studyMeta?: {
+    order?: number;
+    tags?: string[];
+    relatedDocIds?: string[];
+    color?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
   size?: number; // Optional: content size in bytes if available
@@ -139,7 +151,7 @@ export interface AiruLens {
   id: string;
   folderId: string | null;
   name: string;
-  type: 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+  type: 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved';
   isDefault: boolean;
   metadata: Record<string, unknown>;
   query: LensQuery | Record<string, unknown> | null; // Phase 6: Standardized to LensQuery, but keep backward compatible

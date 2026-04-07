@@ -28,6 +28,7 @@ import { useDeleteFolder } from '@/components/airunote/hooks/useDeleteFolder';
 import { useFolderLenses, useLens, useUpdateLensItems, useUpdateFolderLens, useDeleteLens } from '@/hooks/useAirunoteLenses';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
+import { StudyLensRenderer } from '@/components/airunote/lenses/StudyLensRenderer';
 import { airunoteApi } from '@/components/airunote/services/airunoteApi';
 import { getFolderTypeIcon } from '@/components/airunote/utils/folderTypeIcon';
 import { FileTypeChip } from '@/components/airunote/components/FileTypeChip';
@@ -289,6 +290,12 @@ export default function AirunoteHomePage() {
     lensData.lens.type === 'canvas' &&
     !isLoadingLens;
 
+  const shouldRenderStudyLens =
+    selectedLensId &&
+    lensData &&
+    lensData.lens.type === 'study' &&
+    !isLoadingLens;
+
   if (!orgId || !userId) {
     return (
       <div className="p-8">
@@ -457,6 +464,8 @@ export default function AirunoteHomePage() {
             />
           )}
         </div>
+      ) : shouldRenderStudyLens && effectiveRootFolderId ? (
+        <StudyLensRenderer folderId={effectiveRootFolderId} />
       ) : (
         <FolderViewLayout
           folderId={effectiveRootFolderId}

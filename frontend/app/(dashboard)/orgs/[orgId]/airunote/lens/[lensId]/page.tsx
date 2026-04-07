@@ -16,6 +16,7 @@ import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useLens, useUpdateLensItems, useDesktopLenses } from '@/hooks/useAirunoteLenses';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
+import { StudyLensRenderer } from '@/components/airunote/lenses/StudyLensRenderer';
 import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import { DocumentList } from '@/components/airunote/components/DocumentList';
 import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
@@ -68,9 +69,9 @@ export default function LensViewPage() {
     }
   }, [isLensSwitcherOpen]);
 
-  // Filter to only canvas/board desktop/saved lenses
+  // Filter to only supported switchable desktop/saved lenses
   const availableLenses = desktopLenses.filter(
-    (l) => (l.type === 'canvas' || l.type === 'board') && l.folderId === null
+    (l) => (l.type === 'canvas' || l.type === 'board' || l.type === 'study') && l.folderId === null
   );
 
   // Hook for updating lens items
@@ -201,7 +202,13 @@ export default function LensViewPage() {
                       <div className="py-1">
                         {availableLenses.map((l) => {
                           const isActive = l.id === lensId;
-                          const typeLabel = l.type === 'canvas' ? 'Canvas' : l.type === 'board' ? 'Board' : l.type;
+                          const typeLabel = l.type === 'canvas'
+                            ? 'Canvas'
+                            : l.type === 'board'
+                              ? 'Board'
+                              : l.type === 'study'
+                                ? 'Study'
+                                : l.type;
                           return (
                             <button
                               key={l.id}
@@ -321,6 +328,28 @@ export default function LensViewPage() {
                 onPersist={handlePersist}
               />
             </div>
+          </div>
+        ) : lens.type === 'study' && lens.folderId ? (
+          <div className="min-h-screen bg-gray-50">
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={lensId}
+              currentLens={lens}
+              lenses={availableLenses}
+              folderId={lens.folderId}
+              orgId={orgId}
+              onViewChange={(view, newLensId) => {
+                if (view === 'grid' || view === 'tree') {
+                  router.push(`/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}`);
+                } else if (newLensId) {
+                  router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                }
+              }}
+              onCreateLens={() => {
+                router.push(`/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}`);
+              }}
+            />
+            <StudyLensRenderer folderId={lens.folderId} />
           </div>
         ) : (
           // Fallback: DocumentList for box/book types

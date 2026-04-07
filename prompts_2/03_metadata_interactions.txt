@@ -1,0 +1,42 @@
+PROMPT 3 — METADATA + INTERACTION (PHASE 3)
+
+Act as a Senior Frontend Engineer.
+
+Goal:
+Add usability features: tags, color markers, drag reorder.
+
+Scope:
+- Extend StudyLensRenderer
+- No backend changes
+
+Requirements:
+
+1. Metadata:
+   studyMeta:
+   - order?: number
+   - tags?: string[]
+   - color?: string
+
+2. UI:
+
+   Show:
+   - color dot ●
+   - tags inline #tag
+
+3. Drag Reorder:
+   - Enable only when:
+     searchQuery is empty AND connectedOnly = false
+
+   - Persist order locally (in-memory update)
+
+4. Behavior:
+   - Disabled during filtered state
+
+5. State:
+   - maintain order in memory
+
+6. Keep UI minimal and fast
+
+Output:
+- Final StudyLensRenderer.tsx
+- Clean, production-safe, no regressions

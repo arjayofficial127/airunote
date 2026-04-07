@@ -39,6 +39,7 @@ import {
   type CanvasNotesRequest,
   type CanvasPendingChangesState,
 } from '@/components/airunote/lenses/CanvasLens';
+import { StudyLensRenderer } from '@/components/airunote/lenses/StudyLensRenderer';
 import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import { FolderCanvasTopOverlay } from './_components/FolderCanvasTopOverlay';
 import {
@@ -896,9 +897,15 @@ export default function FolderViewPage() {
     lensData.lens.type === 'canvas' &&
     !isLoadingLens;
 
+  const shouldRenderStudyLens =
+    selectedLensId &&
+    lensData &&
+    lensData.lens.type === 'study' &&
+    !isLoadingLens;
+
   // Determine current view mode based on selected lens
   const currentViewMode: 'grid' | 'tree' | 'lens' = 
-    (selectedLensId && (shouldRenderBoardLens || shouldRenderCanvasLens)) ? 'lens' : 'grid';
+    (selectedLensId && (shouldRenderBoardLens || shouldRenderCanvasLens || shouldRenderStudyLens)) ? 'lens' : 'grid';
 
   // Handle view change from LensToolbar
   const handleViewChangeFromToolbar = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
@@ -1224,6 +1231,22 @@ export default function FolderViewPage() {
             enableInlineDocumentKeyboardShortcuts
             enableNoteColorOverrides
           />
+        </div>
+      ) : shouldRenderStudyLens && folderId ? (
+        <div className="min-h-screen bg-gray-50">
+          <LensToolbar
+            viewMode="lens"
+            selectedLensId={selectedLensId}
+            currentLens={lensData?.lens || null}
+            lenses={folderLenses}
+            folderId={folderId}
+            orgId={orgId || orgIdFromParams}
+            onViewChange={handleViewChangeFromToolbar}
+            onCreateLens={() => setIsCreateLensModalOpen(true)}
+            onEditLens={handleEditLensRequest}
+            onDeleteLens={handleDeleteLensRequest}
+          />
+          <StudyLensRenderer folderId={folderId} />
         </div>
       ) : (
         <FolderViewLayout
