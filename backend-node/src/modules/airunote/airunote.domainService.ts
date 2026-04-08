@@ -1354,7 +1354,7 @@ export class AirunoteDomainService {
     }
 
     // Validate type
-    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'study', 'desktop', 'saved'];
     if (!validTypes.includes(data.type)) {
       throw new Error(`Invalid lens type: ${data.type}. Must be one of: ${validTypes.join(', ')}`);
     }
@@ -1464,7 +1464,7 @@ export class AirunoteDomainService {
     }
 
     // Validate type if provided
-    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'study', 'desktop', 'saved'];
     if (partialData.type && !validTypes.includes(partialData.type)) {
       throw new Error(`Invalid lens type: ${partialData.type}. Must be one of: ${validTypes.join(', ')}`);
     }

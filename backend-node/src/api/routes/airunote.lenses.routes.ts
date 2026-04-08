@@ -28,7 +28,7 @@ function isUuidLike(str: unknown): boolean {
 }
 
 function isValidLensType(type: unknown): type is AiruLensType {
-  const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+  const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'study', 'desktop', 'saved'];
   return typeof type === 'string' && validTypes.includes(type as AiruLensType);
 }
 
@@ -254,7 +254,7 @@ router.post('/folders/:folderId/lenses', async (req: Request, res: Response, nex
     if (!isValidLensType(body.type)) {
       return res.status(400).json({
         success: false,
-        error: { message: 'type is required and must be one of: box, board, canvas, book, desktop, saved', code: 'VALIDATION_ERROR' },
+        error: { message: 'type is required and must be one of: box, board, canvas, book, study, desktop, saved', code: 'VALIDATION_ERROR' },
       });
     }
 
@@ -1320,7 +1320,7 @@ router.patch('/folders/:folderId/lenses/:lensId', async (req: Request, res: Resp
     if (body.type !== undefined && !isValidLensType(body.type)) {
       return res.status(400).json({
         success: false,
-        error: { message: 'type must be one of: box, board, canvas, book, desktop, saved', code: 'VALIDATION_ERROR' },
+        error: { message: 'type must be one of: box, board, canvas, book, study, desktop, saved', code: 'VALIDATION_ERROR' },
       });
     }
 

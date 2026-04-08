@@ -718,7 +718,7 @@ router.post('/folders/:id/lenses', async (req: Request, res: Response, next) => 
     }
 
     // Validate type
-    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'study', 'desktop', 'saved'];
     if (!validTypes.includes(body.type as AiruLensType)) {
       return res.status(400).json({
         success: false,
@@ -774,7 +774,7 @@ router.patch('/folders/:id/lenses/:lensId', async (req: Request, res: Response, 
     }
 
     // Validate type if provided
-    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'desktop', 'saved'];
+    const validTypes: AiruLensType[] = ['box', 'board', 'canvas', 'book', 'study', 'desktop', 'saved'];
     if (body.type && !validTypes.includes(body.type as AiruLensType)) {
       return res.status(400).json({
         success: false,

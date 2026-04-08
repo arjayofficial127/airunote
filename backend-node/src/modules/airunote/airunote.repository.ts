@@ -66,7 +66,7 @@ export interface LensQuery {
  * Lens Type Union
  * Locked contract for projection engine
  */
-export type AiruLensType = 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved';
+export type AiruLensType = 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved';
 
 /**
  * Board Column Definition
@@ -2604,7 +2604,7 @@ export class AirunoteRepository {
       id: lens.id,
       folderId: lens.folderId,
       name: lens.name,
-      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved',
       isDefault: lens.isDefault,
       metadata: (lens.metadata as Record<string, unknown>) || {},
       query: (lens.query as Record<string, unknown> | null) || null,
@@ -2631,7 +2631,7 @@ export class AirunoteRepository {
       id: lens.id,
       folderId: lens.folderId,
       name: lens.name,
-      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved',
       isDefault: lens.isDefault,
       metadata: (lens.metadata as Record<string, unknown>) || {},
       query: (lens.query as Record<string, unknown> | null) || null,
@@ -2670,7 +2670,7 @@ export class AirunoteRepository {
       id: lens.id,
       folderId: lens.folderId,
       name: lens.name,
-      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'desktop' | 'saved',
+      type: lens.type as 'box' | 'board' | 'canvas' | 'book' | 'study' | 'desktop' | 'saved',
       isDefault: lens.isDefault,
       metadata: (lens.metadata as Record<string, unknown>) || {},
       query: (lens.query as Record<string, unknown> | null) || null,
