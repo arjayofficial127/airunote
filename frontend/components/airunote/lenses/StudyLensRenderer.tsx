@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useOrgSession } from '@/providers/OrgSessionProvider';
+import { useAuthSession } from '@/providers/AuthSessionProvider';
+import { toast } from '@/lib/toast';
 import { InlineCanvasDocumentCard } from '../components/InlineCanvasDocumentCard';
+import { useDocumentContent } from '../hooks/useDocumentContent';
+import { airunoteApi } from '../services/airunoteApi';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import type { AiruDocument, AiruDocumentMetadata } from '../types';
 
@@ -107,8 +112,151 @@ function getAlphabetLabel(index: number): string {
 const noopAsync = async () => undefined;
 const noop = () => undefined;
 
+interface StudyLensAccordionItemProps {
+  document: StudyLensDocument;
+  isExpanded: boolean;
+  isSelected: boolean;
+  isDirectlyConnected: boolean;
+  reorderEnabled: boolean;
+  tags: string[];
+  tabs: ConnectionTab[];
+  hasRelatedDocuments: boolean;
+  onDocumentClick: (documentId: string) => void;
+  onTabSelect: (documentId: string) => void;
+  onDragStart: (documentId: string) => void;
+  onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDrop: (documentId: string) => void;
+  onDragEnd: () => void;
+}
+
+function StudyLensAccordionItem({
+  document,
+  isExpanded,
+  isSelected,
+  isDirectlyConnected,
+  reorderEnabled,
+  tags,
+  tabs,
+  hasRelatedDocuments,
+  onDocumentClick,
+  onTabSelect,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: StudyLensAccordionItemProps) {
+  const { document: loadedDocument, isLoading, error } = useDocumentContent(isExpanded ? document.id : null);
+
+  const containerClassName = isSelected
+    ? 'overflow-hidden rounded-xl border border-blue-400 bg-blue-50/80 shadow-sm'
+    : isDirectlyConnected
+      ? 'overflow-hidden rounded-xl border border-amber-300 bg-amber-50/70 shadow-sm'
+      : 'overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm';
+  const rowClassName = isSelected
+    ? 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors bg-blue-50 hover:bg-blue-100/60'
+    : isDirectlyConnected
+      ? 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors bg-amber-50 hover:bg-amber-100/60'
+      : 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50';
+
+  return (
+    <div
+      className={containerClassName}
+      draggable={reorderEnabled}
+      onDragStart={() => onDragStart(document.id)}
+      onDragOver={onDragOver}
+      onDrop={() => onDrop(document.id)}
+      onDragEnd={onDragEnd}
+    >
+      <button
+        type="button"
+        onClick={() => onDocumentClick(document.id)}
+        className={`${rowClassName} ${reorderEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+      >
+        <span
+          className={`text-xs text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+          aria-hidden="true"
+        >
+          ▶
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{document.title}</span>
+        {document.studyMeta?.color ? (
+          <span
+            className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow-sm"
+            style={{ backgroundColor: document.studyMeta.color }}
+            aria-hidden="true"
+          />
+        ) : null}
+        {tags.length > 0 ? (
+          <span className="hidden shrink-0 items-center gap-2 text-xs text-gray-500 sm:flex">
+            {tags.map((tag) => (
+              <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-gray-600">
+                #{tag}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </button>
+
+      {isExpanded ? (
+        <div className="border-t border-gray-200 px-4 py-4">
+          {tags.length > 0 ? (
+            <div className="mb-4 flex flex-wrap gap-2 sm:hidden">
+              {tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {isSelected ? (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => onTabSelect(tab.id)}
+                    title={tab.title}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      tab.id === document.id
+                        ? 'border-blue-500 bg-blue-600 text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              {!hasRelatedDocuments ? (
+                <div className="mt-3 text-xs text-gray-500">No related documents</div>
+              ) : null}
+            </div>
+          ) : null}
+          <InlineCanvasDocumentCard
+            document={loadedDocument ?? null}
+            isEditing={false}
+            isLoading={isLoading}
+            error={error}
+            onSave={noopAsync}
+            onCancel={noop}
+            hideActionBar
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
-  const { getDocumentsByFolder, getDocumentContentById } = useAirunoteStore();
+  const orgSession = useOrgSession();
+  const authSession = useAuthSession();
+  const {
+    getDocumentsByFolder,
+    getDocumentContentById,
+    setDocumentContent,
+  } = useAirunoteStore();
+  const orgId = orgSession.activeOrgId;
+  const userId = authSession.user?.id;
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
@@ -116,23 +264,58 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
   const [connectedOnly, setConnectedOnly] = useState(false);
   const [manualOrderIds, setManualOrderIds] = useState<string[]>([]);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
+  const [isBulkLoadingData, setIsBulkLoadingData] = useState(false);
 
-  const documents = useMemo<StudyLensDocument[]>(() => {
-    return getDocumentsByFolder(folderId)
-      .map((metadata) => {
-        const fullDocument = getDocumentContentById(metadata.id);
-        const document = buildStudyDocument(metadata, fullDocument);
+  const folderDocuments = getDocumentsByFolder(folderId);
 
-        return {
-          id: metadata.id,
-          title: document.name,
-          content: document.content || '',
-          document,
-          studyMeta: getStudyMeta(fullDocument || metadata),
-        };
-      })
-      .sort(compareStudyDocuments);
-  }, [folderId, getDocumentContentById, getDocumentsByFolder]);
+  const documents: StudyLensDocument[] = folderDocuments
+    .map((metadata) => {
+      const fullDocument = getDocumentContentById(metadata.id);
+      const document = buildStudyDocument(metadata, fullDocument);
+
+      return {
+        id: metadata.id,
+        title: document.name,
+        content: document.content || '',
+        document,
+        studyMeta: getStudyMeta(fullDocument || metadata),
+      };
+    })
+    .sort(compareStudyDocuments);
+
+  const allDocumentDataLoaded = useMemo(() => {
+    if (folderDocuments.length === 0) {
+      return false;
+    }
+
+    return folderDocuments.every((document) => getDocumentContentById(document.id));
+  }, [folderDocuments, getDocumentContentById]);
+
+  const handleLoadAllData = useCallback(async () => {
+    if (!orgId || !userId || folderDocuments.length === 0 || isBulkLoadingData) {
+      return;
+    }
+
+    setIsBulkLoadingData(true);
+
+    try {
+      const response = await airunoteApi.getFolderDocuments(folderId, orgId, userId);
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to load document data');
+      }
+
+      response.data.documents.forEach((document) => {
+        setDocumentContent(document);
+      });
+
+      toast(`Loaded ${response.data.documents.length} document ${response.data.documents.length === 1 ? 'card' : 'cards'} for search`, 'success');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Failed to load document data', 'error');
+    } finally {
+      setIsBulkLoadingData(false);
+    }
+  }, [folderDocuments.length, folderId, isBulkLoadingData, orgId, setDocumentContent, userId]);
 
   const documentsById = useMemo(() => {
     return new Map(documents.map((document) => [document.id, document]));
@@ -403,6 +586,18 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => void handleLoadAllData()}
+              disabled={isBulkLoadingData || !orgId || !userId || folderDocuments.length === 0 || allDocumentDataLoaded}
+              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                allDocumentDataLoaded
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60'
+              }`}
+            >
+              {isBulkLoadingData ? 'Loading...' : allDocumentDataLoaded ? 'Data Loaded' : 'Load Data'}
+            </button>
+            <button
+              type="button"
               onClick={() => setMarkTreeEnabled((previous) => !previous)}
               className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
                 markTreeEnabled
@@ -482,104 +677,25 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
               });
             });
             const hasRelatedDocuments = parentDocuments.length > 0 || childDocuments.length > 0;
-            const containerClassName = isSelected
-              ? 'overflow-hidden rounded-xl border border-blue-400 bg-blue-50/80 shadow-sm'
-              : isDirectlyConnected
-                ? 'overflow-hidden rounded-xl border border-amber-300 bg-amber-50/70 shadow-sm'
-                : 'overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm';
-            const rowClassName = isSelected
-              ? 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors bg-blue-50 hover:bg-blue-100/60'
-              : isDirectlyConnected
-                ? 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors bg-amber-50 hover:bg-amber-100/60'
-                : 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50';
 
             return (
-              <div
+              <StudyLensAccordionItem
                 key={document.id}
-                className={containerClassName}
-                draggable={reorderEnabled}
-                onDragStart={() => handleDragStart(document.id)}
+                document={document}
+                isExpanded={isExpanded}
+                isSelected={isSelected}
+                isDirectlyConnected={isDirectlyConnected}
+                reorderEnabled={reorderEnabled}
+                tags={tags}
+                tabs={tabs}
+                hasRelatedDocuments={hasRelatedDocuments}
+                onDocumentClick={handleDocumentClick}
+                onTabSelect={handleTabSelect}
+                onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
-                onDrop={() => handleDrop(document.id)}
+                onDrop={handleDrop}
                 onDragEnd={handleDragEnd}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleDocumentClick(document.id)}
-                  className={`${rowClassName} ${reorderEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
-                >
-                  <span
-                    className={`text-xs text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                    aria-hidden="true"
-                  >
-                    ▶
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{document.title}</span>
-                  {document.studyMeta?.color ? (
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow-sm"
-                      style={{ backgroundColor: document.studyMeta.color }}
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                  {tags.length > 0 ? (
-                    <span className="hidden shrink-0 items-center gap-2 text-xs text-gray-500 sm:flex">
-                      {tags.map((tag) => (
-                        <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-gray-600">
-                          #{tag}
-                        </span>
-                      ))}
-                    </span>
-                  ) : null}
-                </button>
-
-                {isExpanded ? (
-                  <div className="border-t border-gray-200 px-4 py-4">
-                    {tags.length > 0 ? (
-                      <div className="mb-4 flex flex-wrap gap-2 sm:hidden">
-                        {tags.map((tag) => (
-                          <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    {isSelected ? (
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-2">
-                          {tabs.map((tab) => (
-                            <button
-                              key={tab.id}
-                              type="button"
-                              onClick={() => handleTabSelect(tab.id)}
-                              title={tab.title}
-                              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                                tab.id === selectedDocId
-                                  ? 'border-blue-500 bg-blue-600 text-white'
-                                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                              }`}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-                        {!hasRelatedDocuments ? (
-                          <div className="mt-3 text-xs text-gray-500">No related documents</div>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    <InlineCanvasDocumentCard
-                      document={document.document}
-                      isEditing={false}
-                      isLoading={false}
-                      error={null}
-                      onSave={noopAsync}
-                      onCancel={noop}
-                      hideActionBar
-                    />
-                  </div>
-                ) : null}
-              </div>
+              />
             );
           })}
         </div>
