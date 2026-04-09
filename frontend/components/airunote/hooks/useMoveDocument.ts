@@ -47,7 +47,7 @@ export function useMoveDocument() {
       };
       store.updateDocumentMetadata(documentMetadata);
       store.setDocumentContent(data);
-      toast('Document moved successfully', 'success');
+      toast('Moved to folder', 'success');
     },
   });
 }

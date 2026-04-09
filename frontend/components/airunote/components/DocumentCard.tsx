@@ -7,6 +7,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { FileTypeChip } from './FileTypeChip';
@@ -21,6 +23,8 @@ interface DocumentCardProps {
   orgId: string;
   onViewModeChange?: (mode: ViewMode | null) => void;
   showViewModeControl?: boolean;
+  onMove?: (document: AiruDocumentMetadata) => void;
+  onDelete?: (document: AiruDocumentMetadata) => void;
 }
 
 export function DocumentCard({
@@ -29,10 +33,20 @@ export function DocumentCard({
   orgId,
   onViewModeChange,
   showViewModeControl = false,
+  onMove,
+  onDelete,
 }: DocumentCardProps) {
   const params = useParams();
   const orgIdFromParams = params.orgId as string;
   const [isViewModeDropdownOpen, setIsViewModeDropdownOpen] = useState(false);
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: document.id,
+    data: {
+      type: 'document',
+      documentId: document.id,
+      folderId: document.folderId,
+    },
+  });
 
   // Fetch document content if needed for preview/full modes
   const { document: documentData } = useDocumentContent(
@@ -41,6 +55,24 @@ export function DocumentCard({
   const documentContent = documentData?.content || null;
 
   const documentPath = `/orgs/${orgIdFromParams}/airunote/document/${document.id}`;
+  const dragStyle = {
+    transform: `${CSS.Translate.toString(transform)}${transform ? ' scale(1.03)' : ''}`,
+    opacity: isDragging ? 0.6 : 1,
+    transition: 'transform 160ms ease, opacity 160ms ease',
+  };
+
+  const getDocumentIcon = (type: 'TXT' | 'MD' | 'RTF') => {
+    switch (type) {
+      case 'TXT':
+        return '📄';
+      case 'MD':
+        return '📝';
+      case 'RTF':
+        return '📋';
+      default:
+        return '📄';
+    }
+  };
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -55,7 +87,7 @@ export function DocumentCard({
       case 'list':
         return (
           <div className="flex items-center space-x-3 flex-1 min-w-0 mb-3">
-            <span className="text-2xl flex-shrink-0">📄</span>
+            <span className="text-2xl flex-shrink-0">{getDocumentIcon(document.type)}</span>
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-gray-900 truncate">
                 {document.name}
@@ -70,7 +102,7 @@ export function DocumentCard({
       case 'icon':
         return (
           <div className="flex flex-col items-center gap-2">
-            <span className="text-3xl">📄</span>
+            <span className="text-3xl">{getDocumentIcon(document.type)}</span>
             <span className="text-xs font-medium text-gray-900 text-center truncate max-w-[80px]">
               {document.name}
             </span>
@@ -81,7 +113,7 @@ export function DocumentCard({
         return (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl">📄</span>
+              <span className="text-xl">{getDocumentIcon(document.type)}</span>
               <h3 className="text-sm font-medium text-gray-900 truncate">
                 {document.name}
               </h3>
@@ -103,7 +135,7 @@ export function DocumentCard({
         return (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xl">📄</span>
+              <span className="text-xl">{getDocumentIcon(document.type)}</span>
               <h3 className="text-sm font-medium text-gray-900">
                 {document.name}
               </h3>
@@ -142,10 +174,52 @@ export function DocumentCard({
   };
 
   return (
-    <div className={`group relative ${getCardSize()} border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150`}>
+    <div
+      ref={setNodeRef}
+      style={dragStyle}
+      {...listeners}
+      {...attributes}
+      onContextMenu={(e) => {
+        if (!onMove) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onMove(document);
+      }}
+      className={`group relative ${getCardSize()} border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+    >
       <Link href={documentPath} className="block p-4 cursor-pointer">
         {renderContent()}
       </Link>
+      {(onMove || onDelete) && mode === 'list' && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex space-x-1 transition-opacity duration-150">
+          {onMove && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onMove(document);
+              }}
+              className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-150"
+              title="Move document"
+            >
+              Move
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete(document);
+              }}
+              className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition-colors duration-150"
+              title="Delete document"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      )}
       {showViewModeControl && onViewModeChange && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="relative">

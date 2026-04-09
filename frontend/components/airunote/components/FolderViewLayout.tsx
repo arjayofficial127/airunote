@@ -5,6 +5,7 @@
 
 'use client';
 
+import { DndContext, DragOverlay, PointerSensor, type DragEndEvent, type DragStartEvent, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -20,6 +21,7 @@ import { getFolderTypeIcon } from '../utils/folderTypeIcon';
 import { useFolderLens } from '../hooks/useFolderLens';
 import { useLens } from '../hooks/useLens';
 import { useUpdateFolder } from '../hooks/useUpdateFolder';
+import { useMoveDocument } from '../hooks/useMoveDocument';
 import { CreateFolderLensModal } from './CreateFolderLensModal';
 import { ViewSwitcher } from './ViewSwitcher';
 import { useFolderLenses } from '@/hooks/useAirunoteLenses';
@@ -82,7 +84,14 @@ export function FolderViewLayout({
   const [isEditingFolderName, setIsEditingFolderName] = useState(false);
   const [editingFolderName, setEditingFolderName] = useState('');
   const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
+  const [activeDraggedDocumentId, setActiveDraggedDocumentId] = useState<string | null>(null);
   const updateFolder = useUpdateFolder();
+  const moveDocument = useMoveDocument();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   // Fetch folder lenses
   const { data: folderLenses = [] } = useFolderLenses(
@@ -95,6 +104,8 @@ export function FolderViewLayout({
     getFilteredDocuments,
     getFolderCounts,
     foldersById,
+    documentsById,
+    updateDocumentMetadata,
   } = useAirunoteStore();
   
   // Get current folder for inline editing
@@ -176,9 +187,59 @@ export function FolderViewLayout({
       onPasteDock={onPasteDock}
     />
   );
+  const activeDraggedDocument = activeDraggedDocumentId ? documentsById.get(activeDraggedDocumentId) : null;
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDraggedDocumentId(String(event.active.id));
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    setActiveDraggedDocumentId(null);
+
+    if (!over) return;
+
+    const documentId = String(active.id);
+    const targetFolderId = String(over.id);
+
+    if (documentId === targetFolderId) return;
+
+    const document = documentsById.get(documentId);
+    const targetFolder = foldersById.get(targetFolderId);
+
+    if (!document || !targetFolder || !orgId || !userId || document.folderId === targetFolderId) {
+      return;
+    }
+
+    const previousDocument = { ...document };
+
+    updateDocumentMetadata({
+      ...document,
+      folderId: targetFolderId,
+    });
+
+    try {
+      await moveDocument.mutateAsync({
+        documentId,
+        orgId,
+        userId,
+        newFolderId: targetFolderId,
+        oldFolderId: previousDocument.folderId,
+      });
+    } catch (error) {
+      updateDocumentMetadata(previousDocument);
+      console.error('Failed to move document via drag and drop:', error);
+    }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDraggedDocumentId(null);
+  };
 
   return (
-    <div className={pageShellClassName}>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+      <div className={pageShellClassName}>
       {/* Breadcrumb Path */}
       {breadcrumbPath.length > 0 && (
         <nav className="mb-4">
@@ -418,7 +479,16 @@ export function FolderViewLayout({
           userId={userId}
         />
       )}
-    </div>
+      <DragOverlay>
+        {activeDraggedDocument ? (
+          <div className="rounded-lg border border-blue-200 bg-white px-4 py-3 shadow-xl">
+            <div className="text-xs font-semibold uppercase tracking-wide text-blue-600">Moving document</div>
+            <div className="mt-1 max-w-[240px] truncate text-sm font-medium text-gray-900">{activeDraggedDocument.name}</div>
+          </div>
+        ) : null}
+      </DragOverlay>
+      </div>
+    </DndContext>
   );
 }
 
@@ -438,10 +508,20 @@ function FolderCard({
   onDeleteFolder?: (folder: AiruFolder) => void;
   setEditingFolder: (folder: AiruFolder) => void;
 }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: folder.id,
+    data: {
+      type: 'folder',
+      folderId: folder.id,
+    },
+  });
 
   return (
     <div
-      className="group relative p-4 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150"
+      ref={setNodeRef}
+      className={`group relative p-4 border rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150 ${
+        isOver ? 'border-blue-400 bg-blue-50 shadow-sm' : 'border-gray-200'
+      }`}
       style={{
         borderLeft: '3px solid transparent',
       }}
