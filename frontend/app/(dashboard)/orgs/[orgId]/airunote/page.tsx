@@ -20,6 +20,7 @@ import { CreateFolderLensModal } from '@/components/airunote/components/CreateFo
 import { EditLensModal } from '@/components/airunote/components/EditLensModal';
 import { MoveFolderModal } from '@/components/airunote/components/MoveFolderModal';
 import { DeleteConfirmationModal } from '@/components/airunote/components/DeleteConfirmationModal';
+import { CreateEntryActions } from '@/components/airunote/components/CreateEntryActions';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
 import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
@@ -299,6 +300,14 @@ export default function AirunoteHomePage() {
     !isLoadingLens;
   const pageShellClassName = 'mx-auto w-full max-w-[1400px] px-6 lg:px-8';
   const sectionStackClassName = `${pageShellClassName} py-8`;
+  const lensHeaderActions = (
+    <CreateEntryActions
+      onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+      onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+      onPasteDock={() => setIsPasteDockOpen(true)}
+      className="justify-end"
+    />
+  );
 
   const handleViewChangeFromToolbar = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
     if (view === 'grid' || view === 'tree') {
@@ -467,19 +476,24 @@ export default function AirunoteHomePage() {
       {shouldRenderBoardLens ? (
         <div className="min-h-screen bg-gray-50">
           <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={selectedLensId}
-              currentLens={lensData?.lens || null}
-              lenses={folderLenses}
-              folderId={effectiveRootFolderId}
-              orgId={orgId || orgIdFromParams}
-              placement="inline"
-              onViewChange={handleViewChangeFromToolbar}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              onEditLens={handleEditLensRequest}
-              onDeleteLens={handleDeleteLensRequest}
-            />
+            <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <LensToolbar
+                  viewMode="lens"
+                  selectedLensId={selectedLensId}
+                  currentLens={lensData?.lens || null}
+                  lenses={folderLenses}
+                  folderId={effectiveRootFolderId}
+                  orgId={orgId || orgIdFromParams}
+                  placement="inline"
+                  onViewChange={handleViewChangeFromToolbar}
+                  onCreateLens={() => setIsCreateLensModalOpen(true)}
+                  onEditLens={handleEditLensRequest}
+                  onDeleteLens={handleDeleteLensRequest}
+                />
+              </div>
+              <div className="shrink-0">{lensHeaderActions}</div>
+            </div>
           </div>
           <div className={`${pageShellClassName} pt-6`}>
             <BoardLens
@@ -494,19 +508,24 @@ export default function AirunoteHomePage() {
       ) : shouldRenderCanvasLens ? (
         <div className="h-screen overflow-hidden bg-gray-50">
           <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={selectedLensId}
-              currentLens={lensData?.lens || null}
-              lenses={folderLenses}
-              folderId={effectiveRootFolderId}
-              orgId={orgId || orgIdFromParams}
-              placement="inline"
-              onViewChange={handleViewChangeFromToolbar}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              onEditLens={handleEditLensRequest}
-              onDeleteLens={handleDeleteLensRequest}
-            />
+            <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <LensToolbar
+                  viewMode="lens"
+                  selectedLensId={selectedLensId}
+                  currentLens={lensData?.lens || null}
+                  lenses={folderLenses}
+                  folderId={effectiveRootFolderId}
+                  orgId={orgId || orgIdFromParams}
+                  placement="inline"
+                  onViewChange={handleViewChangeFromToolbar}
+                  onCreateLens={() => setIsCreateLensModalOpen(true)}
+                  onEditLens={handleEditLensRequest}
+                  onDeleteLens={handleDeleteLensRequest}
+                />
+              </div>
+              <div className="shrink-0">{lensHeaderActions}</div>
+            </div>
           </div>
           {isLoadingLens ? (
             <div className="flex items-center justify-center h-full">
@@ -525,19 +544,24 @@ export default function AirunoteHomePage() {
       ) : shouldRenderStudyLens && effectiveRootFolderId ? (
         <div className="min-h-screen bg-gray-50">
           <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={selectedLensId}
-              currentLens={lensData?.lens || null}
-              lenses={folderLenses}
-              folderId={effectiveRootFolderId}
-              orgId={orgId || orgIdFromParams}
-              placement="inline"
-              onViewChange={handleViewChangeFromToolbar}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              onEditLens={handleEditLensRequest}
-              onDeleteLens={handleDeleteLensRequest}
-            />
+            <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 flex-1">
+                <LensToolbar
+                  viewMode="lens"
+                  selectedLensId={selectedLensId}
+                  currentLens={lensData?.lens || null}
+                  lenses={folderLenses}
+                  folderId={effectiveRootFolderId}
+                  orgId={orgId || orgIdFromParams}
+                  placement="inline"
+                  onViewChange={handleViewChangeFromToolbar}
+                  onCreateLens={() => setIsCreateLensModalOpen(true)}
+                  onEditLens={handleEditLensRequest}
+                  onDeleteLens={handleDeleteLensRequest}
+                />
+              </div>
+              <div className="shrink-0">{lensHeaderActions}</div>
+            </div>
           </div>
           <StudyLensRenderer folderId={effectiveRootFolderId} />
         </div>
