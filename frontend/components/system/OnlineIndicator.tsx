@@ -39,8 +39,8 @@ export function OnlineIndicator() {
 
   return (
     <div className="flex items-center gap-1.5 text-xs text-gray-500">
-      <div className="w-2 h-2 bg-green-500 rounded-full" title="Online" />
-      <span className="hidden sm:inline">Online</span>
+      {/* <div className="w-2 h-2 bg-green-500 rounded-full" title="Online" /> */}
+      {/* <span className="hidden sm:inline">Online</span> */}
     </div>
   );
 }

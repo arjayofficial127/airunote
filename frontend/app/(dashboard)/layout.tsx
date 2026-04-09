@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter, usePathname, useParams } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 // ❌ Do not fetch auth/org/apps here
 // ✅ Must consume from session provider
 import { useAuthSession } from '@/providers/AuthSessionProvider';
@@ -15,7 +15,6 @@ import { AppSidebar } from '@/components/layout/AppSidebar';
 import { EditorSidebarProvider } from '@/contexts/EditorSidebarContext';
 import { SessionAppStoreProvider } from '@/contexts/SessionAppStoreContext';
 import { SessionBoundary } from '@/components/system/SessionBoundary';
-import { OnlineIndicator } from '@/components/system/OnlineIndicator';
 import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
@@ -272,100 +271,86 @@ export default function DashboardLayout({
           {!isOrgsOnboardingPage && (
           <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
             <div
-              className={`w-full px-4 sm:px-6 lg:px-8 transition-[padding] duration-300 ${
-                shouldOffsetForSidebar ? 'lg:pl-[18rem]' : ''
-              }`}
+              className="relative w-full px-4 sm:px-6 lg:pr-8 lg:pl-0"
             >
-              <div className="flex h-14 items-center justify-between gap-3 sm:h-16 sm:gap-4">
-                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-                  {/* Hamburger menu - show for all views (including apps), but hide on /orgs onboarding */}
-                  {!isOrgsOnboardingPage && (
-                    <button
-                      onClick={() => {
-                        if (isViewingApp) {
-                          // Check if app has its own sidebar state (like PostApp)
-                          if (typeof window !== 'undefined' && (window as any).__postAppSidebarState) {
-                            (window as any).__postAppSidebarState.toggle();
-                          } else {
-                            // Use unified app sidebar state
-                            setAppSidebarOpen(!appSidebarOpen);
-                          }
-                        } else if (isEditorMode) {
-                          setEditorSidebarOpen(!editorSidebarOpen);
-                        } else {
-                          setSidebarOpen(!sidebarOpen);
-                        }
-                      }}
-                      className={`inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:text-slate-900 ${
-                        (isViewingApp && (
-                          (typeof window !== 'undefined' && (window as any).__postAppSidebarState?.isOpen) ||
-                          appSidebarOpen
-                        )) ||
-                        (isEditorMode ? editorSidebarOpen : sidebarOpen)
-                          ? 'border-slate-300 bg-slate-100 text-slate-900'
-                          : 'hover:bg-white'
-                      }`}
-                      aria-label="Toggle sidebar"
-                    >
-                      <svg 
-                        className="h-5 w-5"
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <line x1="4" y1="6" x2="20" y2="6" />
-                        <line x1="4" y1="12" x2="20" y2="12" />
-                        <line x1="4" y1="18" x2="20" y2="18" />
-                      </svg>
-                    </button>
-                  )}
-
-                  <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200/70 bg-white/92 px-3 py-1.5 shadow-sm sm:px-4">
+              <div className="absolute inset-y-0 left-[calc(16rem-1px)] hidden w-px bg-gradient-to-t from-slate-200/80 via-slate-200/80 to-slate-200/10 lg:block" />
+              <div className="flex h-14 items-center justify-between gap-4 sm:h-16 sm:gap-5">
+                <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+                  <div className="flex flex-shrink-0 items-center gap-2.5 sm:gap-3 lg:h-full lg:w-64 lg:px-6">
                     <AirunoteLogo
                       href="/dashboard"
                       iconSize={24}
                       className="flex min-w-0 items-center gap-2 text-lg font-bold text-gray-900 transition hover:text-gray-700 sm:text-xl"
                       textClassName="truncate text-lg font-bold text-gray-900 sm:text-xl"
                     />
-                    {isInOrgContext && org ? (
-                      <>
-                        <span className="hidden text-slate-300 sm:inline">/</span>
-                        <div className="min-w-0">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate text-sm font-semibold text-slate-900 sm:text-[15px]">
-                              {org.name}
-                            </span>
-                            <span className="hidden items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500 lg:inline-flex">
-                              {role}
-                            </span>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="hidden sm:flex">
-                        <OnlineIndicator />
-                      </div>
+
+                    {/* Hamburger menu - show for all views (including apps), but hide on /orgs onboarding */}
+                    {!isOrgsOnboardingPage && (
+                      <button
+                        onClick={() => {
+                          if (isViewingApp) {
+                            // Check if app has its own sidebar state (like PostApp)
+                            if (typeof window !== 'undefined' && (window as any).__postAppSidebarState) {
+                              (window as any).__postAppSidebarState.toggle();
+                            } else {
+                              // Use unified app sidebar state
+                              setAppSidebarOpen(!appSidebarOpen);
+                            }
+                          } else if (isEditorMode) {
+                            setEditorSidebarOpen(!editorSidebarOpen);
+                          } else {
+                            setSidebarOpen(!sidebarOpen);
+                          }
+                        }}
+                        className={`ml-auto inline-flex h-9 w-9 flex-shrink-0 items-center justify-center text-slate-500 transition-colors duration-200 hover:text-slate-900 ${
+                          (isViewingApp && (
+                            (typeof window !== 'undefined' && (window as any).__postAppSidebarState?.isOpen) ||
+                            appSidebarOpen
+                          )) ||
+                          (isEditorMode ? editorSidebarOpen : sidebarOpen)
+                            ? 'text-slate-900'
+                            : ''
+                        }`}
+                        aria-label="Toggle sidebar"
+                      >
+                        <svg 
+                          className="h-5 w-5"
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="4" y1="6" x2="20" y2="6" />
+                          <line x1="4" y1="12" x2="20" y2="12" />
+                          <line x1="4" y1="18" x2="20" y2="18" />
+                        </svg>
+                      </button>
                     )}
                   </div>
 
+                  <div className="hidden h-full w-px flex-shrink-0 bg-gradient-to-t from-slate-200/70 via-slate-200/70 to-slate-200/10 md:block lg:hidden" />
+
                   {isInOrgContext && org && (
-                    <div className="hidden xl:flex">
-                      <OnlineIndicator />
+                    <div className="min-w-0 flex-1 items-center md:flex">
+                      <div className="flex min-w-0 items-start gap-1.5">
+                        <span className="truncate text-sm font-semibold text-slate-900 sm:text-[15px] lg:max-w-[300px]">
+                          {org.name}
+                        </span>
+                        <PlanBadge compact className="-mt-1" />
+                      </div>
                     </div>
                   )}
                 </div>
 
                 <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-2.5">
-                  {isInOrgContext && <PlanBadge />}
 
                   {/* Settings button - only show in org context */}
                   {isInOrgContext && orgId && (
                     <Link
                       href={`/orgs/${orgId}/settings`}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/70 bg-white/92 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                      className="inline-flex h-10 w-10 items-center justify-center text-slate-500 transition hover:text-slate-900"
                       aria-label="Settings"
                       title="Settings"
                     >
@@ -381,12 +366,12 @@ export default function DashboardLayout({
                     <div className="relative" ref={userDropdownRef}>
                       <button
                         onClick={() => setShowUserDropdown(!showUserDropdown)}
-                        className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-slate-200/70 bg-white/92 px-2 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white sm:px-2.5"
+                        className="flex h-10 min-w-0 items-center gap-2 px-2 py-1.5 text-sm font-medium text-slate-900 transition sm:px-2.5"
                       >
                         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                           {getUserInitials()}
                         </span>
-                        <span className="hidden max-w-[140px] truncate text-left sm:block">{getUserLabel()}</span>
+                        {/* <span className="hidden max-w-[140px] truncate text-left sm:block lg:max-w-[180px]">{getUserLabel()}</span> */}
                         <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>

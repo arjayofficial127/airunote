@@ -3,6 +3,11 @@
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useOrgUsage } from '@/hooks/useOrgUsage';
 
+interface PlanBadgeProps {
+  compact?: boolean;
+  className?: string;
+}
+
 function formatRemaining(value: number | null): string {
   if (value === null) {
     return 'Unlimited';
@@ -11,7 +16,7 @@ function formatRemaining(value: number | null): string {
   return `${value} left`;
 }
 
-export function PlanBadge() {
+export function PlanBadge({ compact = false, className = '' }: PlanBadgeProps) {
   const orgSession = useOrgSession();
   const activeOrg = orgSession.activeOrg;
   const rawPlan = typeof activeOrg?.plan === 'string' ? activeOrg.plan.toLowerCase() : null;
@@ -24,12 +29,6 @@ export function PlanBadge() {
   if (!activeOrg) {
     return null;
   }
-
-  const toneClassName = isPendingPlan
-    ? 'border-sky-200 bg-sky-50/90 text-sky-950'
-    : isPro
-      ? 'border-emerald-200 bg-emerald-50/85 text-emerald-950'
-      : 'border-slate-200 bg-slate-50/95 text-slate-900';
 
   const pillClassName = isPendingPlan
     ? 'bg-sky-600 text-white'
@@ -54,12 +53,12 @@ export function PlanBadge() {
 
   return (
     <div
-      className={`inline-flex h-9 items-center rounded-full border px-3 text-[11px] font-semibold uppercase tracking-[0.18em] shadow-sm transition-colors ${toneClassName}`}
+      className={`inline-flex items-center ${className}`.trim()}
       title={badgeLabel}
       aria-label={badgeLabel}
     >
       <span
-        className={`inline-flex items-center rounded-full px-2.5 py-1 leading-none ${pillClassName}`}
+        className={`inline-flex items-center rounded-full leading-none ${compact ? 'px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em]' : 'px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]'} ${pillClassName}`}
       >
         {planLabel}
       </span>

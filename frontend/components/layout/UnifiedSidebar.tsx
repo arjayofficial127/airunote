@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
-import { useParams } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type Org } from '@/lib/api/orgs';
 import { FolderTree } from '@/components/airunote/components/FolderTree';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
+import { useOrgSession } from '@/providers/OrgSessionProvider';
 
 interface NavItem {
   href: string;
@@ -48,9 +48,8 @@ export function UnifiedSidebar({
   preloadedRoles,
   preloadedOrg,
 }: UnifiedSidebarProps) {
+  const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const params = useParams();
   
   // Use preloaded data if available, otherwise fallback to hooks
   const { isSuperAdmin: hookSuperAdmin, loading: superAdminLoading } = useSuperAdmin();
@@ -68,19 +67,21 @@ export function UnifiedSidebar({
 
   const showTestMenuBackground = !isOrgReady || (context === 'dashboard' && isSuperAdmin === false);
 
-  // Sidebar mode switcher (only for Airunote routes in org context)
-  const isAirunoteRoute = pathname?.includes('/airunote') ?? false;
-  const showModeSwitcher = context === 'org' && isOrgReady && isAirunoteRoute;
-  
-  type SidebarMode = 'folders' | 'org';
-  const [sidebarMode, setSidebarMode] = useState<SidebarMode>('folders');
-
   // Get auth session for userId (needed for folder tree)
   const authSession = useAuthSession();
+  const orgSession = useOrgSession();
+  const user = authSession.user;
   const userId = authSession.user?.id ?? null;
+  const [isAdminExpanded, setIsAdminExpanded] = useState(false);
+  const [isAllExpanded, setIsAllExpanded] = useState(true);
+  const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState(true);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const workspaceMenuRef = useRef<HTMLDivElement>(null);
 
   // Get data from store (metadata loaded by AirunoteDataProvider)
-  const { buildTree, getFolderById, foldersById, isLoading: isStoreLoading } = useAirunoteStore();
+  const { buildTree, foldersById, getFolderItemCount, isLoading: isStoreLoading } = useAirunoteStore();
 
   // Extract current folder ID from pathname if on folder/document page
   const getCurrentFolderId = (): string | undefined => {
@@ -101,10 +102,66 @@ export function UnifiedSidebar({
   );
   const rootFolderId = userRoot?.id || null;
   
-  // Build tree from store (only when we have data and in folders mode)
-  const folderTree = showModeSwitcher && sidebarMode === 'folders' && rootFolderId && !isStoreLoading
+  // Build tree from store for unified content navigation
+  const folderTree = rootFolderId && !isStoreLoading
     ? buildTree(rootFolderId)
     : null;
+
+  const knowledgeFolders = allFolders
+    .filter((folder) => folder.type === 'wiki' && !folder.humanId.startsWith('__'))
+    .sort((left, right) => left.humanId.localeCompare(right.humanId));
+
+  const allContentCount = rootFolderId ? getFolderItemCount(rootFolderId, true) : 0;
+
+  const getUserLabel = () => {
+    if (user?.name?.trim()) {
+      return user.name.trim();
+    }
+
+    return user?.email || 'User';
+  };
+
+  const getShortUserLabel = () => {
+    const label = getUserLabel();
+    const [firstPart] = label.split(/\s+/).filter(Boolean);
+
+    if (firstPart) {
+      return firstPart;
+    }
+
+    return label.split('@')[0] || 'User';
+  };
+
+  const getUserInitials = () => {
+    const label = getUserLabel();
+    const parts = label.split(/\s+/).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+    }
+
+    return label.slice(0, 2).toUpperCase();
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+
+      if (workspaceMenuRef.current && !workspaceMenuRef.current.contains(event.target as Node)) {
+        setIsWorkspaceMenuOpen(false);
+      }
+    };
+
+    if (isUserMenuOpen || isWorkspaceMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen, isWorkspaceMenuOpen]);
 
   // Water overlay state machine (two layers)
   // - mask: responsible for retracting/hiding, can retract even while content is still rising
@@ -210,28 +267,10 @@ export function UnifiedSidebar({
       ];
     }
 
-    if (context === 'org' && orgId) {
-      const items: NavItem[] = [
-        { href: `/orgs/${orgId}/dashboard`, label: 'Dashboard', subtitle: null },
-      ];
-
-      items.push(
-        { href: `/orgs/${orgId}/airunote`, label: 'Airunote', subtitle: 'Private workspace' },
-        { href: `/orgs/${orgId}/posts`, label: 'Posts', subtitle: null },
-        { href: `/orgs/${orgId}/collections`, label: 'Collections', subtitle: null },
-        { href: `/orgs/${orgId}/members`, label: 'Members', subtitle: null },
-        { href: `/orgs/${orgId}/settings`, label: 'Settings', subtitle: null },
-      );
-
-      return items;
-    }
-
     return [];
   };
 
   const navItems = getNavItems();
-
-  const contextualItem = { label: '', href: '', parent: null as null };
 
   const isActive = (href: string): boolean => {
     if (!pathname) return false;
@@ -245,8 +284,89 @@ export function UnifiedSidebar({
     return false;
   };
 
-  const contextualParentHref = '';
-  const isContextualParentInNav = false;
+  const adminItems: NavItem[] = context === 'org' && orgId
+    ? [
+        { href: `/orgs/${orgId}/dashboard`, label: 'Dashboard' },
+        // { href: `/orgs/${orgId}/posts`, label: 'Posts' },
+        // { href: `/orgs/${orgId}/collections`, label: 'Collections' },
+        { href: `/orgs/${orgId}/members`, label: 'Members' },
+        { href: `/orgs/${orgId}/settings`, label: 'Settings' },
+      ]
+    : [];
+
+  const renderIcon = (name: 'dashboard' | 'posts' | 'collections' | 'members' | 'settings' | 'home' | 'all' | 'knowledge') => {
+    switch (name) {
+      case 'dashboard':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 13h6V4H4v9zm10 7h6V11h-6v9zM4 20h6v-3H4v3zm10-13h6V4h-6v3z" />
+          </svg>
+        );
+      case 'posts':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 10h8M8 14h5M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
+          </svg>
+        );
+      case 'collections':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 7h18M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" />
+          </svg>
+        );
+      case 'members':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20a4 4 0 00-8 0M12 12a4 4 0 100-8 4 4 0 000 8zm7 8a5 5 0 00-3-4.58M5 20a5 5 0 013-4.58" />
+          </svg>
+        );
+      case 'settings':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        );
+      case 'home':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10.5L12 3l9 7.5M5 9.5V20h14V9.5" />
+          </svg>
+        );
+      case 'all':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+          </svg>
+        );
+      case 'knowledge':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 5.5A2.5 2.5 0 016.5 3H20v18H6.5A2.5 2.5 0 014 18.5v-13z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7h8M8 11h8M8 15h5" />
+          </svg>
+        );
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsUserMenuOpen(false);
+    await authSession.logout();
+    router.push('/login');
+  };
+
+  const handleWorkspaceIdentityClick = () => {
+    setIsWorkspaceMenuOpen((current) => !current);
+  };
+
+  const handleWorkspaceSelect = (nextOrgId: string) => {
+    setIsWorkspaceMenuOpen(false);
+    orgSession.setActiveOrg(nextOrgId);
+    onNavigate?.();
+  };
+
+  const isOrgSidebar = context === 'org' && Boolean(orgId);
+  const hasMultipleWorkspaces = orgSession.orgs.length > 1;
 
   return (
     <>
@@ -290,230 +410,311 @@ export function UnifiedSidebar({
 
           {isOrgReady && (
           <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-2">
-          {/* Mode Switcher - only show on Airunote routes */}
-          {showModeSwitcher && (
-            <div className="px-4 py-2 border-b border-gray-200 flex items-center gap-2">
-              <button
-                onClick={() => setSidebarMode('folders')}
-                className={`flex-1 flex items-center justify-center p-2 rounded-md transition-colors ${
-                  sidebarMode === 'folders'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                title="Folder Tree View"
-                aria-label="Switch to folder tree view"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setSidebarMode('org')}
-                className={`flex-1 flex items-center justify-center p-2 rounded-md transition-colors ${
-                  sidebarMode === 'org'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-                title="Organization Menu"
-                aria-label="Switch to organization menu"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {/* Org Name and User Type - shown below mode switcher when in org mode */}
-          {showModeSwitcher && sidebarMode === 'org' && (
-            <div className="px-4 py-3 border-b border-gray-200">
-              <div className="text-base font-medium text-gray-900">
-                {org?.name || 'Organization'}
+          {isPermissionsLoading && isOrgSidebar ? (
+            <div className="space-y-4 px-4 py-4">
+              <div className="space-y-2 rounded-2xl border border-slate-200/80 bg-white/90 p-4">
+                <div className="h-4 w-32 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-12 animate-pulse rounded bg-slate-200" />
               </div>
-              <div className="text-xs text-gray-500 mt-0.5">{role || 'Admin'}</div>
-            </div>
-          )}
-
-          {/* Show menu items progressively - non-app items immediately, apps when ready */}
-          {isPermissionsLoading && context === 'org' && (!showModeSwitcher || sidebarMode === 'org') ? (
-            <div className="space-y-1">
-              {/* Full skeleton only while permissions are loading */}
-              <div className="h-12 bg-gray-200 rounded animate-pulse mx-2 mb-1" />
-              <div className="space-y-1">
-                <div className="h-12 bg-gray-200 rounded animate-pulse mx-2 mb-1" />
-                <div className="ml-6 space-y-0.5 border-l-2 border-gray-200">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-10 bg-gray-200 rounded animate-pulse mx-2 mb-0.5" />
-                  ))}
-                </div>
+              <div className="h-10 animate-pulse rounded-xl bg-slate-200" />
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((item) => (
+                  <div key={item} className="h-10 animate-pulse rounded-xl bg-slate-200" />
+                ))}
               </div>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-12 bg-gray-200 rounded animate-pulse mx-2 mb-1" />
-              ))}
             </div>
-          ) : (
-            <>
-              {/* Folder Tree View - only show when in folders mode */}
-              {showModeSwitcher && sidebarMode === 'folders' && folderTree && orgId ? (
-                <div className="px-2 py-2">
-                  <FolderTree tree={folderTree} currentFolderId={currentFolderId} orgId={orgId} />
-                </div>
-              ) : showModeSwitcher && sidebarMode === 'folders' ? (
-                <div className="px-4 py-8 text-center text-gray-500 text-sm">
-                  Loading folder tree...
-                </div>
-              ) : null}
+          ) : isOrgSidebar && orgId ? (
+            <div className="flex min-h-full flex-col px-4 py-4">
+              <div className="relative" ref={workspaceMenuRef}>
+                <button
+                  type="button"
+                  onClick={hasMultipleWorkspaces ? handleWorkspaceIdentityClick : undefined}
+                  className={`flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
+                    hasMultipleWorkspaces ? 'hover:bg-slate-100/60 cursor-pointer' : 'cursor-default'
+                  }`}
+                  aria-expanded={hasMultipleWorkspaces ? isWorkspaceMenuOpen : undefined}
+                  disabled={!hasMultipleWorkspaces}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-medium text-slate-800">{org?.name || 'Workspace'}</span>
+                    <span className="mt-0.5 block text-[11px] uppercase tracking-[0.14em] text-slate-500/80">{role || 'Member'}</span>
+                  </span>
+                  {hasMultipleWorkspaces && (
+                    <svg className={`mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400 transition-transform duration-150 ${isWorkspaceMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
 
-              {/* Org Menu Items - only show when in org mode or not in Airunote route */}
-              {(!showModeSwitcher || sidebarMode === 'org') && navItems.map((item) => {
-                  const hasChildren = item.children && item.children.length > 0;
-                  const isExpanded = hasChildren;
-                  const itemIsActive = isActive(item.href) || (hasChildren && item.children?.some(child => isActive(child.href)));
+                {hasMultipleWorkspaces && isWorkspaceMenuOpen && (
+                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-2xl border border-slate-200 bg-white/98 p-2 shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
+                    <div className="space-y-1">
+                      {orgSession.orgs.map((workspace) => {
+                        const isCurrent = workspace.id === orgSession.activeOrgId;
 
-                  return (
-                    <div key={item.href || item.label} className="mb-1">
-                      {hasChildren ? (
-                        <>
+                        return (
                           <button
-                            onClick={() => {}}
-                            className={`w-full flex items-start justify-between gap-3 py-2.5 px-4 transition ${
-                              itemIsActive
-                                ? 'bg-cyan-50 text-cyan-700 font-medium'
-                                : 'text-gray-900 hover:bg-gray-50'
+                            key={workspace.id}
+                            type="button"
+                            onClick={() => handleWorkspaceSelect(workspace.id)}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                              isCurrent
+                                ? 'bg-slate-100 text-slate-900'
+                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                           >
-                            <div className={`flex flex-col text-left flex-1 min-w-0 overflow-hidden`}>
-                              <span className="text-sm leading-5 whitespace-normal break-words">{item.label}</span>
-                              {item.subtitle && (
-                                <span className="mt-0.5 text-xs leading-4 text-gray-500 whitespace-normal break-words">{item.subtitle}</span>
-                              )}
-                            </div>
-                            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center self-start">
-                              <svg
-                                className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </div>
-                          </button>
-                          {isExpanded && (
-                            <div className="ml-4 space-y-0.5 border-l-2 border-gray-200">
-                              {item.children?.map((child) => {
-                                const childIsActive = isActive(child.href);
-                                const isContextualParent = contextualParentHref !== '' && child.href === contextualParentHref;
-                                
-                                return (
-                                  <div key={child.href}>
-                                    <Link
-                                      href={child.href}
-                                      onClick={onNavigate}
-                                      className={`relative flex items-start justify-between gap-3 py-2.5 px-4 transition ${
-                                        childIsActive
-                                          ? 'bg-cyan-50 text-cyan-700 font-medium'
-                                          : 'text-gray-900 hover:bg-gray-50'
-                                      }`}
-                                    >
-                                      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden`}>
-                                        <span className="text-sm font-medium leading-5 whitespace-normal break-words">{child.label}</span>
-                                        {child.subtitle && (
-                                          <span className="mt-0.5 text-xs leading-4 opacity-75 whitespace-normal break-words">{child.subtitle}</span>
-                                        )}
-                                      </div>
-                                      {childIsActive ? (
-                                        <div className="absolute right-0 top-3 flex items-center pr-2">
-                                          <svg
-                                            className="w-2 h-2 text-cyan-500"
-                                            viewBox="0 0 8 8"
-                                            fill="currentColor"
-                                          >
-                                            <path d="M0 0L8 4L0 8V0Z" />
-                                          </svg>
-                                        </div>
-                                      ) : null}
-                                    </Link>
-                                    {isContextualParent && contextualItem.parent && (
-                                      <>
-                                        <div className="h-px bg-gray-200 my-2" />
-                                        <Link
-                                          href={contextualItem.href}
-                                          onClick={onNavigate}
-                                          className="flex items-center justify-between px-4 py-2 transition bg-gray-50 text-gray-700 hover:bg-gray-100 ml-2"
-                                        >
-                                          <div className="flex flex-col">
-                                            <span className="text-xs font-medium">{contextualItem.label}</span>
-                                          </div>
-                                        </Link>
-                                      </>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <Link
-                          href={item.href}
-                          onClick={onNavigate}
-                          className={`relative flex items-start justify-between gap-3 py-2.5 px-4 transition ${
-                            itemIsActive
-                              ? 'bg-cyan-50 text-cyan-700 font-medium'
-                              : 'text-gray-900 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className={`flex flex-col flex-1 min-w-0 overflow-hidden`}>
-                            <span className="text-sm leading-5 whitespace-normal break-words">{item.label}</span>
-                            {item.subtitle && (
-                              <span className="mt-0.5 text-xs leading-4 text-gray-500 whitespace-normal break-words">{item.subtitle}</span>
+                            <span className="truncate">{workspace.name}</span>
+                            {isCurrent && (
+                              <span className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Current</span>
                             )}
-                          </div>
-                          {itemIsActive ? (
-                            <div className="absolute right-0 top-3 flex items-center pr-2">
-                              <svg
-                                className="w-2 h-2 text-cyan-600"
-                                viewBox="0 0 8 8"
-                                fill="currentColor"
-                              >
-                                <path d="M0 0L8 4L0 8V0Z" />
-                              </svg>
-                            </div>
-                          ) : null}
-                        </Link>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="my-4 h-px bg-slate-200/70" />
+
+              <div>
+                <button
+                  onClick={() => setIsAdminExpanded((current) => !current)}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100/80 hover:text-slate-800"
+                  aria-expanded={isAdminExpanded}
+                >
+                  <span>Admin</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform duration-150 ${isAdminExpanded ? 'rotate-90' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                <div
+                  className={`grid overflow-hidden transition-all duration-150 ease-out ${
+                    isAdminExpanded ? 'mt-2 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="space-y-1 rounded-2xl bg-slate-50/80 p-2">
+                      {adminItems.map((item) => {
+                        const iconName = item.label.toLowerCase() as 'dashboard' | 'posts' | 'collections' | 'members' | 'settings';
+                        const itemIsActive = isActive(item.href);
+
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={onNavigate}
+                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                              itemIsActive
+                                ? 'bg-white text-slate-900 shadow-sm'
+                                : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
+                            }`}
+                          >
+                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon(iconName)}</span>
+                            <span className="truncate">{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="my-4 h-px bg-slate-200/70" />
+
+              <div className="min-h-0 flex-1">
+                <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Content</div>
+
+                <div className="space-y-1">
+                  <Link
+                    href={`/orgs/${orgId}/airunote`}
+                    onClick={onNavigate}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                      pathname === `/orgs/${orgId}/airunote`
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'text-slate-900 hover:bg-slate-100/80'
+                    }`}
+                  >
+                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('home')}</span>
+                    <span className="truncate font-medium">Home</span>
+                  </Link>
+
+                  <div className="rounded-2xl bg-white/80">
+                    <button
+                      onClick={() => setIsAllExpanded((current) => !current)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                        pathname?.includes(`/orgs/${orgId}/airunote`)
+                          ? 'text-slate-900'
+                          : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('all')}</span>
+                      <span className="flex-1 truncate text-left font-medium">All</span>
+                      {allContentCount > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                          {allContentCount}
+                        </span>
+                      )}
+                      <svg
+                        className={`h-4 w-4 text-slate-400 transition-transform duration-150 ${isAllExpanded ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <div
+                      className={`grid overflow-hidden transition-all duration-150 ease-out ${
+                        isAllExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="px-2 pb-2 pt-1">
+                          {folderTree ? (
+                            <FolderTree tree={folderTree} currentFolderId={currentFolderId} orgId={orgId} />
+                          ) : (
+                            <div className="px-3 py-3 text-sm text-slate-500">Loading content…</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/80">
+                    <button
+                      onClick={() => setIsKnowledgeExpanded((current) => !current)}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 transition hover:bg-slate-100/80"
+                    >
+                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('knowledge')}</span>
+                      <span className="flex-1 truncate text-left font-medium">Knowledge</span>
+                      <svg
+                        className={`h-4 w-4 text-slate-400 transition-transform duration-150 ${isKnowledgeExpanded ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <div
+                      className={`grid overflow-hidden transition-all duration-150 ease-out ${
+                        isKnowledgeExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="space-y-1 px-2 pb-2 pt-1">
+                          {knowledgeFolders.length > 0 ? (
+                            knowledgeFolders.map((folder) => {
+                              const knowledgeHref = `/orgs/${orgId}/airunote/folder/${folder.id}`;
+                              const itemCount = getFolderItemCount(folder.id, true);
+                              const activeKnowledge = isActive(knowledgeHref);
+
+                              return (
+                                <Link
+                                  key={folder.id}
+                                  href={knowledgeHref}
+                                  onClick={onNavigate}
+                                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                                    activeKnowledge
+                                      ? 'bg-slate-100 text-slate-900'
+                                      : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900'
+                                  }`}
+                                >
+                                  <span className="truncate">{folder.humanId}</span>
+                                  <span className="ml-auto inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                                    {itemCount}
+                                  </span>
+                                </Link>
+                              );
+                            })
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-slate-500">No knowledge folders yet.</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="px-2 py-2">
+              {navItems.map((item) => {
+                const itemIsActive = isActive(item.href);
+
+                return (
+                  <Link
+                    key={item.href || item.label}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={`relative mb-1 flex items-start justify-between gap-3 rounded-xl px-4 py-2.5 transition ${
+                      itemIsActive
+                        ? 'bg-cyan-50 text-cyan-700 font-medium'
+                        : 'text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+                      <span className="text-sm leading-5 whitespace-normal break-words">{item.label}</span>
+                      {item.subtitle && (
+                        <span className="mt-0.5 text-xs leading-4 text-gray-500 whitespace-normal break-words">{item.subtitle}</span>
                       )}
                     </div>
-                  );
-                })}
-            </>
-          )}
-          
-          {/* Show contextual item if it doesn't have a parent in navItems */}
-          {contextualItem.parent && (contextualParentHref === '' || !isContextualParentInNav) && (
-            <>
-              <div className="h-px bg-gray-200 my-2" />
-              <Link
-                href={contextualItem.href}
-                onClick={onNavigate}
-                className="flex items-center justify-between px-4 py-2 transition bg-gray-50 text-gray-700 hover:bg-gray-100 ml-2"
-              >
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium">{contextualItem.label}</span>
-                </div>
-              </Link>
-            </>
+                  </Link>
+                );
+              })}
+            </div>
           )}
           </nav>
           )}
         
         {/* Footer in sidebar - fixed at bottom */}
           {isOrgReady && (
-            <footer className="py-3 px-4 flex-shrink-0">
-              <div className="text-xs text-gray-500 text-center">
-                <p>© 2020–2025 AOTECH / airunote.</p>
-                <p>All rights reserved.</p>
-              </div>
+            <footer className="px-4 pb-4 pt-2 flex-shrink-0">
+              {isOrgSidebar && user ? (
+                <div className="space-y-3">
+                  <div className="h-px bg-slate-200/70" />
+                  <div className="relative" ref={userMenuRef}>
+                    <button
+                      onClick={() => setIsUserMenuOpen((current) => !current)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-3 py-3 text-left shadow-sm transition hover:border-slate-300"
+                    >
+                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                        {getUserInitials()}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-slate-900">{getShortUserLabel()}</span>
+                        <span className="block truncate text-xs text-slate-500">{user.email}</span>
+                      </span>
+                      <svg className={`h-4 w-4 flex-shrink-0 text-slate-400 transition-transform duration-150 ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {isUserMenuOpen && (
+                      <div className="absolute bottom-full left-0 right-0 z-10 mb-2 rounded-2xl border border-slate-200 bg-white/98 p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+                        <button
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-50"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          Logout
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-1 text-center text-[11px] tracking-[0.08em] text-slate-400">© AOTECH</div>
+                </div>
+              ) : (
+                <div className="text-center text-[11px] tracking-[0.08em] text-slate-400">© AOTECH</div>
+              )}
             </footer>
           )}
         </div>

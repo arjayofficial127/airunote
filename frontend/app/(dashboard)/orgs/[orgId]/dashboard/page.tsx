@@ -352,9 +352,8 @@ export default function OrgDashboardPage() {
                 </div>
               </div>
 
-              {/* Collections Card */}
+              {/*
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-6 hover:shadow-md transition-shadow">
-                {/* Mobile: Single line layout */}
                 <div className="flex sm:hidden items-center justify-between gap-3">
                   <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
                     <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,7 +368,6 @@ export default function OrgDashboardPage() {
                     View All →
                   </Link>
                 </div>
-                {/* Desktop: Original layout */}
                 <div className="hidden sm:block">
                   <div className="flex items-start justify-between mb-4">
                     <div className="p-3 bg-orange-100 rounded-lg">
@@ -387,12 +385,12 @@ export default function OrgDashboardPage() {
                   </Link>
                 </div>
               </div>
+              */}
             </div>
 
 
-            {/* Quick Actions, Recent Base Pages & Recent Posts */}
+            {/*
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              {/* Quick Actions - Pages removed, keep Posts */}
               <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 ${
                 activeTab === 'posts' || activeTab === 'stats' ? 'sm:block hidden' : ''
               } ${activeTab === 'all' || activeTab === 'actions' ? 'block' : 'hidden sm:block'}`}>
@@ -418,9 +416,6 @@ export default function OrgDashboardPage() {
                 </div>
               </div>
 
-              {/* Recent Base Pages hidden - airunote BASE mode */}
-
-              {/* Recent Posts */}
               <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 ${
                 activeTab === 'actions' || activeTab === 'stats' ? 'sm:block hidden' : ''
               } ${activeTab === 'all' || activeTab === 'posts' ? 'block' : 'hidden sm:block'}`}>
@@ -466,6 +461,7 @@ export default function OrgDashboardPage() {
                 )}
               </div>
             </div>
+            */}
           </>
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
