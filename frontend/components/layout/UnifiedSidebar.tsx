@@ -34,6 +34,8 @@ interface UnifiedSidebarProps {
   preloadedOrg?: Org | null; // Org data from authFull
 }
 
+const SHOW_KNOWLEDGE = false;
+
 export function UnifiedSidebar({ 
   context, 
   orgId, 
@@ -72,13 +74,10 @@ export function UnifiedSidebar({
   const orgSession = useOrgSession();
   const user = authSession.user;
   const userId = authSession.user?.id ?? null;
-  const [isAdminExpanded, setIsAdminExpanded] = useState(false);
   const [isAllExpanded, setIsAllExpanded] = useState(true);
   const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const workspaceMenuRef = useRef<HTMLDivElement>(null);
 
   // Get data from store (metadata loaded by AirunoteDataProvider)
   const { buildTree, foldersById, getFolderItemCount, isLoading: isStoreLoading } = useAirunoteStore();
@@ -148,20 +147,16 @@ export function UnifiedSidebar({
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
       }
-
-      if (workspaceMenuRef.current && !workspaceMenuRef.current.contains(event.target as Node)) {
-        setIsWorkspaceMenuOpen(false);
-      }
     };
 
-    if (isUserMenuOpen || isWorkspaceMenuOpen) {
+    if (isUserMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isUserMenuOpen, isWorkspaceMenuOpen]);
+  }, [isUserMenuOpen]);
 
   // Water overlay state machine (two layers)
   // - mask: responsible for retracting/hiding, can retract even while content is still rising
@@ -355,14 +350,8 @@ export function UnifiedSidebar({
     router.push('/login');
   };
 
-  const handleWorkspaceIdentityClick = () => {
-    setIsWorkspaceMenuOpen((current) => !current);
-  };
-
-  const handleWorkspaceSelect = (nextOrgId: string) => {
-    setIsWorkspaceMenuOpen(false);
-    orgSession.setActiveOrg(nextOrgId);
-    onNavigate?.();
+  const handleSwitchWorkspaceClick = () => {
+    // Reserved for future workspace switcher flow.
   };
 
   const isOrgSidebar = context === 'org' && Boolean(orgId);
@@ -425,103 +414,52 @@ export function UnifiedSidebar({
             </div>
           ) : isOrgSidebar && orgId ? (
             <div className="flex min-h-full flex-col px-4 py-4">
-              <div className="relative" ref={workspaceMenuRef}>
-                <button
-                  type="button"
-                  onClick={hasMultipleWorkspaces ? handleWorkspaceIdentityClick : undefined}
-                  className={`flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${
-                    hasMultipleWorkspaces ? 'hover:bg-slate-100/60 cursor-pointer' : 'cursor-default'
-                  }`}
-                  aria-expanded={hasMultipleWorkspaces ? isWorkspaceMenuOpen : undefined}
-                  disabled={!hasMultipleWorkspaces}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-medium text-slate-800">{org?.name || 'Workspace'}</span>
-                    <span className="mt-0.5 block text-[11px] uppercase tracking-[0.14em] text-slate-500/80">{role || 'Member'}</span>
-                  </span>
-                  {hasMultipleWorkspaces && (
-                    <svg className={`mt-0.5 h-4 w-4 flex-shrink-0 text-slate-400 transition-transform duration-150 ${isWorkspaceMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </button>
-
-                {hasMultipleWorkspaces && isWorkspaceMenuOpen && (
-                  <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-2xl border border-slate-200 bg-white/98 p-2 shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
-                    <div className="space-y-1">
-                      {orgSession.orgs.map((workspace) => {
-                        const isCurrent = workspace.id === orgSession.activeOrgId;
-
-                        return (
-                          <button
-                            key={workspace.id}
-                            type="button"
-                            onClick={() => handleWorkspaceSelect(workspace.id)}
-                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                              isCurrent
-                                ? 'bg-slate-100 text-slate-900'
-                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                            }`}
-                          >
-                            <span className="truncate">{workspace.name}</span>
-                            {isCurrent && (
-                              <span className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Current</span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+              <div>
+                <div className="px-3 py-2">
+                  <div className="truncate text-[15px] font-medium text-slate-800">{org?.name || 'Workspace'}</div>
+                  <div className="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-slate-500/80">{role || 'Member'}</div>
+                </div>
               </div>
 
-              <div className="my-4 h-px bg-slate-200/70" />
+              <div className="mt-2 h-px bg-slate-200/70" />
 
               <div>
-                <button
-                  onClick={() => setIsAdminExpanded((current) => !current)}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100/80 hover:text-slate-800"
-                  aria-expanded={isAdminExpanded}
-                >
-                  <span>Admin</span>
-                  <svg
-                    className={`h-4 w-4 transition-transform duration-150 ${isAdminExpanded ? 'rotate-90' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-                <div
-                  className={`grid overflow-hidden transition-all duration-150 ease-out ${
-                    isAdminExpanded ? 'mt-2 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <div className="space-y-1 rounded-2xl bg-slate-50/80 p-2">
-                      {adminItems.map((item) => {
-                        const iconName = item.label.toLowerCase() as 'dashboard' | 'posts' | 'collections' | 'members' | 'settings';
-                        const itemIsActive = isActive(item.href);
+                <div className="space-y-1 pt-2">
+                  {adminItems.map((item) => {
+                    const iconName = item.label.toLowerCase() as 'dashboard' | 'posts' | 'collections' | 'members' | 'settings';
+                    const itemIsActive = isActive(item.href);
 
-                        return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={onNavigate}
-                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                              itemIsActive
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
-                            }`}
-                          >
-                            <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon(iconName)}</span>
-                            <span className="truncate">{item.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onNavigate}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                          itemIsActive
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon(iconName)}</span>
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+
+                  {hasMultipleWorkspaces && (
+                    <button
+                      type="button"
+                      onClick={handleSwitchWorkspaceClick}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 transition hover:bg-slate-50 hover:text-slate-800"
+                    >
+                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 7h11m0 0L12 4m3 3l-3 3M20 17H9m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                      </span>
+                      <span className="truncate">Switch Workspace</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -554,7 +492,7 @@ export function UnifiedSidebar({
                       }`}
                     >
                       <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('all')}</span>
-                      <span className="flex-1 truncate text-left font-medium">All</span>
+                      <span className="flex-1 truncate text-left font-medium">Folders</span>
                       {allContentCount > 0 && (
                         <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
                           {allContentCount}
@@ -577,7 +515,7 @@ export function UnifiedSidebar({
                       <div className="overflow-hidden">
                         <div className="px-2 pb-2 pt-1">
                           {folderTree ? (
-                            <FolderTree tree={folderTree} currentFolderId={currentFolderId} orgId={orgId} />
+                            <FolderTree tree={folderTree} currentFolderId={currentFolderId} orgId={orgId} showHome={false} />
                           ) : (
                             <div className="px-3 py-3 text-sm text-slate-500">Loading content…</div>
                           )}
@@ -586,60 +524,62 @@ export function UnifiedSidebar({
                     </div>
                   </div>
 
-                  <div className="rounded-2xl bg-white/80">
-                    <button
-                      onClick={() => setIsKnowledgeExpanded((current) => !current)}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 transition hover:bg-slate-100/80"
-                    >
-                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('knowledge')}</span>
-                      <span className="flex-1 truncate text-left font-medium">Knowledge</span>
-                      <svg
-                        className={`h-4 w-4 text-slate-400 transition-transform duration-150 ${isKnowledgeExpanded ? 'rotate-90' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                  {SHOW_KNOWLEDGE && (
+                    <div className="rounded-2xl bg-white/80">
+                      <button
+                        onClick={() => setIsKnowledgeExpanded((current) => !current)}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 transition hover:bg-slate-100/80"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                    <div
-                      className={`grid overflow-hidden transition-all duration-150 ease-out ${
-                        isKnowledgeExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                      }`}
-                    >
-                      <div className="overflow-hidden">
-                        <div className="space-y-1 px-2 pb-2 pt-1">
-                          {knowledgeFolders.length > 0 ? (
-                            knowledgeFolders.map((folder) => {
-                              const knowledgeHref = `/orgs/${orgId}/airunote/folder/${folder.id}`;
-                              const itemCount = getFolderItemCount(folder.id, true);
-                              const activeKnowledge = isActive(knowledgeHref);
+                        <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('knowledge')}</span>
+                        <span className="flex-1 truncate text-left font-medium">Knowledge</span>
+                        <svg
+                          className={`h-4 w-4 text-slate-400 transition-transform duration-150 ${isKnowledgeExpanded ? 'rotate-90' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                      <div
+                        className={`grid overflow-hidden transition-all duration-150 ease-out ${
+                          isKnowledgeExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                        }`}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="space-y-1 px-2 pb-2 pt-1">
+                            {knowledgeFolders.length > 0 ? (
+                              knowledgeFolders.map((folder) => {
+                                const knowledgeHref = `/orgs/${orgId}/airunote/folder/${folder.id}`;
+                                const itemCount = getFolderItemCount(folder.id, true);
+                                const activeKnowledge = isActive(knowledgeHref);
 
-                              return (
-                                <Link
-                                  key={folder.id}
-                                  href={knowledgeHref}
-                                  onClick={onNavigate}
-                                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
-                                    activeKnowledge
-                                      ? 'bg-slate-100 text-slate-900'
-                                      : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900'
-                                  }`}
-                                >
-                                  <span className="truncate">{folder.humanId}</span>
-                                  <span className="ml-auto inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
-                                    {itemCount}
-                                  </span>
-                                </Link>
-                              );
-                            })
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-slate-500">No knowledge folders yet.</div>
-                          )}
+                                return (
+                                  <Link
+                                    key={folder.id}
+                                    href={knowledgeHref}
+                                    onClick={onNavigate}
+                                    className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                                      activeKnowledge
+                                        ? 'bg-slate-100 text-slate-900'
+                                        : 'text-slate-700 hover:bg-slate-100/80 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    <span className="truncate">{folder.humanId}</span>
+                                    <span className="ml-auto inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                                      {itemCount}
+                                    </span>
+                                  </Link>
+                                );
+                              })
+                            ) : (
+                              <div className="px-3 py-2 text-sm text-slate-500">No knowledge folders yet.</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

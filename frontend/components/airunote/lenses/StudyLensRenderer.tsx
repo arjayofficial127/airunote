@@ -1,11 +1,13 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { toast } from '@/lib/toast';
 import { InlineCanvasDocumentCard } from '../components/InlineCanvasDocumentCard';
 import { useDocumentContent } from '../hooks/useDocumentContent';
+import { useUpdateDocument } from '../hooks/useUpdateDocument';
 import { airunoteApi } from '../services/airunoteApi';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import type { AiruDocument, AiruDocumentMetadata } from '../types';
@@ -18,6 +20,7 @@ interface StudyMeta {
   order?: number;
   tags?: string[];
   relatedDocIds?: string[];
+  parentId?: string | null;
   color?: string;
 }
 
@@ -27,12 +30,6 @@ interface StudyLensDocument {
   content: string;
   document: AiruDocument;
   studyMeta?: StudyMeta;
-}
-
-interface ConnectionTab {
-  id: string;
-  label: string;
-  title: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -55,6 +52,7 @@ function readStudyMeta(value: unknown): StudyMeta | undefined {
     order: typeof value.order === 'number' ? value.order : undefined,
     tags,
     relatedDocIds,
+    parentId: typeof value.parentId === 'string' ? value.parentId : value.parentId === null ? null : undefined,
     color: typeof value.color === 'string' ? value.color : undefined,
   };
 }
@@ -101,198 +99,268 @@ function compareStudyDocuments(left: StudyLensDocument, right: StudyLensDocument
   return left.title.localeCompare(right.title);
 }
 
-function getAlphabetLabel(index: number): string {
-  if (index >= 0 && index < 26) {
-    return String.fromCharCode(65 + index);
-  }
+function normalizeTags(tags: string[]): string[] {
+  const uniqueTags = new Set<string>();
 
-  return `${index + 1}`;
+  tags.forEach((tag) => {
+    const normalizedTag = tag.trim().replace(/^#/, '');
+    if (normalizedTag) {
+      uniqueTags.add(normalizedTag);
+    }
+  });
+
+  return Array.from(uniqueTags);
 }
 
-const noopAsync = async () => undefined;
-const noop = () => undefined;
+function parseTagsInput(value: string): string[] {
+  return normalizeTags(value.split(',').flatMap((part) => part.split(' ')));
+}
 
 function getToolbarButtonClass(isActive: boolean, tone: 'neutral' | 'success' = 'neutral'): string {
   if (tone === 'success') {
     return isActive
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
       : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50';
   }
 
   return isActive
-    ? 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm'
+    ? 'border-slate-900 bg-slate-900 text-white'
     : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50';
 }
 
-interface StudyLensAccordionItemProps {
+interface NoteRowProps {
   document: StudyLensDocument;
-  position: number;
+  level: number;
   isExpanded: boolean;
   isSelected: boolean;
-  isDirectlyConnected: boolean;
-  reorderEnabled: boolean;
-  tags: string[];
-  tabs: ConnectionTab[];
-  hasRelatedDocuments: boolean;
-  relatedCount: number;
-  onDocumentClick: (documentId: string) => void;
-  onTabSelect: (documentId: string) => void;
+  isArrangeMode: boolean;
+  parentDocument: StudyLensDocument | null;
+  childCount: number;
+  activeTag: string | null;
+  onSelect: (documentId: string) => void;
+  onToggleExpand: (documentId: string) => void;
+  onTagClick: (tag: string) => void;
+  onTitleSave: (documentId: string, nextTitle: string) => Promise<void>;
+  onTagsSave: (documentId: string, nextTags: string[]) => Promise<void>;
+  onParentClear: (documentId: string) => Promise<void>;
+  onContentSave: (documentId: string, content: string) => Promise<void>;
   onDragStart: (documentId: string) => void;
   onDragOver: (event: React.DragEvent<HTMLDivElement>) => void;
-  onDrop: (documentId: string) => void;
+  onDrop: (targetDocId: string) => void;
   onDragEnd: () => void;
+  children: ReactNode;
 }
 
-function StudyLensAccordionItem({
+function NoteRow({
   document,
-  position,
+  level,
   isExpanded,
   isSelected,
-  isDirectlyConnected,
-  reorderEnabled,
-  tags,
-  tabs,
-  hasRelatedDocuments,
-  relatedCount,
-  onDocumentClick,
-  onTabSelect,
+  isArrangeMode,
+  parentDocument,
+  childCount,
+  activeTag,
+  onSelect,
+  onToggleExpand,
+  onTagClick,
+  onTitleSave,
+  onTagsSave,
+  onParentClear,
+  onContentSave,
   onDragStart,
   onDragOver,
   onDrop,
   onDragEnd,
-}: StudyLensAccordionItemProps) {
+  children,
+}: NoteRowProps) {
   const { document: loadedDocument, isLoading, error } = useDocumentContent(isExpanded ? document.id : null);
-  const hasLoadedContent = Boolean((loadedDocument ?? document.document).content?.trim());
+  const tags = document.studyMeta?.tags || [];
+  const [draftTitle, setDraftTitle] = useState(document.title);
+  const [tagsInput, setTagsInput] = useState(tags.join(', '));
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [isSavingTags, setIsSavingTags] = useState(false);
+  const [isSavingContent, setIsSavingContent] = useState(false);
 
-  const containerClassName = isSelected
-    ? 'group overflow-hidden rounded-2xl border border-sky-200/80 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-sky-100/80 transition-all duration-200'
-    : isDirectlyConnected
-      ? 'group overflow-hidden rounded-2xl border border-amber-200/80 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)] ring-1 ring-amber-100/80 transition-all duration-200'
-      : 'group overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300/80 hover:shadow-[0_12px_28px_rgba(15,23,42,0.07)]';
-  const rowClassName = isSelected
-    ? 'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors bg-sky-50/60 hover:bg-sky-50/80 sm:px-5'
-    : isDirectlyConnected
-      ? 'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors bg-amber-50/60 hover:bg-amber-50/80 sm:px-5'
-      : 'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/80 sm:px-5';
-  const relationToneClassName = isSelected
-    ? 'border-sky-200 bg-sky-100/80 text-sky-700'
-    : isDirectlyConnected
-      ? 'border-amber-200 bg-amber-100/80 text-amber-700'
-      : 'border-slate-200/80 bg-slate-100 text-slate-600';
+  useEffect(() => {
+    setDraftTitle(document.title);
+  }, [document.title]);
+
+  useEffect(() => {
+    setTagsInput(tags.join(', '));
+  }, [tags]);
+
+  const handleTitleCommit = useCallback(async () => {
+    const nextTitle = draftTitle.trim();
+    if (!nextTitle) {
+      setDraftTitle(document.title);
+      return;
+    }
+    if (nextTitle === document.title || isSavingTitle) {
+      return;
+    }
+
+    setIsSavingTitle(true);
+    try {
+      await onTitleSave(document.id, nextTitle);
+    } finally {
+      setIsSavingTitle(false);
+    }
+  }, [document.id, document.title, draftTitle, isSavingTitle, onTitleSave]);
+
+  const handleTagsCommit = useCallback(async () => {
+    if (isSavingTags) {
+      return;
+    }
+
+    const nextTags = parseTagsInput(tagsInput);
+    if (nextTags.join('|') === tags.join('|')) {
+      return;
+    }
+
+    setIsSavingTags(true);
+    try {
+      await onTagsSave(document.id, nextTags);
+    } finally {
+      setIsSavingTags(false);
+    }
+  }, [document.id, isSavingTags, onTagsSave, tags, tagsInput]);
+
+  const handleContentSave = useCallback(async (content: string) => {
+    setIsSavingContent(true);
+    try {
+      await onContentSave(document.id, content);
+    } finally {
+      setIsSavingContent(false);
+    }
+  }, [document.id, onContentSave]);
+
+  const indentStyle = { paddingLeft: `${level * 18}px` };
+  const hasChildren = childCount > 0;
 
   return (
-    <div
-      className={containerClassName}
-      draggable={reorderEnabled}
-      onDragStart={() => onDragStart(document.id)}
-      onDragOver={onDragOver}
-      onDrop={() => onDrop(document.id)}
-      onDragEnd={onDragEnd}
-    >
-      <button
-        type="button"
-        onClick={() => onDocumentClick(document.id)}
-        className={`${rowClassName} ${reorderEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+    <div className="flex flex-col gap-2">
+      <div
+        className={`rounded-xl border ${isSelected ? 'border-slate-300 bg-slate-50' : 'border-slate-200/70 bg-white'}`}
+        draggable={isArrangeMode}
+        onDragStart={() => onDragStart(document.id)}
+        onDragOver={onDragOver}
+        onDrop={() => onDrop(document.id)}
+        onDragEnd={onDragEnd}
       >
-        <div className="flex flex-col items-center gap-2 pt-0.5">
-          <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[11px] font-semibold tracking-[0.14em] ${relationToneClassName}`}>
-            {getAlphabetLabel(position)}
-          </span>
-          <span
-            className={`text-xs text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-            aria-hidden="true"
+        <div className="flex items-start gap-3 px-3 py-3" style={indentStyle}>
+          <button
+            type="button"
+            onClick={() => onToggleExpand(document.id)}
+            className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            title={hasChildren ? (isExpanded ? 'Collapse children' : 'Expand children') : 'Open note'}
           >
-            ▶
-          </span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="truncate text-sm font-semibold tracking-[-0.01em] text-slate-900">{document.title}</div>
-            {relatedCount > 0 ? (
-              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${relationToneClassName}`}>
-                {relatedCount} link{relatedCount === 1 ? '' : 's'}
-              </span>
-            ) : null}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-            <span>{relatedCount > 0 ? 'Connected note' : 'Standalone note'}</span>
-            <span>{hasLoadedContent ? 'Content loaded' : 'Metadata only'}</span>
-            {reorderEnabled ? <span>Drag enabled</span> : null}
-          </div>
-        </div>
-        {document.studyMeta?.color ? (
-          <span
-            className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow-sm"
-            style={{ backgroundColor: document.studyMeta.color }}
-            aria-hidden="true"
-          />
-        ) : null}
-        {tags.length > 0 ? (
-          <span className="hidden shrink-0 items-center gap-2 text-xs text-slate-500 sm:flex">
-            {tags.slice(0, 2).map((tag) => (
-              <span key={tag} className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-slate-600">
-                #{tag}
-              </span>
-            ))}
-            {tags.length > 2 ? <span className="text-[11px] text-slate-400">+{tags.length - 2}</span> : null}
-          </span>
-        ) : null}
-      </button>
+            <span className={`text-xs transition-transform ${isExpanded ? 'rotate-90' : ''}`} aria-hidden="true">
+              ▶
+            </span>
+          </button>
 
-      {isExpanded ? (
-        <div className="border-t border-slate-200/80 bg-slate-50/40 px-4 py-4 sm:px-5">
-          <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-            <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
-              {hasRelatedDocuments ? `${relatedCount} connected note${relatedCount === 1 ? '' : 's'}` : 'No connected notes'}
-            </span>
-            <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
-              {hasLoadedContent ? 'Ready for content search' : 'Load full data for content search'}
-            </span>
-          </div>
-          {tags.length > 0 ? (
-            <div className="mb-4 flex flex-wrap gap-2 sm:hidden">
-              {tags.map((tag) => (
-                <span key={tag} className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-xs text-slate-600">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
-          {isSelected ? (
-            <div className="mb-4 rounded-xl border border-slate-200/80 bg-white/80 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <div className="flex flex-wrap gap-2">
-                {tabs.map((tab) => (
+          <button
+            type="button"
+            onMouseDown={() => onSelect(document.id)}
+            className={`mt-1 inline-flex h-6 w-6 items-center justify-center rounded-md border border-transparent text-slate-400 ${
+              isArrangeMode ? 'cursor-grab active:cursor-grabbing hover:border-slate-200 hover:bg-slate-50' : 'cursor-default'
+            }`}
+            title={isArrangeMode ? 'Drag to reorder or assign parent' : 'Select note'}
+          >
+            ≡
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={draftTitle}
+                onFocus={() => onSelect(document.id)}
+                onChange={(event) => setDraftTitle(event.target.value)}
+                onBlur={() => void handleTitleCommit()}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void handleTitleCommit();
+                  }
+                  if (event.key === 'Escape') {
+                    setDraftTitle(document.title);
+                    event.currentTarget.blur();
+                  }
+                }}
+                className="min-w-[12rem] flex-1 border-0 bg-transparent px-0 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                placeholder="Untitled note"
+              />
+              {isSavingTitle ? <span className="text-[11px] text-slate-400">Saving</span> : null}
+              {parentDocument ? (
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600">
+                  <span>Child of {parentDocument.title}</span>
                   <button
-                    key={tab.id}
                     type="button"
-                    onClick={() => onTabSelect(tab.id)}
-                    title={tab.title}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      tab.id === document.id
-                        ? 'border-sky-200 bg-sky-50 text-sky-700'
-                        : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
+                    onClick={() => void onParentClear(document.id)}
+                    className="text-slate-400 transition-colors hover:text-slate-700"
+                    title="Remove parent"
                   >
-                    {tab.label}
+                    ×
                   </button>
-                ))}
-              </div>
-              {!hasRelatedDocuments ? (
-                <div className="mt-3 text-xs text-slate-500">No related documents</div>
+                </span>
               ) : null}
             </div>
-          ) : null}
-          <InlineCanvasDocumentCard
-            document={loadedDocument ?? null}
-            isEditing={false}
-            isLoading={isLoading}
-            error={error}
-            onSave={noopAsync}
-            onCancel={noop}
-            hideActionBar
-          />
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {tags.map((tag) => {
+                const isActive = activeTag === tag;
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => onTagClick(tag)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] transition-colors ${
+                      isActive
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                );
+              })}
+              <input
+                value={tagsInput}
+                onFocus={() => onSelect(document.id)}
+                onChange={(event) => setTagsInput(event.target.value)}
+                onBlur={() => void handleTagsCommit()}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void handleTagsCommit();
+                  }
+                }}
+                placeholder="Add tags"
+                className="min-w-[8rem] flex-1 border-0 bg-transparent px-0 text-xs text-slate-500 outline-none placeholder:text-slate-400"
+              />
+              {isSavingTags ? <span className="text-[11px] text-slate-400">Saving</span> : null}
+            </div>
+          </div>
         </div>
-      ) : null}
+
+        {isExpanded ? (
+          <div className="border-t border-slate-200/70 px-3 pb-3 pt-3" style={indentStyle}>
+            <div className="ml-9 overflow-hidden rounded-lg border border-slate-200/70 bg-white">
+              <InlineCanvasDocumentCard
+                document={loadedDocument ?? document.document}
+                isEditing
+                isLoading={isLoading}
+                error={error}
+                isSaving={isSavingContent}
+                onSave={handleContentSave}
+                onCancel={() => undefined}
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {isExpanded ? children : null}
     </div>
   );
 }
@@ -300,18 +368,16 @@ function StudyLensAccordionItem({
 export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
   const orgSession = useOrgSession();
   const authSession = useAuthSession();
-  const {
-    getDocumentsByFolder,
-    getDocumentContentById,
-    setDocumentContent,
-  } = useAirunoteStore();
+  const { getDocumentsByFolder, getDocumentContentById, setDocumentContent } = useAirunoteStore();
+  const updateDocument = useUpdateDocument();
   const orgId = orgSession.activeOrgId;
   const userId = authSession.user?.id;
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [markTreeEnabled, setMarkTreeEnabled] = useState(false);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [connectedOnly, setConnectedOnly] = useState(false);
+  const [arrangeMode, setArrangeMode] = useState(false);
   const [manualOrderIds, setManualOrderIds] = useState<string[]>([]);
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [isBulkLoadingData, setIsBulkLoadingData] = useState(false);
@@ -333,47 +399,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     })
     .sort(compareStudyDocuments);
 
-  const allDocumentDataLoaded = useMemo(() => {
-    if (folderDocuments.length === 0) {
-      return false;
-    }
-
-    return folderDocuments.every((document) => getDocumentContentById(document.id));
-  }, [folderDocuments, getDocumentContentById]);
-
-  const loadedDocumentCount = useMemo(() => {
-    return folderDocuments.filter((document) => Boolean(getDocumentContentById(document.id))).length;
-  }, [folderDocuments, getDocumentContentById]);
-
-  const handleLoadAllData = useCallback(async () => {
-    if (!orgId || !userId || folderDocuments.length === 0 || isBulkLoadingData) {
-      return;
-    }
-
-    setIsBulkLoadingData(true);
-
-    try {
-      const response = await airunoteApi.getFolderDocuments(folderId, orgId, userId);
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'Failed to load document data');
-      }
-
-      response.data.documents.forEach((document) => {
-        setDocumentContent(document);
-      });
-
-      toast(`Loaded ${response.data.documents.length} document ${response.data.documents.length === 1 ? 'card' : 'cards'} for search`, 'success');
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'Failed to load document data', 'error');
-    } finally {
-      setIsBulkLoadingData(false);
-    }
-  }, [folderDocuments.length, folderId, isBulkLoadingData, orgId, setDocumentContent, userId]);
-
-  const documentsById = useMemo(() => {
-    return new Map(documents.map((document) => [document.id, document]));
-  }, [documents]);
+  const documentsById = useMemo(() => new Map(documents.map((document) => [document.id, document])), [documents]);
 
   useEffect(() => {
     setManualOrderIds((previous) => {
@@ -409,11 +435,9 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
       if (leftIndex === undefined && rightIndex === undefined) {
         return compareStudyDocuments(left, right);
       }
-
       if (leftIndex === undefined) {
         return 1;
       }
-
       if (rightIndex === undefined) {
         return -1;
       }
@@ -422,85 +446,70 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     });
   }, [documents, manualOrderIds]);
 
-  const getRelatedDocIds = (docId: string) => {
-    const document = documentsById.get(docId);
-    if (!document) {
-      return [] as string[];
+  const getParentId = useCallback((document: StudyLensDocument): string | null => {
+    const explicitParentId = document.studyMeta?.parentId;
+    if (explicitParentId && documentsById.has(explicitParentId)) {
+      return explicitParentId;
     }
 
-    const relatedDocIds = document.studyMeta?.relatedDocIds || [];
+    const derivedParent = documents.find(
+      (candidate) => candidate.id !== document.id && (candidate.studyMeta?.relatedDocIds || []).includes(document.id)
+    );
 
-    return relatedDocIds.filter((relatedDocId) => relatedDocId !== docId && documentsById.has(relatedDocId));
-  };
-
-  const getParentDocIds = (docId: string) => {
-    return documents
-      .filter((document) => (document.studyMeta?.relatedDocIds || []).includes(docId) && document.id !== docId)
-      .map((document) => document.id);
-  };
-
-  const getNeighborDocIds = useCallback((docId: string) => {
-    const neighborIds = new Set<string>();
-    const document = documentsById.get(docId);
-
-    if (document) {
-      const relatedDocIds = document.studyMeta?.relatedDocIds || [];
-
-      for (const relatedDocId of relatedDocIds) {
-        if (relatedDocId !== docId && documentsById.has(relatedDocId)) {
-          neighborIds.add(relatedDocId);
-        }
-      }
-    }
-
-    for (const parentDocId of documents
-      .filter((document) => (document.studyMeta?.relatedDocIds || []).includes(docId) && document.id !== docId)
-      .map((document) => document.id)) {
-      neighborIds.add(parentDocId);
-    }
-
-    return Array.from(neighborIds);
+    return derivedParent?.id ?? null;
   }, [documents, documentsById]);
 
-  const getConnectedDocs = useCallback((docId: string): Set<string> => {
-    const visited = new Set<string>([docId]);
-    const connected = new Set<string>();
-    const directNeighbors = getNeighborDocIds(docId);
+  const childIdsByParent = useMemo(() => {
+    const childMap = new Map<string | null, string[]>();
 
-    if (!markTreeEnabled) {
-      for (const neighborId of directNeighbors) {
-        connected.add(neighborId);
+    orderedDocuments.forEach((document) => {
+      const parentId = getParentId(document);
+      const key = parentId && documentsById.has(parentId) ? parentId : null;
+      if (!childMap.has(key)) {
+        childMap.set(key, []);
+      }
+      childMap.get(key)?.push(document.id);
+    });
+
+    return childMap;
+  }, [documentsById, getParentId, orderedDocuments]);
+
+  const getChildIds = useCallback((documentId: string) => childIdsByParent.get(documentId) || [], [childIdsByParent]);
+
+  const getConnectedDocs = useCallback((documentId: string): Set<string> => {
+    const connected = new Set<string>();
+    const queue = [documentId];
+    const visited = new Set<string>(queue);
+
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      if (!currentId) {
+        continue;
       }
 
-      return connected;
-    }
+      const currentDocument = documentsById.get(currentId);
+      const parentId = currentDocument ? getParentId(currentDocument) : null;
+      const neighborIds = new Set<string>([
+        ...(currentDocument?.studyMeta?.relatedDocIds || []),
+        ...getChildIds(currentId),
+        ...(parentId ? [parentId] : []),
+      ]);
 
-    const traverse = (currentDocId: string) => {
-      const neighborIds = getNeighborDocIds(currentDocId);
-
-      for (const neighborId of neighborIds) {
-        if (visited.has(neighborId)) {
-          continue;
+      neighborIds.forEach((neighborId) => {
+        if (!documentsById.has(neighborId) || neighborId === documentId) {
+          return;
         }
 
-        visited.add(neighborId);
         connected.add(neighborId);
-        traverse(neighborId);
-      }
-    };
-
-    traverse(docId);
-
-    return connected;
-  }, [getNeighborDocIds, markTreeEnabled]);
-
-  const directConnectedDocIds = useMemo(() => {
-    if (!selectedDocId) {
-      return new Set<string>();
+        if (!visited.has(neighborId)) {
+          visited.add(neighborId);
+          queue.push(neighborId);
+        }
+      });
     }
 
-    return new Set(getNeighborDocIds(selectedDocId));
-  }, [getNeighborDocIds, selectedDocId]);
+    return connected;
+  }, [documentsById, getChildIds, getParentId]);
 
   const connectedDocIds = useMemo(() => {
     if (!selectedDocId) {
@@ -510,373 +519,353 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     return getConnectedDocs(selectedDocId);
   }, [getConnectedDocs, selectedDocId]);
 
+  const allDocumentDataLoaded = useMemo(() => {
+    if (folderDocuments.length === 0) {
+      return false;
+    }
+
+    return folderDocuments.every((document) => getDocumentContentById(document.id));
+  }, [folderDocuments, getDocumentContentById]);
+
+  const handleLoadAllData = useCallback(async () => {
+    if (!orgId || !userId || folderDocuments.length === 0 || isBulkLoadingData) {
+      return;
+    }
+
+    setIsBulkLoadingData(true);
+
+    try {
+      const response = await airunoteApi.getFolderDocuments(folderId, orgId, userId);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to load document data');
+      }
+
+      response.data.documents.forEach((document) => {
+        setDocumentContent(document);
+      });
+
+      toast(`Loaded ${response.data.documents.length} note${response.data.documents.length === 1 ? '' : 's'}`, 'success');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Failed to load document data', 'error');
+    } finally {
+      setIsBulkLoadingData(false);
+    }
+  }, [folderDocuments.length, folderId, isBulkLoadingData, orgId, setDocumentContent, userId]);
+
+  const persistDocument = useCallback(async (
+    documentId: string,
+    updates: { name?: string; content?: string; studyMeta?: StudyMeta }
+  ) => {
+    const existing = documentsById.get(documentId);
+    if (!existing || !orgId || !userId) {
+      return;
+    }
+
+    const requestAttributes = updates.studyMeta
+      ? {
+          ...(existing.document.attributes || {}),
+          studyMeta: updates.studyMeta,
+        }
+      : undefined;
+
+    await updateDocument.mutateAsync({
+      documentId,
+      request: {
+        orgId,
+        userId,
+        ...(updates.name !== undefined ? { name: updates.name } : {}),
+        ...(updates.content !== undefined ? { content: updates.content } : {}),
+        ...(requestAttributes ? { attributes: requestAttributes } : {}),
+      },
+    });
+  }, [documentsById, orgId, updateDocument, userId]);
+
+  const updateStudyMeta = useCallback(async (documentId: string, nextStudyMeta: StudyMeta) => {
+    await persistDocument(documentId, { studyMeta: nextStudyMeta });
+  }, [persistDocument]);
+
+  const handleTitleSave = useCallback(async (documentId: string, nextTitle: string) => {
+    await persistDocument(documentId, { name: nextTitle });
+  }, [persistDocument]);
+
+  const handleTagsSave = useCallback(async (documentId: string, nextTags: string[]) => {
+    const document = documentsById.get(documentId);
+    if (!document) {
+      return;
+    }
+
+    await updateStudyMeta(documentId, {
+      ...document.studyMeta,
+      tags: nextTags,
+      parentId: getParentId(document),
+    });
+  }, [documentsById, getParentId, updateStudyMeta]);
+
+  const handleParentClear = useCallback(async (documentId: string) => {
+    const document = documentsById.get(documentId);
+    if (!document) {
+      return;
+    }
+
+    const parentId = getParentId(document);
+    await updateStudyMeta(documentId, {
+      ...document.studyMeta,
+      parentId: null,
+      relatedDocIds: (document.studyMeta?.relatedDocIds || []).filter((relatedId) => relatedId !== parentId),
+    });
+
+    if (!parentId) {
+      return;
+    }
+
+    const parentDocument = documentsById.get(parentId);
+    if (!parentDocument) {
+      return;
+    }
+
+    await updateStudyMeta(parentId, {
+      ...parentDocument.studyMeta,
+      relatedDocIds: (parentDocument.studyMeta?.relatedDocIds || []).filter((relatedId) => relatedId !== documentId),
+      parentId: getParentId(parentDocument),
+    });
+  }, [documentsById, getParentId, updateStudyMeta]);
+
+  const handleContentSave = useCallback(async (documentId: string, content: string) => {
+    await persistDocument(documentId, { content });
+  }, [persistDocument]);
+
   const filteredDocuments = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return orderedDocuments;
-    }
+    return orderedDocuments.filter((document) => {
+      const tags = document.studyMeta?.tags || [];
+      const matchesTagFilter = activeTag ? tags.includes(activeTag) : true;
+      const matchesSearch = normalizedQuery.length === 0
+        || document.title.toLowerCase().includes(normalizedQuery)
+        || tags.some((tag) => tag.toLowerCase().includes(normalizedQuery))
+        || document.content.toLowerCase().includes(normalizedQuery);
 
-    return orderedDocuments
-      .map((document) => {
-        const tags = document.studyMeta?.tags || [];
-        const titleMatch = document.title.toLowerCase().includes(normalizedQuery);
-        const tagMatch = tags.some((tag) => tag.toLowerCase().includes(normalizedQuery));
-        const contentMatch = document.content.toLowerCase().includes(normalizedQuery);
+      if (!matchesTagFilter || !matchesSearch) {
+        return false;
+      }
 
-        if (!titleMatch && !tagMatch && !contentMatch) {
-          return null;
-        }
+      if (!connectedOnly || !selectedDocId) {
+        return true;
+      }
 
-        return {
-          document,
-          rank: titleMatch ? 0 : tagMatch ? 1 : 2,
-        };
-      })
-      .filter((entry): entry is { document: StudyLensDocument; rank: number } => entry !== null)
-      .sort((left, right) => {
-        if (left.rank !== right.rank) {
-          return left.rank - right.rank;
-        }
+      return document.id === selectedDocId || connectedDocIds.has(document.id);
+    });
+  }, [activeTag, connectedDocIds, connectedOnly, orderedDocuments, searchQuery, selectedDocId]);
 
-        return compareStudyDocuments(left.document, right.document);
-      })
-      .map((entry) => entry.document);
-  }, [orderedDocuments, searchQuery]);
+  const visibleDocumentIds = useMemo(() => new Set(filteredDocuments.map((document) => document.id)), [filteredDocuments]);
 
-  const reorderEnabled = searchQuery.trim() === '' && !connectedOnly;
+  const rootDocuments = useMemo(() => {
+    return filteredDocuments.filter((document) => {
+      const parentId = getParentId(document);
+      return !parentId || !visibleDocumentIds.has(parentId);
+    });
+  }, [filteredDocuments, getParentId, visibleDocumentIds]);
 
-  const visibleDocuments = useMemo(() => {
-    if (!connectedOnly || !selectedDocId) {
-      return filteredDocuments;
-    }
-
-    return filteredDocuments.filter(
-      (document) => document.id === selectedDocId || connectedDocIds.has(document.id)
-    );
-  }, [connectedDocIds, connectedOnly, filteredDocuments, selectedDocId]);
-
-  const selectedDocument = useMemo(() => {
-    if (!selectedDocId) {
-      return null;
-    }
-
-    return documentsById.get(selectedDocId) || null;
-  }, [documentsById, selectedDocId]);
-
-  const selectedParentCount = useMemo(() => {
-    if (!selectedDocId) {
-      return 0;
-    }
-
-    return documents.filter(
-      (document) => (document.studyMeta?.relatedDocIds || []).includes(selectedDocId) && document.id !== selectedDocId
-    ).length;
-  }, [documents, selectedDocId]);
-
-  const selectedChildCount = useMemo(() => {
-    if (!selectedDocument) {
-      return 0;
-    }
-
-    return (selectedDocument.studyMeta?.relatedDocIds || []).filter(
-      (relatedDocId) => relatedDocId !== selectedDocument.id && documentsById.has(relatedDocId)
-    ).length;
-  }, [documentsById, selectedDocument]);
-
-  const selectedTagCount = selectedDocument?.studyMeta?.tags?.length || 0;
-  const connectionModeLabel = markTreeEnabled ? 'Recursive tree' : 'Direct neighbors';
-  const searchModeLabel = allDocumentDataLoaded ? 'Full content search' : 'Metadata-first search';
-
-  const toggleExpanded = (documentId: string) => {
+  const handleToggleExpand = useCallback((documentId: string) => {
+    setSelectedDocId(documentId);
     setExpandedIds((previous) => {
       const next = new Set(previous);
-
       if (next.has(documentId)) {
         next.delete(documentId);
       } else {
         next.add(documentId);
       }
-
       return next;
     });
-  };
+  }, []);
 
-  const handleDocumentClick = (documentId: string) => {
+  const handleSelect = useCallback((documentId: string) => {
     setSelectedDocId(documentId);
-    toggleExpanded(documentId);
-  };
+  }, []);
 
-  const handleTabSelect = (documentId: string) => {
-    setSelectedDocId(documentId);
-    setExpandedIds((previous) => {
-      const next = new Set(previous);
-      next.add(documentId);
-      return next;
-    });
-  };
+  const handleTagClick = useCallback((tag: string) => {
+    setActiveTag((previous) => (previous === tag ? null : tag));
+  }, []);
 
-  const handleDragStart = (documentId: string) => {
-    if (!reorderEnabled) {
-      return;
-    }
-
+  const handleDragStart = useCallback((documentId: string) => {
     setDraggedDocId(documentId);
-  };
+    setSelectedDocId(documentId);
+  }, []);
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!reorderEnabled || !draggedDocId) {
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!draggedDocId) {
       return;
     }
 
     event.preventDefault();
-  };
+  }, [draggedDocId]);
 
-  const handleDrop = (targetDocId: string) => {
-    if (!reorderEnabled || !draggedDocId || draggedDocId === targetDocId) {
+  const handleDrop = useCallback(async (targetDocId: string) => {
+    if (!draggedDocId || draggedDocId === targetDocId) {
       setDraggedDocId(null);
       return;
     }
 
-    setManualOrderIds((previous) => {
-      const next = [...previous];
-      const sourceIndex = next.indexOf(draggedDocId);
-      const targetIndex = next.indexOf(targetDocId);
+    if (!arrangeMode) {
+      setManualOrderIds((previous) => {
+        const next = [...previous];
+        const sourceIndex = next.indexOf(draggedDocId);
+        const targetIndex = next.indexOf(targetDocId);
 
-      if (sourceIndex === -1 || targetIndex === -1) {
-        return previous;
-      }
+        if (sourceIndex === -1 || targetIndex === -1) {
+          return previous;
+        }
 
-      next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, draggedDocId);
-      return next;
+        next.splice(sourceIndex, 1);
+        next.splice(targetIndex, 0, draggedDocId);
+        return next;
+      });
+      setDraggedDocId(null);
+      return;
+    }
+
+    const draggedDocument = documentsById.get(draggedDocId);
+    const targetDocument = documentsById.get(targetDocId);
+    if (!draggedDocument || !targetDocument) {
+      setDraggedDocId(null);
+      return;
+    }
+
+    const previousParentId = getParentId(draggedDocument);
+    await updateStudyMeta(draggedDocId, {
+      ...draggedDocument.studyMeta,
+      parentId: targetDocId,
+      relatedDocIds: Array.from(new Set([...(draggedDocument.studyMeta?.relatedDocIds || []), targetDocId])).filter(
+        (relatedId) => relatedId !== previousParentId
+      ),
     });
-    setDraggedDocId(null);
-  };
 
-  const handleDragEnd = () => {
+    await updateStudyMeta(targetDocId, {
+      ...targetDocument.studyMeta,
+      relatedDocIds: Array.from(new Set([...(targetDocument.studyMeta?.relatedDocIds || []), draggedDocId])),
+      parentId: getParentId(targetDocument),
+    });
+
+    if (previousParentId && previousParentId !== targetDocId) {
+      const previousParent = documentsById.get(previousParentId);
+      if (previousParent) {
+        await updateStudyMeta(previousParentId, {
+          ...previousParent.studyMeta,
+          relatedDocIds: (previousParent.studyMeta?.relatedDocIds || []).filter((relatedId) => relatedId !== draggedDocId),
+          parentId: getParentId(previousParent),
+        });
+      }
+    }
+
+    setExpandedIds((previous) => new Set(previous).add(targetDocId));
     setDraggedDocId(null);
-  };
+  }, [arrangeMode, documentsById, draggedDocId, getParentId, updateStudyMeta]);
+
+  const renderDocument = useCallback((document: StudyLensDocument, level: number): ReactNode => {
+    const parentId = getParentId(document);
+    const parentDocument = parentId ? documentsById.get(parentId) || null : null;
+    const childDocuments = getChildIds(document.id)
+      .map((childId) => documentsById.get(childId))
+      .filter((childDocument): childDocument is StudyLensDocument => Boolean(childDocument) && visibleDocumentIds.has(childDocument!.id));
+
+    return (
+      <NoteRow
+        key={document.id}
+        document={document}
+        level={level}
+        isExpanded={expandedIds.has(document.id)}
+        isSelected={selectedDocId === document.id}
+        isArrangeMode={arrangeMode}
+        parentDocument={parentDocument}
+        childCount={childDocuments.length}
+        activeTag={activeTag}
+        onSelect={handleSelect}
+        onToggleExpand={handleToggleExpand}
+        onTagClick={handleTagClick}
+        onTitleSave={handleTitleSave}
+        onTagsSave={handleTagsSave}
+        onParentClear={handleParentClear}
+        onContentSave={handleContentSave}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={(targetDocId) => void handleDrop(targetDocId)}
+        onDragEnd={() => setDraggedDocId(null)}
+      >
+        <div className="flex flex-col gap-2">
+          {childDocuments.map((childDocument) => renderDocument(childDocument, level + 1))}
+        </div>
+      </NoteRow>
+    );
+  }, [activeTag, arrangeMode, documentsById, expandedIds, getChildIds, getParentId, handleContentSave, handleDragOver, handleDragStart, handleDrop, handleParentClear, handleSelect, handleTagClick, handleTagsSave, handleTitleSave, handleToggleExpand, selectedDocId, visibleDocumentIds]);
 
   return (
-    <div className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_42%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.16),_transparent_30%)]" />
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-6 py-6 lg:px-8">
-      <div className="sticky top-0 z-10">
-        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-          <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600">Study View</div>
-                <div className="mt-1 text-xl font-semibold tracking-[-0.02em] text-slate-900">Focus on connections, not just document lists</div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">{visibleDocuments.length}</span>
-                  <span>{visibleDocuments.length === 1 ? 'document visible' : 'documents visible'}</span>
-                  <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" aria-hidden="true" />
-                  <span>{loadedDocumentCount}/{folderDocuments.length} loaded</span>
-                  {reorderEnabled ? (
-                    <>
-                      <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" aria-hidden="true" />
-                      <span>Drag to reorder</span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleLoadAllData()}
-                  disabled={isBulkLoadingData || !orgId || !userId || folderDocuments.length === 0 || allDocumentDataLoaded}
-                  className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${getToolbarButtonClass(allDocumentDataLoaded, 'success')}`}
-                >
-                  {isBulkLoadingData ? 'Loading...' : allDocumentDataLoaded ? 'Data Loaded' : 'Load Data'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMarkTreeEnabled((previous) => !previous)}
-                  aria-pressed={markTreeEnabled}
-                  className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 ${getToolbarButtonClass(markTreeEnabled)}`}
-                >
-                  Mark Tree
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConnectedOnly((previous) => !previous)}
-                  aria-pressed={connectedOnly}
-                  className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 ${getToolbarButtonClass(connectedOnly)}`}
-                >
-                  Connected Only
-                </button>
-              </div>
-            </div>
+    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 px-6 py-4 lg:px-8">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_6px_20px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xl">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true">
+            ⌕
+          </span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search notes..."
+            className="h-11 w-full rounded-xl border border-slate-200/80 bg-slate-50 pl-9 pr-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+          />
+        </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Search Mode</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">{searchModeLabel}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {allDocumentDataLoaded ? 'Titles, tags, and full note content are searchable.' : 'Titles and tags are always searchable; content search improves after loading data.'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Connection Scope</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">{connectionModeLabel}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {markTreeEnabled ? 'Selection traces through the entire connected branch.' : 'Selection highlights only immediate parents and children.'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ordering</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">{reorderEnabled ? 'Manual drag order' : 'Filtered order locked'}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {reorderEnabled ? 'Drag cards to shape the study path.' : 'Clear search and Connected Only to reorder the sequence.'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Selection</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">{selectedDocument ? selectedDocument.title : 'No note selected'}</div>
-                <div className="mt-1 text-xs text-slate-500">
-                  {selectedDocument ? `${selectedParentCount} parent, ${selectedChildCount} child, ${selectedTagCount} tag${selectedTagCount === 1 ? '' : 's'}` : 'Expand a note to inspect its local study graph.'}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-              <div className="relative w-full lg:max-w-2xl">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true">
-                  ⌕
-                </span>
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search titles, tags, and loaded content"
-                  className="h-11 w-full rounded-xl border border-slate-200/80 bg-slate-50/80 pl-9 pr-4 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
-                />
-              </div>
-              <div className="text-xs text-slate-500">
-                Load all data to include full document content in search results.
-              </div>
-            </div>
-
-            {selectedDocument ? (
-              <div className="rounded-2xl border border-sky-200/80 bg-[linear-gradient(135deg,rgba(240,249,255,0.98),rgba(255,255,255,0.98))] px-4 py-3.5 shadow-[0_12px_28px_rgba(14,165,233,0.08)]">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-600">Current Focus</div>
-                    <div className="mt-1 truncate text-base font-semibold tracking-[-0.01em] text-slate-900">{selectedDocument.title}</div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-600">
-                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{selectedParentCount} parent{selectedParentCount === 1 ? '' : 's'}</span>
-                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{selectedChildCount} child{selectedChildCount === 1 ? '' : 'ren'}</span>
-                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{selectedTagCount} tag{selectedTagCount === 1 ? '' : 's'}</span>
-                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{connectedDocIds.size} connected in scope</span>
-                    </div>
-                  </div>
-                  <div className="max-w-xl text-sm leading-6 text-slate-600">
-                    {connectedOnly
-                      ? 'Connected Only is active, so the list is narrowed to this note and its visible graph.'
-                      : 'Select another note to change the focus, or enable Connected Only to narrow the study path around this selection.'}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleLoadAllData()}
+            disabled={isBulkLoadingData || !orgId || !userId || folderDocuments.length === 0 || allDocumentDataLoaded}
+            className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${getToolbarButtonClass(allDocumentDataLoaded, 'success')}`}
+            title="Load all notes for content search and inline editing"
+          >
+            {isBulkLoadingData ? 'Loading...' : allDocumentDataLoaded ? 'Loaded' : 'Load'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConnectedOnly((previous) => !previous)}
+            aria-pressed={connectedOnly}
+            className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors ${getToolbarButtonClass(connectedOnly)}`}
+            title="Show only notes related to the current selection"
+          >
+            Filter
+          </button>
+          <button
+            type="button"
+            onClick={() => setArrangeMode((previous) => !previous)}
+            aria-pressed={arrangeMode}
+            className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors ${getToolbarButtonClass(arrangeMode)}`}
+            title="Drag to reorder notes or drop one note on another to assign a parent"
+          >
+            Arrange
+          </button>
         </div>
       </div>
 
-      {visibleDocuments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-6 py-12 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
-          <div className="text-sm font-medium text-slate-700">No matching documents</div>
-          <div className="mt-1 text-sm text-slate-500">Try a broader search or load document data for content-aware results.</div>
+      {activeTag ? (
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <span>Filtering by</span>
+          <button
+            type="button"
+            onClick={() => setActiveTag(null)}
+            className="rounded-full bg-slate-900 px-2.5 py-1 text-[11px] text-white"
+          >
+            #{activeTag} ×
+          </button>
         </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Study Sequence</div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">Accordion path with relationship-aware context</div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-              <span className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1">{visibleDocuments.length} visible</span>
-              <span className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1">{expandedIds.size} expanded</span>
-              <span className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1">{connectedOnly ? 'Connection filter on' : 'All notes shown'}</span>
-            </div>
+      ) : null}
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+        {filteredDocuments.length === 0 ? (
+          <div className="px-6 py-12 text-center text-sm text-slate-500">No notes match the current search or filter.</div>
+        ) : (
+          <div className="flex flex-col gap-2 p-3">
+            {rootDocuments.map((document) => renderDocument(document, 0))}
           </div>
-          {visibleDocuments.map((document) => {
-            const isExpanded = expandedIds.has(document.id);
-            const isSelected = selectedDocId === document.id;
-            const isDirectlyConnected = directConnectedDocIds.has(document.id) && !isSelected;
-            const tags = document.studyMeta?.tags || [];
-            const parentDocuments = getParentDocIds(document.id)
-              .map((parentDocId) => documentsById.get(parentDocId))
-              .filter((relatedDocument): relatedDocument is StudyLensDocument => relatedDocument !== undefined);
-            const childDocuments = getRelatedDocIds(document.id)
-              .map((childDocId) => documentsById.get(childDocId))
-              .filter((relatedDocument): relatedDocument is StudyLensDocument => relatedDocument !== undefined);
-            const tabIds = new Set<string>();
-            const tabs: ConnectionTab[] = [];
-
-            parentDocuments.forEach((parentDocument, index) => {
-              if (tabIds.has(parentDocument.id)) {
-                return;
-              }
-
-              tabIds.add(parentDocument.id);
-              tabs.push({
-                id: parentDocument.id,
-                label: index === 0 ? 'Parent' : `Parent ${index + 1}`,
-                title: parentDocument.title,
-              });
-            });
-
-            if (!tabIds.has(document.id)) {
-              tabIds.add(document.id);
-              tabs.push({
-                id: document.id,
-                label: 'Current',
-                title: document.title,
-              });
-            }
-
-            childDocuments.forEach((childDocument, index) => {
-              if (tabIds.has(childDocument.id)) {
-                return;
-              }
-
-              tabIds.add(childDocument.id);
-              tabs.push({
-                id: childDocument.id,
-                label: `Child ${getAlphabetLabel(index)}`,
-                title: childDocument.title,
-              });
-            });
-            const hasRelatedDocuments = parentDocuments.length > 0 || childDocuments.length > 0;
-            const relatedCount = parentDocuments.length + childDocuments.length;
-
-            return (
-              <StudyLensAccordionItem
-                key={document.id}
-                document={document}
-                position={manualOrderIds.length > 0 ? manualOrderIds.indexOf(document.id) : orderedDocuments.indexOf(document)}
-                isExpanded={isExpanded}
-                isSelected={isSelected}
-                isDirectlyConnected={isDirectlyConnected}
-                reorderEnabled={reorderEnabled}
-                tags={tags}
-                tabs={tabs}
-                hasRelatedDocuments={hasRelatedDocuments}
-                relatedCount={relatedCount}
-                onDocumentClick={handleDocumentClick}
-                onTabSelect={handleTabSelect}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onDragEnd={handleDragEnd}
-              />
-            );
-          })}
-        </div>
-      )}
+        )}
       </div>
     </div>
   );
