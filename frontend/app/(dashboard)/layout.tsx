@@ -186,15 +186,6 @@ export default function DashboardLayout({
   const role = getRole();
   
   // Format context name for display
-  const getContextDisplay = (): string => {
-    if (isInOrgContext && org) {
-      return `${org.name} (${role})`;
-    }
-    return `Base System (${role})`;
-  };
-
-  const contextDisplay = getContextDisplay();
-
   const getUserLabel = () => {
     if (user?.name?.trim()) {
       return user.name.trim();
@@ -212,20 +203,6 @@ export default function DashboardLayout({
     }
 
     return label.slice(0, 2).toUpperCase();
-  };
-
-  const getOrgInitials = () => {
-    if (!org?.name?.trim()) {
-      return 'WS';
-    }
-
-    const parts = org.name.trim().split(/\s+/).filter(Boolean);
-
-    if (parts.length >= 2) {
-      return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
-    }
-
-    return org.name.trim().slice(0, 2).toUpperCase();
   };
 
   // Prepare provider states for SessionBoundary
@@ -299,7 +276,7 @@ export default function DashboardLayout({
                 shouldOffsetForSidebar ? 'lg:pl-[18rem]' : ''
               }`}
             >
-              <div className="flex h-14 items-center gap-3 sm:h-16 sm:gap-4">
+              <div className="flex h-14 items-center justify-between gap-3 sm:h-16 sm:gap-4">
                 <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                   {/* Hamburger menu - show for all views (including apps), but hide on /orgs onboarding */}
                   {!isOrgsOnboardingPage && (
@@ -346,32 +323,37 @@ export default function DashboardLayout({
                     </button>
                   )}
 
-                  <div className="flex min-w-0 items-center gap-2 rounded-[22px] border border-slate-200/80 bg-white/92 px-2.5 py-1.5 shadow-sm sm:px-3">
+                  <div className="flex min-w-0 items-center gap-3 rounded-full border border-slate-200/70 bg-white/92 px-3 py-1.5 shadow-sm sm:px-4">
                     <AirunoteLogo
                       href="/dashboard"
                       iconSize={24}
                       className="flex min-w-0 items-center gap-2 text-lg font-bold text-gray-900 transition hover:text-gray-700 sm:text-xl"
                       textClassName="truncate text-lg font-bold text-gray-900 sm:text-xl"
                     />
-                    <div className="hidden sm:flex">
-                      <OnlineIndicator />
-                    </div>
+                    {isInOrgContext && org ? (
+                      <>
+                        <span className="hidden text-slate-300 sm:inline">/</span>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-slate-900 sm:text-[15px]">
+                              {org.name}
+                            </span>
+                            <span className="hidden items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500 lg:inline-flex">
+                              {role}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="hidden sm:flex">
+                        <OnlineIndicator />
+                      </div>
+                    )}
                   </div>
 
                   {isInOrgContext && org && (
-                    <div className="hidden min-w-0 items-center gap-3 rounded-[22px] border border-slate-200/80 bg-white/88 px-3 py-2 shadow-sm lg:flex">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                        {getOrgInitials()}
-                      </div>
-                      <div className="min-w-0 leading-tight">
-                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Workspace</div>
-                        <div className="flex min-w-0 items-center gap-2">
-                          <span className="truncate text-sm font-semibold text-slate-900">{org.name}</span>
-                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                            {role}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="hidden xl:flex">
+                      <OnlineIndicator />
                     </div>
                   )}
                 </div>
@@ -383,7 +365,7 @@ export default function DashboardLayout({
                   {isInOrgContext && orgId && (
                     <Link
                       href={`/orgs/${orgId}/settings`}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/70 bg-white/92 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
                       aria-label="Settings"
                       title="Settings"
                     >
@@ -399,7 +381,7 @@ export default function DashboardLayout({
                     <div className="relative" ref={userDropdownRef}>
                       <button
                         onClick={() => setShowUserDropdown(!showUserDropdown)}
-                        className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-slate-200/80 bg-white/92 px-2 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white sm:px-2.5"
+                        className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-slate-200/70 bg-white/92 px-2 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white sm:px-2.5"
                       >
                         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                           {getUserInitials()}
