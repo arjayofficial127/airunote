@@ -661,8 +661,8 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
   return (
     <div className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_42%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.16),_transparent_30%)]" />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="sticky top-0 z-10 -mx-1 px-1">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-6 py-6 lg:px-8">
+      <div className="sticky top-0 z-10">
         <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
           <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

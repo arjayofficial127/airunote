@@ -66,6 +66,7 @@ export default function DashboardLayout({
   
   // Hide sidebar on /orgs page (onboarding state)
   const isOrgsOnboardingPage = pathname === '/orgs';
+  const shouldOffsetForSidebar = !isEditorMode && !isViewingApp && !isOrgsOnboardingPage && sidebarOpen;
   
   // Extract app code from pathname
   const appCode = isViewingApp && pathname ? (() => {
@@ -293,7 +294,11 @@ export default function DashboardLayout({
         <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
           {!isOrgsOnboardingPage && (
           <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
-            <div className="w-full px-3 sm:px-4 lg:px-6 xl:px-8">
+            <div
+              className={`w-full px-4 sm:px-6 lg:px-8 transition-[padding] duration-300 ${
+                shouldOffsetForSidebar ? 'lg:pl-[18rem]' : ''
+              }`}
+            >
               <div className="flex h-14 items-center gap-3 sm:h-16 sm:gap-4">
                 <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                   {/* Hamburger menu - show for all views (including apps), but hide on /orgs onboarding */}
@@ -526,7 +531,7 @@ export default function DashboardLayout({
               {/* Main content area - SessionBoundary handles loading/error states */}
               <main 
                 className={`flex-1 overflow-auto min-h-0 transition-all duration-300 ${
-                  !isEditorMode && !isViewingApp && !isOrgsOnboardingPage && sidebarOpen ? 'lg:ml-64' : ''
+                  shouldOffsetForSidebar ? 'lg:ml-64' : ''
                 }`}
               >
                     {children}

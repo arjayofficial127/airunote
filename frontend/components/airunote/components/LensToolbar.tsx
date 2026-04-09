@@ -87,17 +87,17 @@ export function LensToolbar({
     <div
       className={
         placement === 'fixed'
-          ? 'fixed right-4 top-20 z-40'
-          : 'w-full'
+          ? 'fixed right-4 top-20 z-40 w-[min(28rem,calc(100vw-2rem))]'
+          : 'mx-auto w-full max-w-[1400px]'
       }
     >
-      <div className={`flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ${placement === 'fixed' ? 'min-w-[22rem]' : 'w-full'}`}>
+      <div className={`flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ${placement === 'fixed' ? 'min-w-[22rem]' : 'w-full'}`}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 flex-1 rounded-2xl border border-slate-200/70 bg-[linear-gradient(135deg,rgba(248,250,252,0.96),rgba(255,255,255,0.96))] px-4 py-3">
+          <div className="min-w-0 flex-1 rounded-2xl border border-slate-200/70 bg-[linear-gradient(135deg,rgba(248,250,252,0.96),rgba(255,255,255,0.96))] px-4 py-3.5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div className="min-w-0">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Lens Controls</div>
-                <div className="mt-1 truncate text-sm font-semibold text-slate-900">
+                <div className="mt-1 truncate text-sm font-semibold text-slate-900 sm:text-[15px]">
                   {activeLens ? activeLens.name : 'No lens selected'}
                 </div>
               </div>
@@ -114,7 +114,7 @@ export function LensToolbar({
             </div>
           </div>
 
-          <div className="flex items-start gap-3">
+          <div className="flex shrink-0 items-start gap-3 self-start lg:self-stretch">
             {currentLens && (onEditLens || onDeleteLens) ? (
               <div className="relative" ref={actionsMenuRef}>
                 <button

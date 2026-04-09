@@ -16,7 +16,7 @@ interface CreateFolderModalProps {
   onClose: () => void;
   orgId: string;
   userId: string;
-  parentFolderId: string;
+  parentFolderId?: string | null;
   onSuccess?: (folder: AiruFolder) => void;
 }
 

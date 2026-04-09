@@ -224,10 +224,10 @@ export default function AirunoteHomePage() {
 
   // Update selected lens when active lens changes
   useEffect(() => {
-    if (activeLensId !== null && selectedLensId === null) {
+    if (desiredViewMode === null && activeLensId !== null && selectedLensId === null) {
       setSelectedLensId(activeLensId);
     }
-  }, [activeLensId, selectedLensId]);
+  }, [activeLensId, desiredViewMode, selectedLensId]);
 
   // Fetch active lens data
   const { data: lensData, isLoading: isLoadingLens } = useLens(
@@ -297,6 +297,8 @@ export default function AirunoteHomePage() {
     lensData &&
     lensData.lens.type === 'study' &&
     !isLoadingLens;
+  const pageShellClassName = 'mx-auto w-full max-w-[1400px] px-6 lg:px-8';
+  const sectionStackClassName = `${pageShellClassName} py-8`;
 
   const handleViewChangeFromToolbar = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
     if (view === 'grid' || view === 'tree') {
@@ -357,19 +359,21 @@ export default function AirunoteHomePage() {
 
   return (
     <>
-      <div className="p-8">
+      <div className={sectionStackClassName}>
         {/* Welcome Header with Latest Document */}
-        <div className="mb-10 mt-4">
+        <div className="mt-2 flex flex-col gap-8">
+          <div>
           <h1 className="text-2xl font-medium text-gray-900 mb-1">
             Welcome back{firstName ? `, ${firstName}` : ''}.
           </h1>
           <p className="text-base text-gray-600 mb-4">Continue where you left off.</p>
+          </div>
           
           {/* Recent Documents - Top 3, always visible */}
           {recentDocuments.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent documents</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <section className="flex flex-col gap-4">
+              <h2 className="text-xl font-semibold text-gray-900">Recent documents</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {recentDocuments.map((doc) => {
                   const documentPath = `/orgs/${orgIdFromParams}/airunote/document/${doc.id}`;
                   const getDocumentIcon = (type: 'TXT' | 'MD' | 'RTF') => {
@@ -392,7 +396,7 @@ export default function AirunoteHomePage() {
                     });
                   };
                   return (
-                    <div key={doc.id} className="group relative p-4 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150">
+                    <div key={doc.id} className="group relative rounded-lg border border-gray-200 bg-white p-4 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm">
                       <Link
                         href={documentPath}
                         className="flex flex-col h-full cursor-pointer"
@@ -418,20 +422,20 @@ export default function AirunoteHomePage() {
                   );
                 })}
               </div>
-            </div>
+            </section>
           )}
         </div>
 
         {/* Pinned Items Section */}
         {hasPinnedItems && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Pinned</h2>
-            <div className="space-y-2">
+          <section className="mt-8 flex flex-col gap-4">
+            <h2 className="text-xl font-semibold text-gray-900">Pinned</h2>
+            <div className="space-y-3">
               {pinnedFolders.map((folder) => (
                 <Link
                   key={folder.id}
                   href={`/orgs/${orgIdFromParams}/airunote/folder/${folder.id}`}
-                  className="block p-3 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150"
+                  className="block rounded-lg border border-gray-200 bg-white p-4 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{getFolderTypeIcon(folder.type)}</span>
@@ -444,7 +448,7 @@ export default function AirunoteHomePage() {
                 <Link
                   key={doc.id}
                   href={`/orgs/${orgIdFromParams}/airunote/document/${doc.id}`}
-                  className="block p-3 border border-gray-200 rounded-lg bg-white hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm transition-all duration-150"
+                  className="block rounded-lg border border-gray-200 bg-white p-4 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm"
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-base font-medium text-gray-900">{doc.name}</span>
@@ -453,7 +457,7 @@ export default function AirunoteHomePage() {
                 </Link>
               ))}
             </div>
-          </div>
+          </section>
         )}
       </div>
 
@@ -462,7 +466,7 @@ export default function AirunoteHomePage() {
       {/* Render Board Lens if active */}
       {shouldRenderBoardLens ? (
         <div className="min-h-screen bg-gray-50">
-          <div className="p-8 pb-0">
+          <div className={`${pageShellClassName} pb-0 pt-8`}>
             <LensToolbar
               viewMode="lens"
               selectedLensId={selectedLensId}
@@ -477,7 +481,7 @@ export default function AirunoteHomePage() {
               onDeleteLens={handleDeleteLensRequest}
             />
           </div>
-          <div className="p-8 pt-6">
+          <div className={`${pageShellClassName} pt-6`}>
             <BoardLens
               orgId={orgId || orgIdFromParams}
               lens={lensData.lens}
@@ -489,7 +493,7 @@ export default function AirunoteHomePage() {
         </div>
       ) : shouldRenderCanvasLens ? (
         <div className="h-screen overflow-hidden bg-gray-50">
-          <div className="p-8 pb-0">
+          <div className={`${pageShellClassName} pb-0 pt-8`}>
             <LensToolbar
               viewMode="lens"
               selectedLensId={selectedLensId}
@@ -520,7 +524,7 @@ export default function AirunoteHomePage() {
         </div>
       ) : shouldRenderStudyLens && effectiveRootFolderId ? (
         <div className="min-h-screen bg-gray-50">
-          <div className="p-8 pb-0">
+          <div className={`${pageShellClassName} pb-0 pt-8`}>
             <LensToolbar
               viewMode="lens"
               selectedLensId={selectedLensId}
@@ -570,7 +574,7 @@ export default function AirunoteHomePage() {
 
       {/* Activity Snapshot - Moved to bottom */}
       {(weeklyActivity.documentsUpdated > 0 || weeklyActivity.foldersCreated > 0) && (
-        <div className="px-8 pb-8">
+        <div className={`${pageShellClassName} pb-8`}>
           <h2 className="text-lg font-medium text-gray-700 mb-3">This Week</h2>
           <div className="p-4 border border-gray-200 rounded-lg bg-gray-50/50">
             <div className="space-y-1 text-sm text-gray-600">
@@ -591,7 +595,7 @@ export default function AirunoteHomePage() {
         onClose={() => setIsCreateFolderModalOpen(false)}
         orgId={orgId}
         userId={userId}
-        parentFolderId={effectiveRootFolderId || ''} // Will be resolved on submit if needed
+        parentFolderId={effectiveRootFolderId}
         onSuccess={handleCreateFolderSuccess}
       />
 
@@ -600,7 +604,7 @@ export default function AirunoteHomePage() {
         onClose={() => setIsCreateDocumentModalOpen(false)}
         orgId={orgId}
         userId={userId}
-        folderId={effectiveRootFolderId || ''} // Will be resolved on submit if needed
+        folderId={effectiveRootFolderId}
       />
 
       <PasteDock

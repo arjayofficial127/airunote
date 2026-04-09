@@ -17,7 +17,7 @@ interface CreateDocumentModalProps {
   onClose: () => void;
   orgId: string;
   userId: string;
-  folderId: string;
+  folderId?: string | null;
   folderType?: AiruFolderType; // Optional: folder type to determine default document type
 }
 
@@ -54,7 +54,7 @@ export function CreateDocumentModal({
     }
 
     // If folderId is not available, provision root folder first
-    let actualFolderId = folderId;
+    let actualFolderId = folderId ?? '';
     if (!actualFolderId || actualFolderId === 'root') {
       try {
         const { airunoteApi } = await import('../services/airunoteApi');

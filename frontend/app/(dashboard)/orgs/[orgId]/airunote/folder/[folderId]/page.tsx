@@ -186,10 +186,10 @@ export default function FolderViewPage() {
 
   // Update selected lens when active lens changes
   useEffect(() => {
-    if (activeLensId !== null && selectedLensId === null) {
+    if (desiredViewMode === null && activeLensId !== null && selectedLensId === null) {
       setSelectedLensId(activeLensId);
     }
-  }, [activeLensId, selectedLensId]);
+  }, [activeLensId, desiredViewMode, selectedLensId]);
 
   // Fetch active lens data
   const { data: lensData, isLoading: isLoadingLens } = useLens(
@@ -902,6 +902,7 @@ export default function FolderViewPage() {
     lensData &&
     lensData.lens.type === 'study' &&
     !isLoadingLens;
+  const pageShellClassName = 'mx-auto w-full max-w-[1400px] px-6 lg:px-8';
 
   // Determine current view mode based on selected lens
   const currentViewMode: 'grid' | 'tree' | 'lens' = 
@@ -1234,18 +1235,21 @@ export default function FolderViewPage() {
         </div>
       ) : shouldRenderStudyLens && folderId ? (
         <div className="min-h-screen bg-gray-50">
-          <LensToolbar
-            viewMode="lens"
-            selectedLensId={selectedLensId}
-            currentLens={lensData?.lens || null}
-            lenses={folderLenses}
-            folderId={folderId}
-            orgId={orgId || orgIdFromParams}
-            onViewChange={handleViewChangeFromToolbar}
-            onCreateLens={() => setIsCreateLensModalOpen(true)}
-            onEditLens={handleEditLensRequest}
-            onDeleteLens={handleDeleteLensRequest}
-          />
+          <div className={`${pageShellClassName} pb-0 pt-8`}>
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData?.lens || null}
+              lenses={folderLenses}
+              folderId={folderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+            />
+          </div>
           <StudyLensRenderer folderId={folderId} />
         </div>
       ) : (
