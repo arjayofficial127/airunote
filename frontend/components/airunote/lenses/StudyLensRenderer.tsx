@@ -112,8 +112,21 @@ function getAlphabetLabel(index: number): string {
 const noopAsync = async () => undefined;
 const noop = () => undefined;
 
+function getToolbarButtonClass(isActive: boolean, tone: 'neutral' | 'success' = 'neutral'): string {
+  if (tone === 'success') {
+    return isActive
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm'
+      : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50';
+  }
+
+  return isActive
+    ? 'border-sky-200 bg-sky-50 text-sky-700 shadow-sm'
+    : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50';
+}
+
 interface StudyLensAccordionItemProps {
   document: StudyLensDocument;
+  position: number;
   isExpanded: boolean;
   isSelected: boolean;
   isDirectlyConnected: boolean;
@@ -121,6 +134,7 @@ interface StudyLensAccordionItemProps {
   tags: string[];
   tabs: ConnectionTab[];
   hasRelatedDocuments: boolean;
+  relatedCount: number;
   onDocumentClick: (documentId: string) => void;
   onTabSelect: (documentId: string) => void;
   onDragStart: (documentId: string) => void;
@@ -131,6 +145,7 @@ interface StudyLensAccordionItemProps {
 
 function StudyLensAccordionItem({
   document,
+  position,
   isExpanded,
   isSelected,
   isDirectlyConnected,
@@ -138,6 +153,7 @@ function StudyLensAccordionItem({
   tags,
   tabs,
   hasRelatedDocuments,
+  relatedCount,
   onDocumentClick,
   onTabSelect,
   onDragStart,
@@ -146,17 +162,23 @@ function StudyLensAccordionItem({
   onDragEnd,
 }: StudyLensAccordionItemProps) {
   const { document: loadedDocument, isLoading, error } = useDocumentContent(isExpanded ? document.id : null);
+  const hasLoadedContent = Boolean((loadedDocument ?? document.document).content?.trim());
 
   const containerClassName = isSelected
-    ? 'overflow-hidden rounded-xl border border-blue-400 bg-blue-50/80 shadow-sm'
+    ? 'group overflow-hidden rounded-2xl border border-sky-200/80 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-sky-100/80 transition-all duration-200'
     : isDirectlyConnected
-      ? 'overflow-hidden rounded-xl border border-amber-300 bg-amber-50/70 shadow-sm'
-      : 'overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm';
+      ? 'group overflow-hidden rounded-2xl border border-amber-200/80 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)] ring-1 ring-amber-100/80 transition-all duration-200'
+      : 'group overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300/80 hover:shadow-[0_12px_28px_rgba(15,23,42,0.07)]';
   const rowClassName = isSelected
-    ? 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors bg-blue-50 hover:bg-blue-100/60'
+    ? 'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors bg-sky-50/60 hover:bg-sky-50/80 sm:px-5'
     : isDirectlyConnected
-      ? 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors bg-amber-50 hover:bg-amber-100/60'
-      : 'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50';
+      ? 'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors bg-amber-50/60 hover:bg-amber-50/80 sm:px-5'
+      : 'flex w-full items-start gap-3 px-4 py-3.5 text-left transition-colors hover:bg-slate-50/80 sm:px-5';
+  const relationToneClassName = isSelected
+    ? 'border-sky-200 bg-sky-100/80 text-sky-700'
+    : isDirectlyConnected
+      ? 'border-amber-200 bg-amber-100/80 text-amber-700'
+      : 'border-slate-200/80 bg-slate-100 text-slate-600';
 
   return (
     <div
@@ -172,13 +194,32 @@ function StudyLensAccordionItem({
         onClick={() => onDocumentClick(document.id)}
         className={`${rowClassName} ${reorderEnabled ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
       >
-        <span
-          className={`text-xs text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-          aria-hidden="true"
-        >
-          ▶
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">{document.title}</span>
+        <div className="flex flex-col items-center gap-2 pt-0.5">
+          <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-[11px] font-semibold tracking-[0.14em] ${relationToneClassName}`}>
+            {getAlphabetLabel(position)}
+          </span>
+          <span
+            className={`text-xs text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+            aria-hidden="true"
+          >
+            ▶
+          </span>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="truncate text-sm font-semibold tracking-[-0.01em] text-slate-900">{document.title}</div>
+            {relatedCount > 0 ? (
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${relationToneClassName}`}>
+                {relatedCount} link{relatedCount === 1 ? '' : 's'}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <span>{relatedCount > 0 ? 'Connected note' : 'Standalone note'}</span>
+            <span>{hasLoadedContent ? 'Content loaded' : 'Metadata only'}</span>
+            {reorderEnabled ? <span>Drag enabled</span> : null}
+          </div>
+        </div>
         {document.studyMeta?.color ? (
           <span
             className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow-sm"
@@ -187,29 +228,38 @@ function StudyLensAccordionItem({
           />
         ) : null}
         {tags.length > 0 ? (
-          <span className="hidden shrink-0 items-center gap-2 text-xs text-gray-500 sm:flex">
-            {tags.map((tag) => (
-              <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-gray-600">
+          <span className="hidden shrink-0 items-center gap-2 text-xs text-slate-500 sm:flex">
+            {tags.slice(0, 2).map((tag) => (
+              <span key={tag} className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-slate-600">
                 #{tag}
               </span>
             ))}
+            {tags.length > 2 ? <span className="text-[11px] text-slate-400">+{tags.length - 2}</span> : null}
           </span>
         ) : null}
       </button>
 
       {isExpanded ? (
-        <div className="border-t border-gray-200 px-4 py-4">
+        <div className="border-t border-slate-200/80 bg-slate-50/40 px-4 py-4 sm:px-5">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
+              {hasRelatedDocuments ? `${relatedCount} connected note${relatedCount === 1 ? '' : 's'}` : 'No connected notes'}
+            </span>
+            <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
+              {hasLoadedContent ? 'Ready for content search' : 'Load full data for content search'}
+            </span>
+          </div>
           {tags.length > 0 ? (
             <div className="mb-4 flex flex-wrap gap-2 sm:hidden">
               {tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                <span key={tag} className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 text-xs text-slate-600">
                   #{tag}
                 </span>
               ))}
             </div>
           ) : null}
           {isSelected ? (
-            <div className="mb-4">
+            <div className="mb-4 rounded-xl border border-slate-200/80 bg-white/80 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <div className="flex flex-wrap gap-2">
                 {tabs.map((tab) => (
                   <button
@@ -219,8 +269,8 @@ function StudyLensAccordionItem({
                     title={tab.title}
                     className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                       tab.id === document.id
-                        ? 'border-blue-500 bg-blue-600 text-white'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        ? 'border-sky-200 bg-sky-50 text-sky-700'
+                        : 'border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     {tab.label}
@@ -228,7 +278,7 @@ function StudyLensAccordionItem({
                 ))}
               </div>
               {!hasRelatedDocuments ? (
-                <div className="mt-3 text-xs text-gray-500">No related documents</div>
+                <div className="mt-3 text-xs text-slate-500">No related documents</div>
               ) : null}
             </div>
           ) : null}
@@ -289,6 +339,10 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     }
 
     return folderDocuments.every((document) => getDocumentContentById(document.id));
+  }, [folderDocuments, getDocumentContentById]);
+
+  const loadedDocumentCount = useMemo(() => {
+    return folderDocuments.filter((document) => Boolean(getDocumentContentById(document.id))).length;
   }, [folderDocuments, getDocumentContentById]);
 
   const handleLoadAllData = useCallback(async () => {
@@ -502,6 +556,38 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     );
   }, [connectedDocIds, connectedOnly, filteredDocuments, selectedDocId]);
 
+  const selectedDocument = useMemo(() => {
+    if (!selectedDocId) {
+      return null;
+    }
+
+    return documentsById.get(selectedDocId) || null;
+  }, [documentsById, selectedDocId]);
+
+  const selectedParentCount = useMemo(() => {
+    if (!selectedDocId) {
+      return 0;
+    }
+
+    return documents.filter(
+      (document) => (document.studyMeta?.relatedDocIds || []).includes(selectedDocId) && document.id !== selectedDocId
+    ).length;
+  }, [documents, selectedDocId]);
+
+  const selectedChildCount = useMemo(() => {
+    if (!selectedDocument) {
+      return 0;
+    }
+
+    return (selectedDocument.studyMeta?.relatedDocIds || []).filter(
+      (relatedDocId) => relatedDocId !== selectedDocument.id && documentsById.has(relatedDocId)
+    ).length;
+  }, [documentsById, selectedDocument]);
+
+  const selectedTagCount = selectedDocument?.studyMeta?.tags?.length || 0;
+  const connectionModeLabel = markTreeEnabled ? 'Recursive tree' : 'Direct neighbors';
+  const searchModeLabel = allDocumentDataLoaded ? 'Full content search' : 'Metadata-first search';
+
   const toggleExpanded = (documentId: string) => {
     setExpandedIds((previous) => {
       const next = new Set(previous);
@@ -573,61 +659,149 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="sticky top-0 z-10 rounded-xl border border-gray-200 bg-white/95 p-3 backdrop-blur">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search..."
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500"
-          />
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void handleLoadAllData()}
-              disabled={isBulkLoadingData || !orgId || !userId || folderDocuments.length === 0 || allDocumentDataLoaded}
-              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                allDocumentDataLoaded
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60'
-              }`}
-            >
-              {isBulkLoadingData ? 'Loading...' : allDocumentDataLoaded ? 'Data Loaded' : 'Load Data'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMarkTreeEnabled((previous) => !previous)}
-              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                markTreeEnabled
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Mark Tree
-            </button>
-            <button
-              type="button"
-              onClick={() => setConnectedOnly((previous) => !previous)}
-              className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                connectedOnly
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Connected Only
-            </button>
+    <div className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.14),_transparent_42%),radial-gradient(circle_at_top_right,_rgba(251,191,36,0.16),_transparent_30%)]" />
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="sticky top-0 z-10 -mx-1 px-1">
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+          <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-600">Study View</div>
+                <div className="mt-1 text-xl font-semibold tracking-[-0.02em] text-slate-900">Focus on connections, not just document lists</div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">{visibleDocuments.length}</span>
+                  <span>{visibleDocuments.length === 1 ? 'document visible' : 'documents visible'}</span>
+                  <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" aria-hidden="true" />
+                  <span>{loadedDocumentCount}/{folderDocuments.length} loaded</span>
+                  {reorderEnabled ? (
+                    <>
+                      <span className="hidden h-1 w-1 rounded-full bg-slate-300 sm:inline-block" aria-hidden="true" />
+                      <span>Drag to reorder</span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleLoadAllData()}
+                  disabled={isBulkLoadingData || !orgId || !userId || folderDocuments.length === 0 || allDocumentDataLoaded}
+                  className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${getToolbarButtonClass(allDocumentDataLoaded, 'success')}`}
+                >
+                  {isBulkLoadingData ? 'Loading...' : allDocumentDataLoaded ? 'Data Loaded' : 'Load Data'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMarkTreeEnabled((previous) => !previous)}
+                  aria-pressed={markTreeEnabled}
+                  className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 ${getToolbarButtonClass(markTreeEnabled)}`}
+                >
+                  Mark Tree
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConnectedOnly((previous) => !previous)}
+                  aria-pressed={connectedOnly}
+                  className={`rounded-full border px-3.5 py-2 text-xs font-medium transition-all duration-200 ${getToolbarButtonClass(connectedOnly)}`}
+                >
+                  Connected Only
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Search Mode</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{searchModeLabel}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {allDocumentDataLoaded ? 'Titles, tags, and full note content are searchable.' : 'Titles and tags are always searchable; content search improves after loading data.'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Connection Scope</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{connectionModeLabel}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {markTreeEnabled ? 'Selection traces through the entire connected branch.' : 'Selection highlights only immediate parents and children.'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Ordering</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{reorderEnabled ? 'Manual drag order' : 'Filtered order locked'}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {reorderEnabled ? 'Drag cards to shape the study path.' : 'Clear search and Connected Only to reorder the sequence.'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Selection</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">{selectedDocument ? selectedDocument.title : 'No note selected'}</div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {selectedDocument ? `${selectedParentCount} parent, ${selectedChildCount} child, ${selectedTagCount} tag${selectedTagCount === 1 ? '' : 's'}` : 'Expand a note to inspect its local study graph.'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div className="relative w-full lg:max-w-2xl">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true">
+                  ⌕
+                </span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search titles, tags, and loaded content"
+                  className="h-11 w-full rounded-xl border border-slate-200/80 bg-slate-50/80 pl-9 pr-4 text-sm text-slate-900 outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:ring-4 focus:ring-slate-200/70"
+                />
+              </div>
+              <div className="text-xs text-slate-500">
+                Load all data to include full document content in search results.
+              </div>
+            </div>
+
+            {selectedDocument ? (
+              <div className="rounded-2xl border border-sky-200/80 bg-[linear-gradient(135deg,rgba(240,249,255,0.98),rgba(255,255,255,0.98))] px-4 py-3.5 shadow-[0_12px_28px_rgba(14,165,233,0.08)]">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-600">Current Focus</div>
+                    <div className="mt-1 truncate text-base font-semibold tracking-[-0.01em] text-slate-900">{selectedDocument.title}</div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-600">
+                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{selectedParentCount} parent{selectedParentCount === 1 ? '' : 's'}</span>
+                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{selectedChildCount} child{selectedChildCount === 1 ? '' : 'ren'}</span>
+                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{selectedTagCount} tag{selectedTagCount === 1 ? '' : 's'}</span>
+                      <span className="rounded-full border border-sky-200 bg-white/80 px-2.5 py-1">{connectedDocIds.size} connected in scope</span>
+                    </div>
+                  </div>
+                  <div className="max-w-xl text-sm leading-6 text-slate-600">
+                    {connectedOnly
+                      ? 'Connected Only is active, so the list is narrowed to this note and its visible graph.'
+                      : 'Select another note to change the focus, or enable Connected Only to narrow the study path around this selection.'}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
 
       {visibleDocuments.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
-          No matching documents
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-6 py-12 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+          <div className="text-sm font-medium text-slate-700">No matching documents</div>
+          <div className="mt-1 text-sm text-slate-500">Try a broader search or load document data for content-aware results.</div>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Study Sequence</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">Accordion path with relationship-aware context</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+              <span className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1">{visibleDocuments.length} visible</span>
+              <span className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1">{expandedIds.size} expanded</span>
+              <span className="rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1">{connectedOnly ? 'Connection filter on' : 'All notes shown'}</span>
+            </div>
+          </div>
           {visibleDocuments.map((document) => {
             const isExpanded = expandedIds.has(document.id);
             const isSelected = selectedDocId === document.id;
@@ -677,11 +851,13 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
               });
             });
             const hasRelatedDocuments = parentDocuments.length > 0 || childDocuments.length > 0;
+            const relatedCount = parentDocuments.length + childDocuments.length;
 
             return (
               <StudyLensAccordionItem
                 key={document.id}
                 document={document}
+                position={manualOrderIds.length > 0 ? manualOrderIds.indexOf(document.id) : orderedDocuments.indexOf(document)}
                 isExpanded={isExpanded}
                 isSelected={isSelected}
                 isDirectlyConnected={isDirectlyConnected}
@@ -689,6 +865,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
                 tags={tags}
                 tabs={tabs}
                 hasRelatedDocuments={hasRelatedDocuments}
+                relatedCount={relatedCount}
                 onDocumentClick={handleDocumentClick}
                 onTabSelect={handleTabSelect}
                 onDragStart={handleDragStart}
@@ -700,6 +877,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

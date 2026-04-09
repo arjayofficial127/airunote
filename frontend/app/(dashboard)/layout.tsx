@@ -213,6 +213,20 @@ export default function DashboardLayout({
     return label.slice(0, 2).toUpperCase();
   };
 
+  const getOrgInitials = () => {
+    if (!org?.name?.trim()) {
+      return 'WS';
+    }
+
+    const parts = org.name.trim().split(/\s+/).filter(Boolean);
+
+    if (parts.length >= 2) {
+      return `${parts[0][0] || ''}${parts[1][0] || ''}`.toUpperCase();
+    }
+
+    return org.name.trim().slice(0, 2).toUpperCase();
+  };
+
   // Prepare provider states for SessionBoundary
   // Only include org/metadata if we're in org context
   const providerStates = isInOrgContext
@@ -279,19 +293,9 @@ export default function DashboardLayout({
         <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
           {!isOrgsOnboardingPage && (
           <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
-            <div className="w-full px-3 sm:px-4 lg:px-8">
-              <div className="flex items-center justify-between h-14 sm:h-16">
-                {/* Left: airunote + Hamburger */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <AirunoteLogo
-                    href="/dashboard"
-                    iconSize={24}
-                    className="flex items-center gap-2 text-lg sm:text-xl font-bold text-gray-900 hover:text-gray-700 transition"
-                    textClassName="text-lg font-bold text-gray-900 sm:text-xl"
-                  />
-                  {/* Online Indicator */}
-                  <OnlineIndicator />
-                  
+            <div className="w-full px-3 sm:px-4 lg:px-6 xl:px-8">
+              <div className="flex h-14 items-center gap-3 sm:h-16 sm:gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                   {/* Hamburger menu - show for all views (including apps), but hide on /orgs onboarding */}
                   {!isOrgsOnboardingPage && (
                     <button
@@ -310,20 +314,19 @@ export default function DashboardLayout({
                           setSidebarOpen(!sidebarOpen);
                         }
                       }}
-                      className={`p-2 rounded-md text-gray-600 hover:text-gray-900 transition-all duration-200 ${
+                      className={`inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-slate-600 shadow-sm transition-all duration-200 hover:border-slate-300 hover:text-slate-900 ${
                         (isViewingApp && (
                           (typeof window !== 'undefined' && (window as any).__postAppSidebarState?.isOpen) ||
                           appSidebarOpen
                         )) ||
                         (isEditorMode ? editorSidebarOpen : sidebarOpen)
-                          ? 'bg-gray-100' 
-                          : 'hover:bg-gray-50'
+                          ? 'border-slate-300 bg-slate-100 text-slate-900'
+                          : 'hover:bg-white'
                       }`}
                       aria-label="Toggle sidebar"
                     >
-                      {/* Static hamburger icon - always shows 3 lines */}
                       <svg 
-                        className="w-5 h-5"
+                        className="h-5 w-5"
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
@@ -337,29 +340,45 @@ export default function DashboardLayout({
                       </svg>
                     </button>
                   )}
-                </div>
 
-                {/* Right cluster: Settings + User dropdown (same on mobile and desktop) */}
-                <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-2.5">
+                  <div className="flex min-w-0 items-center gap-2 rounded-[22px] border border-slate-200/80 bg-white/92 px-2.5 py-1.5 shadow-sm sm:px-3">
+                    <AirunoteLogo
+                      href="/dashboard"
+                      iconSize={24}
+                      className="flex min-w-0 items-center gap-2 text-lg font-bold text-gray-900 transition hover:text-gray-700 sm:text-xl"
+                      textClassName="truncate text-lg font-bold text-gray-900 sm:text-xl"
+                    />
+                    <div className="hidden sm:flex">
+                      <OnlineIndicator />
+                    </div>
+                  </div>
+
                   {isInOrgContext && org && (
-                    <div className="hidden min-w-0 items-center gap-3 rounded-full border border-slate-200/80 bg-white/92 px-3 py-1.5 shadow-sm lg:flex">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                        {org.name.slice(0, 2).toUpperCase()}
+                    <div className="hidden min-w-0 items-center gap-3 rounded-[22px] border border-slate-200/80 bg-white/88 px-3 py-2 shadow-sm lg:flex">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                        {getOrgInitials()}
                       </div>
                       <div className="min-w-0 leading-tight">
-                        <div className="truncate text-sm font-semibold text-slate-900">{org.name}</div>
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{role}</div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Workspace</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-slate-900">{org.name}</span>
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                            {role}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}
+                </div>
 
+                <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-2.5">
                   {isInOrgContext && <PlanBadge />}
 
                   {/* Settings button - only show in org context */}
                   {isInOrgContext && orgId && (
                     <Link
                       href={`/orgs/${orgId}/settings`}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900 hover:bg-white"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/92 text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-900"
                       aria-label="Settings"
                       title="Settings"
                     >
@@ -375,7 +394,7 @@ export default function DashboardLayout({
                     <div className="relative" ref={userDropdownRef}>
                       <button
                         onClick={() => setShowUserDropdown(!showUserDropdown)}
-                        className="flex min-w-0 items-center gap-2 rounded-full border border-slate-200/80 bg-white/92 px-2 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white sm:px-2.5"
+                        className="flex h-10 min-w-0 items-center gap-2 rounded-full border border-slate-200/80 bg-white/92 px-2 py-1.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:bg-white sm:px-2.5"
                       >
                         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                           {getUserInitials()}

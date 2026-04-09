@@ -253,7 +253,7 @@ export function UnifiedSidebar({
       {/* Sidebar - respects isOpen state on all screen sizes */}
       {/* IMPORTANT: Always fixed positioning - content adjusts via margin-left, top bar NEVER hidden */}
       <aside
-        className={`fixed left-0 w-64 ${showTestMenuBackground ? 'bg-transparent' : 'bg-white'} border-r border-gray-200 flex flex-col z-40 transform transition-all duration-300 ease-in-out top-14 sm:top-14 ${
+        className={`fixed left-0 w-64 overflow-x-hidden ${showTestMenuBackground ? 'bg-transparent' : 'bg-white'} border-r border-gray-200 flex flex-col z-40 transform transition-all duration-300 ease-in-out top-14 sm:top-14 ${
           isOpen 
             ? 'translate-x-0 opacity-100 pointer-events-auto' 
             : '-translate-x-full opacity-0 pointer-events-none'
@@ -289,7 +289,7 @@ export function UnifiedSidebar({
         
 
           {isOrgReady && (
-          <nav className="flex-1 overflow-y-auto min-h-0 pt-2">
+          <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-2">
           {/* Mode Switcher - only show on Airunote routes */}
           {showModeSwitcher && (
             <div className="px-4 py-2 border-b border-gray-200 flex items-center gap-2">
@@ -376,26 +376,28 @@ export function UnifiedSidebar({
                         <>
                           <button
                             onClick={() => {}}
-                            className={`w-full flex items-center justify-between py-2.5 px-4 transition ${
+                            className={`w-full flex items-start justify-between gap-3 py-2.5 px-4 transition ${
                               itemIsActive
                                 ? 'bg-cyan-50 text-cyan-700 font-medium'
                                 : 'text-gray-900 hover:bg-gray-50'
                             }`}
                           >
-                            <div className={`flex flex-col text-left flex-1 min-w-0`}>
-                              <span className="whitespace-nowrap text-sm">{item.label}</span>
+                            <div className={`flex flex-col text-left flex-1 min-w-0 overflow-hidden`}>
+                              <span className="text-sm leading-5 whitespace-normal break-words">{item.label}</span>
                               {item.subtitle && (
-                                <span className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">{item.subtitle}</span>
+                                <span className="mt-0.5 text-xs leading-4 text-gray-500 whitespace-normal break-words">{item.subtitle}</span>
                               )}
                             </div>
-                            <svg
-                              className={`w-4 h-4 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''} mr-2`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
+                            <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center self-start">
+                              <svg
+                                className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
                           </button>
                           {isExpanded && (
                             <div className="ml-4 space-y-0.5 border-l-2 border-gray-200">
@@ -408,20 +410,20 @@ export function UnifiedSidebar({
                                     <Link
                                       href={child.href}
                                       onClick={onNavigate}
-                                      className={`relative flex items-center justify-between py-2.5 px-4 transition ${
+                                      className={`relative flex items-start justify-between gap-3 py-2.5 px-4 transition ${
                                         childIsActive
                                           ? 'bg-cyan-50 text-cyan-700 font-medium'
                                           : 'text-gray-900 hover:bg-gray-50'
                                       }`}
                                     >
-                                      <div className={`flex flex-col flex-1 min-w-0`}>
-                                        <span className="text-sm whitespace-nowrap font-medium">{child.label}</span>
+                                      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden`}>
+                                        <span className="text-sm font-medium leading-5 whitespace-normal break-words">{child.label}</span>
                                         {child.subtitle && (
-                                          <span className="text-xs opacity-75 whitespace-nowrap mt-0.5">{child.subtitle}</span>
+                                          <span className="mt-0.5 text-xs leading-4 opacity-75 whitespace-normal break-words">{child.subtitle}</span>
                                         )}
                                       </div>
                                       {childIsActive ? (
-                                        <div className="absolute right-0 flex items-center flex-shrink-0 mr-2">
+                                        <div className="absolute right-0 top-3 flex items-center pr-2">
                                           <svg
                                             className="w-2 h-2 text-cyan-500"
                                             viewBox="0 0 8 8"
@@ -456,20 +458,20 @@ export function UnifiedSidebar({
                         <Link
                           href={item.href}
                           onClick={onNavigate}
-                          className={`relative flex items-center justify-between py-2.5 px-4 transition ${
+                          className={`relative flex items-start justify-between gap-3 py-2.5 px-4 transition ${
                             itemIsActive
                               ? 'bg-cyan-50 text-cyan-700 font-medium'
                               : 'text-gray-900 hover:bg-gray-50'
                           }`}
                         >
-                          <div className={`flex flex-col flex-1 min-w-0`}>
-                            <span className="whitespace-nowrap text-sm">{item.label}</span>
+                          <div className={`flex flex-col flex-1 min-w-0 overflow-hidden`}>
+                            <span className="text-sm leading-5 whitespace-normal break-words">{item.label}</span>
                             {item.subtitle && (
-                              <span className="text-xs text-gray-500 mt-0.5 whitespace-nowrap truncate">{item.subtitle}</span>
+                              <span className="mt-0.5 text-xs leading-4 text-gray-500 whitespace-normal break-words">{item.subtitle}</span>
                             )}
                           </div>
                           {itemIsActive ? (
-                            <div className="absolute right-0 flex items-center flex-shrink-0 mr-2">
+                            <div className="absolute right-0 top-3 flex items-center pr-2">
                               <svg
                                 className="w-2 h-2 text-cyan-600"
                                 viewBox="0 0 8 8"

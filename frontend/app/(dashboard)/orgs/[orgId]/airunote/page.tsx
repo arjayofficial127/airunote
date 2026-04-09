@@ -21,6 +21,7 @@ import { EditLensModal } from '@/components/airunote/components/EditLensModal';
 import { MoveFolderModal } from '@/components/airunote/components/MoveFolderModal';
 import { DeleteConfirmationModal } from '@/components/airunote/components/DeleteConfirmationModal';
 import { PasteDock } from '@/components/airunote/components/PasteDock';
+import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import { DocumentListSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -219,6 +220,7 @@ export default function AirunoteHomePage() {
 
   // Local state for lens switching
   const [selectedLensId, setSelectedLensId] = useState<string | null>(activeLensId);
+  const [desiredViewMode, setDesiredViewMode] = useState<'grid' | 'tree' | null>(null);
 
   // Update selected lens when active lens changes
   useEffect(() => {
@@ -295,6 +297,26 @@ export default function AirunoteHomePage() {
     lensData &&
     lensData.lens.type === 'study' &&
     !isLoadingLens;
+
+  const handleViewChangeFromToolbar = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
+    if (view === 'grid' || view === 'tree') {
+      setSelectedLensId(null);
+      setDesiredViewMode(view);
+      return;
+    }
+
+    setSelectedLensId(lensId || null);
+    setDesiredViewMode(null);
+  };
+
+  const handleEditLensRequest = (lens: AiruLens) => {
+    setEditingLens(lens);
+    setIsEditLensModalOpen(true);
+  };
+
+  const handleDeleteLensRequest = (lens: AiruLens) => {
+    setDeleteLensModal(lens);
+  };
 
   if (!orgId || !userId) {
     return (
@@ -439,17 +461,49 @@ export default function AirunoteHomePage() {
 
       {/* Render Board Lens if active */}
       {shouldRenderBoardLens ? (
-        <div className="p-8">
-          <BoardLens
-            orgId={orgId || orgIdFromParams}
-            lens={lensData.lens}
-            items={boardChildren}
-            lensItems={lensData.items}
-            onPersist={handleBoardPersist}
-          />
+        <div className="min-h-screen bg-gray-50">
+          <div className="p-8 pb-0">
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData?.lens || null}
+              lenses={folderLenses}
+              folderId={effectiveRootFolderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+            />
+          </div>
+          <div className="p-8 pt-6">
+            <BoardLens
+              orgId={orgId || orgIdFromParams}
+              lens={lensData.lens}
+              items={boardChildren}
+              lensItems={lensData.items}
+              onPersist={handleBoardPersist}
+            />
+          </div>
         </div>
       ) : shouldRenderCanvasLens ? (
-        <div className="h-screen overflow-hidden">
+        <div className="h-screen overflow-hidden bg-gray-50">
+          <div className="p-8 pb-0">
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData?.lens || null}
+              lenses={folderLenses}
+              folderId={effectiveRootFolderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+            />
+          </div>
           {isLoadingLens ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-gray-500">Loading canvas...</div>
@@ -465,7 +519,24 @@ export default function AirunoteHomePage() {
           )}
         </div>
       ) : shouldRenderStudyLens && effectiveRootFolderId ? (
-        <StudyLensRenderer folderId={effectiveRootFolderId} />
+        <div className="min-h-screen bg-gray-50">
+          <div className="p-8 pb-0">
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData?.lens || null}
+              lenses={folderLenses}
+              folderId={effectiveRootFolderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+            />
+          </div>
+          <StudyLensRenderer folderId={effectiveRootFolderId} />
+        </div>
       ) : (
         <FolderViewLayout
           folderId={effectiveRootFolderId}
@@ -479,11 +550,20 @@ export default function AirunoteHomePage() {
           onMoveFolder={(folder) => setMoveFolderModal(folder)}
           onDeleteFolder={(folder) => setDeleteFolderModal(folder)}
           hideHeader={true}
+          selectedLensId={selectedLensId}
+          onLensSelected={(lensId: string | null) => {
+            setSelectedLensId(lensId);
+            if (lensId) {
+              setDesiredViewMode(null);
+            }
+          }}
+          defaultViewMode={desiredViewMode || undefined}
           onLensCreated={async (lens) => {
             // Refetch folder lenses to get the new lens
             await refetchFolderLenses();
             // Auto-select the new lens
             setSelectedLensId(lens.id);
+            setDesiredViewMode(null);
           }}
         />
       )}

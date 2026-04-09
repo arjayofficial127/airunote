@@ -58,12 +58,12 @@ export function FolderTree({ tree, currentFolderId, orgId }: FolderTreeProps) {
 
     return (
       <div key={folder.id} className="mb-1">
-        <div className="flex items-center">
+        <div className="flex min-w-0 items-start">
           <div style={{ width: `${indentWidth}px` }} />
           {hasChildren ? (
             <button
               onClick={(e) => toggleFolder(folder.id, e)}
-              className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
+              className="flex-shrink-0 rounded p-1 transition-colors hover:bg-gray-200"
               style={{ width: `${chevronWidth}px` }}
             >
               <svg
@@ -85,15 +85,15 @@ export function FolderTree({ tree, currentFolderId, orgId }: FolderTreeProps) {
           )}
           <Link
             href={folderPath}
-            className={`flex items-center justify-between flex-1 px-3 py-2 rounded-md text-sm transition-colors ${
+            className={`flex min-w-0 flex-1 items-start justify-between gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
               isActive
                 ? 'bg-blue-100 text-blue-900 font-medium'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            <div className="flex items-center flex-1 min-w-0">
-              <span className="mr-2">{getFolderTypeIcon(folder.type)}</span>
-              <span className="truncate">{folder.humanId}</span>
+            <div className="flex min-w-0 flex-1 items-start">
+              <span className="mr-2 flex-shrink-0">{getFolderTypeIcon(folder.type)}</span>
+              <span className="min-w-0 whitespace-normal break-words leading-5">{folder.humanId}</span>
             </div>
             <FolderCountBadge
               directFolders={counts.directFolders}
@@ -136,7 +136,7 @@ export function FolderTree({ tree, currentFolderId, orgId }: FolderTreeProps) {
   return (
     <div className="w-full">
       <div className="mb-2">
-        <div className="flex items-center">
+        <div className="flex min-w-0 items-start">
           {homeHasChildren ? (
             <button
               onClick={(e) => {
@@ -166,14 +166,14 @@ export function FolderTree({ tree, currentFolderId, orgId }: FolderTreeProps) {
           )}
           <Link
             href={`/orgs/${orgIdFromParams}/airunote`}
-            className={`flex items-center flex-1 px-3 py-2 rounded-md text-sm transition-colors ${
+            className={`flex min-w-0 flex-1 items-start px-3 py-2 rounded-md text-sm transition-colors ${
               !currentFolderId
                 ? 'bg-blue-100 text-blue-900 font-medium'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            <span className="mr-2">🏠</span>
-            Home
+            <span className="mr-2 flex-shrink-0">🏠</span>
+            <span className="min-w-0 whitespace-normal break-words leading-5">Home</span>
           </Link>
         </div>
       </div>

@@ -166,6 +166,7 @@ export function FolderViewLayout({
   };
 
   const countText = formatCounts(childFolders.length, documents.length);
+  const shouldShowViewHeader = !!folderId;
 
   return (
     <div className="p-8 overflow-y-auto">
@@ -302,27 +303,53 @@ export function FolderViewLayout({
         </div>
       )}
 
+      {shouldShowViewHeader && (
+        <div className={`${hideHeader ? 'mb-6' : 'mb-8'} overflow-hidden rounded-2xl border border-slate-200/80 bg-white/92 shadow-sm`}>
+          <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,0.9))] px-4 py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">View System</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900">Switch between structure, browsing, and lens-based work</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
+                  {childFolders.length} folder{childFolders.length === 1 ? '' : 's'}
+                </span>
+                <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
+                  {documents.length} document{documents.length === 1 ? '' : 's'}
+                </span>
+                <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
+                  {folderLenses.length} lens{folderLenses.length === 1 ? '' : 'es'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="p-4">
+          <ViewSwitcher
+            viewMode={viewMode}
+            selectedLensId={selectedLensId}
+            lenses={folderLenses}
+            onViewChange={(view, lensId) => {
+              setViewMode(view);
+              const newLensId = lensId || null;
+              if (onLensSelected) {
+                onLensSelected(newLensId);
+              } else {
+                setInternalSelectedLensId(newLensId);
+              }
+            }}
+            onCreateLens={() => setIsCreateLensModalOpen(true)}
+            folderId={folderId}
+          />
+          </div>
+        </div>
+      )}
+
       {/* Folders Section */}
       {childFolders.length > 0 && (
         <div className="mb-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Folders</h2>
-            <ViewSwitcher
-              viewMode={viewMode}
-              selectedLensId={selectedLensId}
-              lenses={folderLenses}
-              onViewChange={(view, lensId) => {
-                setViewMode(view);
-                const newLensId = lensId || null;
-                if (onLensSelected) {
-                  onLensSelected(newLensId);
-                } else {
-                  setInternalSelectedLensId(newLensId);
-                }
-              }}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              folderId={folderId}
-            />
           </div>
 
           {viewMode === 'grid' ? (
