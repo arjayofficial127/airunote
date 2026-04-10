@@ -33,7 +33,7 @@ export function FolderCountBadge({
     // Recursive totals belong only in analytics or folder info views.
     const directItems = directFolders + directFiles;
     return (
-      <span className="ml-1 inline-flex max-w-full flex-shrink-0 self-start rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium leading-4 text-gray-700">
+      <span className="inline-flex min-w-7 max-w-full flex-shrink-0 items-center justify-center rounded-full bg-gray-200 px-2 py-0.5 text-center text-xs font-medium leading-4 text-gray-700">
         {directItems}
       </span>
     );

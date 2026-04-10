@@ -24,6 +24,10 @@ export function FolderTree({ tree, currentFolderId, orgId, showHome = true }: Fo
   const params = useParams();
   const orgIdFromParams = (params.orgId as string) || orgId;
   const { getFolderCounts } = useAirunoteStore();
+  const expandColumnWidth = 16;
+  const iconColumnWidth = 20;
+  const rightColumnMinWidth = 60;
+  const trailingChevronWidth = 16;
   
   // Track expanded folders and Home
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -53,22 +57,19 @@ export function FolderTree({ tree, currentFolderId, orgId, showHome = true }: Fo
     const counts = getFolderCounts(folder.id);
     const isExpanded = expandedFolders.has(folder.id);
 
-    // Keep nested folders visible, but remove most of the extra left offset.
-    const indentWidth = level === 0 ? 0 : level * 6;
-    const chevronWidth = 12;
+    const indentWidth = level === 0 ? 0 : level * 24;
 
     return (
       <div key={folder.id} className="mb-1">
-        <div className="flex min-w-0 items-start">
-          <div style={{ width: `${indentWidth}px` }} />
+        <div className="flex min-w-0 items-center" style={{ paddingLeft: `${indentWidth}px` }}>
           {hasChildren ? (
             <button
               onClick={(e) => toggleFolder(folder.id, e)}
-              className="flex-shrink-0 rounded p-0.5 transition-colors hover:bg-gray-200"
-              style={{ width: `${chevronWidth}px` }}
+              className="flex h-4 flex-shrink-0 items-center justify-center rounded transition-colors hover:bg-gray-200"
+              style={{ width: `${expandColumnWidth}px` }}
             >
               <svg
-                className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                className={`h-4 w-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -82,27 +83,110 @@ export function FolderTree({ tree, currentFolderId, orgId, showHome = true }: Fo
               </svg>
             </button>
           ) : (
-            <div style={{ width: `${chevronWidth}px` }} className="flex-shrink-0" />
+            <div style={{ width: `${expandColumnWidth}px` }} className="flex h-4 flex-shrink-0 items-center justify-center" />
           )}
           <Link
             href={folderPath}
-            className={`flex min-w-0 flex-1 items-start justify-between gap-2 rounded-md py-2 pl-0 pr-3 text-sm transition-colors ${
+            className={`flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md py-2 pl-2 pr-3 text-sm transition-colors ${
               isActive
                 ? 'bg-blue-100 text-blue-900 font-medium'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            <div className="flex min-w-0 flex-1 items-start">
-              <span className="mr-2 flex-shrink-0">{getFolderTypeIcon(folder.type)}</span>
-              <span className="min-w-0 whitespace-normal break-words leading-5">{folder.humanId}</span>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span
+                className="flex flex-shrink-0 items-center justify-center"
+                style={{ width: `${iconColumnWidth}px` }}
+              >
+                {getFolderTypeIcon(folder.type)}
+              </span>
+              <span className="min-w-0 flex-1 break-words leading-5">{folder.humanId}</span>
             </div>
-            <FolderCountBadge
-              directFolders={counts.directFolders}
-              directFiles={counts.directFiles}
-              subFolders={counts.subFolders}
-              subFiles={counts.subFiles}
-              compact={true}
-            />
+            <div
+              className="flex flex-shrink-0 items-center justify-end gap-2"
+              style={{ minWidth: `${rightColumnMinWidth}px` }}
+            >
+              <FolderCountBadge
+                directFolders={counts.directFolders}
+                directFiles={counts.directFiles}
+                subFolders={counts.subFolders}
+                subFiles={counts.subFiles}
+                compact={true}
+              />
+              <span
+                aria-hidden="true"
+                className="flex flex-shrink-0 items-center justify-center"
+                style={{ width: `${trailingChevronWidth}px` }}
+              />
+            </div>
+          </Link>
+        </div>
+      </div>
+    );
+  };
+
+  const renderHomeRow = () => {
+    return (
+      <div className="mb-2">
+        <div className="flex min-w-0 items-center">
+          {homeHasChildren ? (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsHomeExpanded(!isHomeExpanded);
+              }}
+              className="flex h-4 flex-shrink-0 items-center justify-center rounded transition-colors hover:bg-gray-200"
+              style={{ width: `${expandColumnWidth}px` }}
+            >
+              <svg
+                className={`h-4 w-4 text-gray-500 transition-transform ${isHomeExpanded ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          ) : (
+            <div style={{ width: `${expandColumnWidth}px` }} className="flex h-4 flex-shrink-0 items-center justify-center" />
+          )}
+          <Link
+            href={`/orgs/${orgIdFromParams}/airunote`}
+            className={`flex min-w-0 flex-1 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+              !currentFolderId
+                ? 'bg-blue-100 text-blue-900 font-medium'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span
+                className="flex flex-shrink-0 items-center justify-center"
+                style={{ width: `${iconColumnWidth}px` }}
+              >
+                🏠
+              </span>
+              <span className="min-w-0 flex-1 break-words leading-5">Home</span>
+            </div>
+            <div
+              className="flex flex-shrink-0 items-center justify-end gap-2"
+              style={{ minWidth: `${rightColumnMinWidth}px` }}
+            >
+              <span
+                aria-hidden="true"
+                className="inline-flex min-w-7 flex-shrink-0 items-center justify-center px-2 py-0.5"
+              />
+              <span
+                aria-hidden="true"
+                className="flex flex-shrink-0 items-center justify-center"
+                style={{ width: `${trailingChevronWidth}px` }}
+              />
+            </div>
           </Link>
         </div>
       </div>
@@ -138,48 +222,7 @@ export function FolderTree({ tree, currentFolderId, orgId, showHome = true }: Fo
     <div className="w-full">
       {showHome ? (
         <>
-          <div className="mb-2">
-            <div className="flex min-w-0 items-start">
-              {homeHasChildren ? (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsHomeExpanded(!isHomeExpanded);
-                  }}
-                  className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
-                  style={{ width: '20px' }}
-                >
-                  <svg
-                    className={`w-4 h-4 text-gray-500 transition-transform ${isHomeExpanded ? 'rotate-90' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              ) : (
-                <div style={{ width: '20px' }} />
-              )}
-              <Link
-                href={`/orgs/${orgIdFromParams}/airunote`}
-                className={`flex min-w-0 flex-1 items-start px-3 py-2 rounded-md text-sm transition-colors ${
-                  !currentFolderId
-                    ? 'bg-blue-100 text-blue-900 font-medium'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <span className="mr-2 flex-shrink-0">🏠</span>
-                <span className="min-w-0 whitespace-normal break-words leading-5">Home</span>
-              </Link>
-            </div>
-          </div>
+          {renderHomeRow()}
           {isHomeExpanded && renderTree(tree)}
         </>
       ) : (
