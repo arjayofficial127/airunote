@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
@@ -40,8 +40,6 @@ export default function LensViewPage() {
   const userId = authSession.user?.id;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isLensSwitcherOpen, setIsLensSwitcherOpen] = useState(false);
-  const lensSwitcherRef = useRef<HTMLDivElement>(null);
 
   // Fetch lens and documents via GET /lenses/:id
   const { data: lensData, isLoading, error } = useLens(
@@ -54,20 +52,6 @@ export default function LensViewPage() {
 
   const lens = lensData?.lens || null;
   const lensItems = lensData?.items || [];
-
-  // Close lens switcher when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (lensSwitcherRef.current && !lensSwitcherRef.current.contains(event.target as Node)) {
-        setIsLensSwitcherOpen(false);
-      }
-    };
-
-    if (isLensSwitcherOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isLensSwitcherOpen]);
 
   // Filter to only supported switchable desktop/saved lenses
   const availableLenses = desktopLenses.filter(
@@ -98,6 +82,7 @@ export default function LensViewPage() {
   // For fallback DocumentList, we still need documentMetadata
   // This will be populated when lens query returns documents
   const documentMetadata: AiruDocumentMetadata[] = [];
+  const pageShellClassName = 'mx-auto w-full max-w-[1400px] px-6 lg:px-8';
 
   if (!orgId || !userId || !lensId) {
     return (
@@ -175,65 +160,6 @@ export default function LensViewPage() {
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold text-gray-900">{lens.name}</h1>
-              {/* Lens Switcher - Only show if there are other lenses */}
-              {availableLenses.length > 1 && (
-                <div className="relative" ref={lensSwitcherRef}>
-                  <button
-                    onClick={() => setIsLensSwitcherOpen(!isLensSwitcherOpen)}
-                    className="px-3 py-1 text-sm rounded-md transition-colors duration-150 flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
-                    title="Switch lens"
-                  >
-                    <svg
-                      className={`w-4 h-4 transition-transform duration-200 ${
-                        isLensSwitcherOpen ? 'transform rotate-180' : ''
-                      }`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                    Switch
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {isLensSwitcherOpen && (
-                    <div className="absolute left-0 mt-1 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                      <div className="py-1">
-                        {availableLenses.map((l) => {
-                          const isActive = l.id === lensId;
-                          const typeLabel = l.type === 'canvas'
-                            ? 'Canvas'
-                            : l.type === 'board'
-                              ? 'Board'
-                              : l.type === 'study'
-                                ? 'Study'
-                                : l.type;
-                          return (
-                            <button
-                              key={l.id}
-                              onClick={() => {
-                                router.push(`/orgs/${orgIdFromParams}/airunote/lens/${l.id}`);
-                                setIsLensSwitcherOpen(false);
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-                                isActive
-                                  ? 'bg-blue-50 text-blue-600 font-medium'
-                                  : 'text-gray-700 hover:bg-gray-50'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs opacity-75">{typeLabel}</span>
-                                <span>{l.name}</span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
             <p className="text-sm text-gray-600 mt-1">
               {items.length > 0 ? items.length : documentMetadata.length} {items.length > 0 ? 'item' : 'document'}{items.length !== 1 && documentMetadata.length !== 1 ? 's' : ''}
@@ -270,25 +196,27 @@ export default function LensViewPage() {
         ) : lens.type === 'canvas' && lens.id ? (
           // Unified: Canvas view using CanvasLens (same as folder pages)
           <div className="h-screen overflow-hidden relative">
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={lensId}
-              currentLens={lens}
-              lenses={availableLenses}
-              folderId={null}
-              orgId={orgId}
-              onViewChange={(view, newLensId) => {
-                if (view === 'grid' || view === 'tree') {
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={lensId}
+                currentLens={lens}
+                lenses={availableLenses}
+                folderId={null}
+                orgId={orgId}
+                placement="inline"
+                onViewChange={(view, newLensId) => {
+                  if (view === 'grid' || view === 'tree') {
+                    router.push(`/orgs/${orgIdFromParams}/airunote`);
+                  } else if (newLensId) {
+                    router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                  }
+                }}
+                onCreateLens={() => {
                   router.push(`/orgs/${orgIdFromParams}/airunote`);
-                } else if (newLensId) {
-                  router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
-                }
-              }}
-              onCreateLens={() => {
-                // Navigate to home to create desktop lens
-                router.push(`/orgs/${orgIdFromParams}/airunote`);
-              }}
-            />
+                }}
+              />
+            </div>
             <CanvasLens
               orgId={orgId}
               lens={lens}
@@ -300,26 +228,28 @@ export default function LensViewPage() {
         ) : lens.type === 'board' && lens.id ? (
           // Unified: Board view using BoardLens (same as folder pages)
           <div className="h-screen overflow-hidden relative">
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={lensId}
-              currentLens={lens}
-              lenses={availableLenses}
-              folderId={null}
-              orgId={orgId}
-              onViewChange={(view, newLensId) => {
-                if (view === 'grid' || view === 'tree') {
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={lensId}
+                currentLens={lens}
+                lenses={availableLenses}
+                folderId={null}
+                orgId={orgId}
+                placement="inline"
+                onViewChange={(view, newLensId) => {
+                  if (view === 'grid' || view === 'tree') {
+                    router.push(`/orgs/${orgIdFromParams}/airunote`);
+                  } else if (newLensId) {
+                    router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                  }
+                }}
+                onCreateLens={() => {
                   router.push(`/orgs/${orgIdFromParams}/airunote`);
-                } else if (newLensId) {
-                  router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
-                }
-              }}
-              onCreateLens={() => {
-                // Navigate to home to create desktop lens
-                router.push(`/orgs/${orgIdFromParams}/airunote`);
-              }}
-            />
-            <div className="p-8">
+                }}
+              />
+            </div>
+            <div className={`${pageShellClassName} pt-6`}>
               <BoardLens
                 orgId={orgId}
                 lens={lens}
@@ -331,32 +261,61 @@ export default function LensViewPage() {
           </div>
         ) : lens.type === 'study' && lens.folderId ? (
           <div className="min-h-screen bg-gray-50">
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={lensId}
-              currentLens={lens}
-              lenses={availableLenses}
-              folderId={lens.folderId}
-              orgId={orgId}
-              onViewChange={(view, newLensId) => {
-                if (view === 'grid' || view === 'tree') {
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={lensId}
+                currentLens={lens}
+                lenses={availableLenses}
+                folderId={lens.folderId}
+                orgId={orgId}
+                placement="inline"
+                onViewChange={(view, newLensId) => {
+                  if (view === 'grid' || view === 'tree') {
+                    router.push(`/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}`);
+                  } else if (newLensId) {
+                    router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                  }
+                }}
+                onCreateLens={() => {
                   router.push(`/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}`);
-                } else if (newLensId) {
-                  router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
-                }
-              }}
-              onCreateLens={() => {
-                router.push(`/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}`);
-              }}
-            />
+                }}
+                showSearchRow={false}
+              />
+            </div>
             <StudyLensRenderer folderId={lens.folderId} />
           </div>
         ) : (
           // Fallback: DocumentList for box/book types
-          <DocumentList 
-            documents={documentMetadata} 
-            orgId={orgId}
-          />
+          <div className="min-h-screen bg-gray-50">
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={lensId}
+                currentLens={lens}
+                lenses={availableLenses}
+                folderId={lens.folderId}
+                orgId={orgId}
+                placement="inline"
+                onViewChange={(view, newLensId) => {
+                  if (view === 'grid' || view === 'tree') {
+                    router.push(lens.folderId ? `/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}` : `/orgs/${orgIdFromParams}/airunote`);
+                  } else if (newLensId) {
+                    router.push(`/orgs/${orgIdFromParams}/airunote/lens/${newLensId}`);
+                  }
+                }}
+                onCreateLens={() => {
+                  router.push(lens.folderId ? `/orgs/${orgIdFromParams}/airunote/folder/${lens.folderId}` : `/orgs/${orgIdFromParams}/airunote`);
+                }}
+              />
+            </div>
+            <div className={`${pageShellClassName} pt-6`}>
+              <DocumentList 
+                documents={documentMetadata} 
+                orgId={orgId}
+              />
+            </div>
+          </div>
         )}
       </div>
 

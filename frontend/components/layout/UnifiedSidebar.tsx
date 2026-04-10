@@ -513,7 +513,7 @@ export function UnifiedSidebar({
                       }`}
                     >
                       <div className="overflow-hidden">
-                        <div className="px-2 pb-2 pt-1">
+                        <div className="pb-2 pl-0 pr-2 pt-1">
                           {folderTree ? (
                             <FolderTree tree={folderTree} currentFolderId={currentFolderId} orgId={orgId} showHome={false} />
                           ) : (

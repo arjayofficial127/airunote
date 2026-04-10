@@ -10,7 +10,8 @@ import { useDocumentContent } from '../hooks/useDocumentContent';
 import { useUpdateDocument } from '../hooks/useUpdateDocument';
 import { airunoteApi } from '../services/airunoteApi';
 import { useAirunoteStore } from '../stores/airunoteStore';
-import type { AiruDocument, AiruDocumentMetadata } from '../types';
+import { getFolderTypeIcon } from '../utils/folderTypeIcon';
+import type { AiruDocument, AiruDocumentMetadata, AiruFolder } from '../types';
 
 interface StudyLensRendererProps {
   folderId: string;
@@ -174,7 +175,7 @@ function NoteRow({
   children,
 }: NoteRowProps) {
   const { document: loadedDocument, isLoading, error } = useDocumentContent(isExpanded ? document.id : null);
-  const tags = document.studyMeta?.tags || [];
+  const tags = useMemo(() => document.studyMeta?.tags ?? [], [document.studyMeta?.tags]);
   const [draftTitle, setDraftTitle] = useState(document.title);
   const [tagsInput, setTagsInput] = useState(tags.join(', '));
   const [isSavingTitle, setIsSavingTitle] = useState(false);
@@ -368,7 +369,7 @@ function NoteRow({
 export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
   const orgSession = useOrgSession();
   const authSession = useAuthSession();
-  const { getDocumentsByFolder, getDocumentContentById, setDocumentContent } = useAirunoteStore();
+  const { getDocumentsByFolder, getDocumentContentById, getFoldersByParent, setDocumentContent } = useAirunoteStore();
   const updateDocument = useUpdateDocument();
   const orgId = orgSession.activeOrgId;
   const userId = authSession.user?.id;
@@ -383,6 +384,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
   const [isBulkLoadingData, setIsBulkLoadingData] = useState(false);
 
   const folderDocuments = getDocumentsByFolder(folderId);
+  const folderChildren = getFoldersByParent(folderId) as AiruFolder[];
 
   const documents: StudyLensDocument[] = folderDocuments
     .map((metadata) => {
@@ -657,6 +659,19 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
     });
   }, [activeTag, connectedDocIds, connectedOnly, orderedDocuments, searchQuery, selectedDocId]);
 
+  const filteredFolders = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return folderChildren;
+    }
+
+    return folderChildren.filter((folder) => {
+      const typeLabel = folder.type ? folder.type.toLowerCase() : '';
+      return folder.humanId.toLowerCase().includes(normalizedQuery) || typeLabel.includes(normalizedQuery);
+    });
+  }, [folderChildren, searchQuery]);
+
   const visibleDocumentIds = useMemo(() => new Set(filteredDocuments.map((document) => document.id)), [filteredDocuments]);
 
   const rootDocuments = useMemo(() => {
@@ -800,7 +815,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 px-6 py-4 lg:px-8">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_6px_20px_rgba(15,23,42,0.04)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xl">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" aria-hidden="true">
             ⌕
@@ -810,7 +825,7 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search notes..."
-            className="h-11 w-full rounded-xl border border-slate-200/80 bg-slate-50 pl-9 pr-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300 focus:bg-white"
+            className="h-11 w-full rounded-xl bg-transparent pl-9 pr-4 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400"
           />
         </div>
 
@@ -858,15 +873,33 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white/95 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-        {filteredDocuments.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-slate-500">No notes match the current search or filter.</div>
-        ) : (
-          <div className="flex flex-col gap-2 p-3">
-            {rootDocuments.map((document) => renderDocument(document, 0))}
-          </div>
-        )}
-      </div>
+      {filteredFolders.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {filteredFolders.map((folder) => (
+            <a
+              key={folder.id}
+              href={`/orgs/${orgSession.activeOrgId}/airunote/folder/${folder.id}`}
+              className="group rounded-xl border border-slate-200/70 bg-white px-4 py-3 transition-colors duration-150 hover:border-slate-300 hover:bg-slate-50"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-xl" aria-hidden="true">{getFolderTypeIcon(folder.type)}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-slate-900">{folder.humanId}</div>
+                  <div className="mt-1 text-xs text-slate-500">{folder.type ? folder.type.charAt(0).toUpperCase() + folder.type.slice(1) : 'Folder'}</div>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      ) : null}
+
+      {filteredDocuments.length === 0 ? (
+        <div className="px-2 py-10 text-center text-sm text-slate-500">No notes match the current search or filter.</div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {rootDocuments.map((document) => renderDocument(document, 0))}
+        </div>
+      )}
     </div>
   );
 }

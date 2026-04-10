@@ -191,6 +191,11 @@ function InlineTextDocumentCard({
     () => summarizeInlineDiff(document?.content ?? '', draftContent),
     [document?.content, draftContent]
   );
+  const editorHeight = useMemo(() => {
+    const content = draftContent || document?.content || '';
+    const lineCount = content.split(/\r\n|\r|\n/).length;
+    return Math.max(180, lineCount * 22 + 40);
+  }, [document?.content, draftContent]);
 
   const handleSave = useCallback(async () => {
     if (!document || !hasUnsavedChanges) {
@@ -271,7 +276,7 @@ function InlineTextDocumentCard({
     return (
       <div
         ref={containerRef}
-        className={`flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-2 ${className ?? ''}`}
+        className={`flex flex-col rounded-md border border-gray-200 bg-gray-50 p-2 ${className ?? ''}`}
         onFocusCapture={() => setIsKeyboardActive(true)}
         onBlurCapture={(event) => {
           if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -281,10 +286,10 @@ function InlineTextDocumentCard({
           setIsKeyboardActive(false);
         }}
       >
-        <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-gray-200 bg-white">
-          <div className="h-full min-h-0 overflow-hidden rounded-md">
+        <div className="rounded-md border border-gray-200 bg-white">
+          <div className="overflow-hidden rounded-md">
             <MonacoEditor
-              height="100%"
+              height={`${editorHeight}px`}
               language={document.type === 'MD' ? 'markdown' : 'plaintext'}
               value={draftContent}
               onChange={(value) => {
@@ -531,7 +536,7 @@ function InlineRichTextDocumentCard({
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-gray-200 bg-gray-50 p-3 ${className ?? ''}`}
+      className={`flex flex-col rounded-md border border-gray-200 bg-gray-50 p-3 ${className ?? ''}`}
       onFocusCapture={() => setIsKeyboardActive(true)}
       onBlurCapture={(event) => {
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -541,7 +546,7 @@ function InlineRichTextDocumentCard({
         setIsKeyboardActive(false);
       }}
     >
-      <div className="min-h-0 flex-1 overflow-hidden rounded-md bg-white px-3 py-2 [&_.ProseMirror]:h-full [&_.ProseMirror]:min-h-full [&_.ProseMirror]:overflow-y-auto [&_.ProseMirror]:overflow-x-hidden">
+      <div className="rounded-md bg-white px-3 py-2 [&_.ProseMirror]:min-h-[180px] [&_.ProseMirror]:overflow-visible [&_.ProseMirror]:overflow-x-hidden">
         {editor ? <EditorContent editor={editor} /> : null}
       </div>
       {isEditing && !hideActionBar ? (

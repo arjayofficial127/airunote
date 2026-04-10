@@ -25,6 +25,7 @@ import { ErrorState } from '@/components/airunote/components/ErrorState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useDeleteFolder } from '@/components/airunote/hooks/useDeleteFolder';
 import { useDeleteDocument } from '@/components/airunote/hooks/useDeleteDocument';
+import { useUpdateFolder } from '@/components/airunote/hooks/useUpdateFolder';
 import { useFolderLenses, useLens, useUpdateLensItems, useUpdateFolderLens, useDeleteLens, useSetFolderDefaultLens } from '@/hooks/useAirunoteLenses';
 import { buildLensProjection } from '@/components/airunote/utils/lensProjection';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
@@ -40,7 +41,6 @@ import {
   type CanvasPendingChangesState,
 } from '@/components/airunote/lenses/CanvasLens';
 import { StudyLensRenderer } from '@/components/airunote/lenses/StudyLensRenderer';
-import { CreateEntryActions } from '@/components/airunote/components/CreateEntryActions';
 import { LensToolbar } from '@/components/airunote/components/LensToolbar';
 import { FolderCanvasTopOverlay } from './_components/FolderCanvasTopOverlay';
 import {
@@ -55,11 +55,36 @@ import {
   type LensAppearancePresetId,
   type LensCanvasTheme,
 } from '@/components/airunote/utils/canvasTheme';
+import { getFolderTypeIcon } from '@/components/airunote/utils/folderTypeIcon';
 import type { FolderCanvasPdfExportItem } from '@/components/airunote/utils/exportFolderCanvasPdf';
 import Link from 'next/link';
-import type { AiruFolder, AiruDocument } from '@/components/airunote/types';
+import type { AiruFolder, AiruDocument, AiruFolderType } from '@/components/airunote/types';
 import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 import type { LensItemInput } from '@/lib/api/airunoteLensesApi';
+
+const FOLDER_TYPE_OPTIONS: AiruFolderType[] = [
+  'box',
+  'book',
+  'board',
+  'project',
+  'pipeline',
+  'ledger',
+  'wiki',
+  'notebook',
+  'journal',
+  'contacts',
+  'canvas',
+  'manual',
+  'collection',
+];
+
+function formatFolderTypeLabel(type: AiruFolderType | undefined | null) {
+  if (!type) {
+    return 'Folder';
+  }
+
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
 
 export default function FolderViewPage() {
   const params = useParams();
@@ -79,6 +104,10 @@ export default function FolderViewPage() {
   const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
   const [isEditLensModalOpen, setIsEditLensModalOpen] = useState(false);
   const [editingLens, setEditingLens] = useState<AiruLens | null>(null);
+  const [isEditingStudyFolderName, setIsEditingStudyFolderName] = useState(false);
+  const [editingStudyFolderName, setEditingStudyFolderName] = useState('');
+  const [isEditingStudyFolderType, setIsEditingStudyFolderType] = useState(false);
+  const [editingStudyFolderType, setEditingStudyFolderType] = useState<AiruFolderType>('box');
   const [deleteLensModal, setDeleteLensModal] = useState<AiruLens | null>(null);
   const [isPasteDockOpen, setIsPasteDockOpen] = useState(false);
   const [moveFolderModal, setMoveFolderModal] = useState<AiruFolder | null>(null);
@@ -136,6 +165,7 @@ export default function FolderViewPage() {
 
   const deleteFolder = useDeleteFolder();
   const deleteDocument = useDeleteDocument();
+  const updateFolder = useUpdateFolder();
 
   // Get data from store (metadata loaded by AirunoteDataProvider)
   const {
@@ -151,6 +181,15 @@ export default function FolderViewPage() {
 
   // Get current folder
   const currentFolder = folderId ? getFolderById(folderId) : null;
+
+  useEffect(() => {
+    if (!currentFolder) {
+      return;
+    }
+
+    setEditingStudyFolderName(currentFolder.humanId);
+    setEditingStudyFolderType(currentFolder.type || 'box');
+  }, [currentFolder]);
 
   // Fetch folder lenses
   const { data: folderLenses = [], isLoading: isLoadingLenses, refetch: refetchFolderLenses } = useFolderLenses(
@@ -883,6 +922,93 @@ export default function FolderViewPage() {
     { id: '', name: 'Home' },
     ...breadcrumbPath,
   ];
+  const studyChildFolders = folderId ? getFilteredFolders(folderId) : [];
+  const studyDocuments = folderId ? getFilteredDocuments(folderId) : [];
+  const studyFolderTypeLabel = currentFolder?.type
+    ? formatFolderTypeLabel(currentFolder.type)
+    : 'Folder';
+  const studyFolderTypeIcon = getFolderTypeIcon(currentFolder?.type);
+  const studyFolderDescription =
+    currentFolder && typeof currentFolder.metadata?.description === 'string'
+      ? currentFolder.metadata.description.trim()
+      : '';
+  const studyLatestUpdatedAt = studyDocuments.reduce<Date | null>((latest, document) => {
+    const nextDate = document.updatedAt ? new Date(document.updatedAt) : null;
+    if (!nextDate || Number.isNaN(nextDate.getTime())) {
+      return latest;
+    }
+    if (!latest || nextDate.getTime() > latest.getTime()) {
+      return nextDate;
+    }
+    return latest;
+  }, null);
+  const studyHeaderMetadataText = [
+    studyDocuments.length > 0 ? `${studyDocuments.length} ${studyDocuments.length === 1 ? 'note' : 'notes'}` : null,
+    studyChildFolders.length > 0 ? `${studyChildFolders.length} ${studyChildFolders.length === 1 ? 'folder' : 'folders'}` : null,
+    studyLatestUpdatedAt
+      ? `Updated ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(studyLatestUpdatedAt)}`
+      : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' • ');
+
+  const handleSaveStudyFolderName = async () => {
+    if (!currentFolder || !editingStudyFolderName.trim()) return;
+
+    if (editingStudyFolderName.trim() === currentFolder.humanId) {
+      setIsEditingStudyFolderName(false);
+      return;
+    }
+
+    try {
+      await updateFolder.mutateAsync({
+        folderId: currentFolder.id,
+        orgId,
+        userId,
+        humanId: editingStudyFolderName.trim(),
+      });
+      setIsEditingStudyFolderName(false);
+    } catch (err) {
+      setEditingStudyFolderName(currentFolder.humanId);
+    }
+  };
+
+  const handleCancelStudyFolderName = () => {
+    if (currentFolder) {
+      setEditingStudyFolderName(currentFolder.humanId);
+    }
+    setIsEditingStudyFolderName(false);
+  };
+
+  const handleSaveStudyFolderType = async (nextType?: AiruFolderType) => {
+    if (!currentFolder) return;
+
+    const resolvedType = nextType || editingStudyFolderType;
+    if (resolvedType === (currentFolder.type || 'box')) {
+      setIsEditingStudyFolderType(false);
+      return;
+    }
+
+    try {
+      await updateFolder.mutateAsync({
+        folderId: currentFolder.id,
+        orgId,
+        userId,
+        type: resolvedType,
+      });
+      setEditingStudyFolderType(resolvedType);
+      setIsEditingStudyFolderType(false);
+    } catch (err) {
+      setEditingStudyFolderType(currentFolder.type || 'box');
+    }
+  };
+
+  const handleCancelStudyFolderType = () => {
+    if (currentFolder) {
+      setEditingStudyFolderType(currentFolder.type || 'box');
+    }
+    setIsEditingStudyFolderType(false);
+  };
 
   // Render board lens if active
   const shouldRenderBoardLens =
@@ -904,14 +1030,6 @@ export default function FolderViewPage() {
     lensData.lens.type === 'study' &&
     !isLoadingLens;
   const pageShellClassName = 'mx-auto w-full max-w-[1400px] px-6 lg:px-8';
-  const lensHeaderActions = (
-    <CreateEntryActions
-      onCreateFolder={() => setIsCreateFolderModalOpen(true)}
-      onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
-      onPasteDock={() => setIsPasteDockOpen(true)}
-      className="justify-end"
-    />
-  );
 
   // Determine current view mode based on selected lens
   const currentViewMode: 'grid' | 'tree' | 'lens' = 
@@ -958,24 +1076,23 @@ export default function FolderViewPage() {
       ) : shouldRenderBoardLens && lensData ? (
         <div className="h-screen overflow-hidden relative">
           <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0 flex-1">
-                <LensToolbar
-                  viewMode="lens"
-                  selectedLensId={selectedLensId}
-                  currentLens={lensData.lens}
-                  lenses={folderLenses}
-                  folderId={folderId}
-                  orgId={orgId || orgIdFromParams}
-                  placement="inline"
-                  onViewChange={handleViewChangeFromToolbar}
-                  onCreateLens={() => setIsCreateLensModalOpen(true)}
-                  onEditLens={handleEditLensRequest}
-                  onDeleteLens={handleDeleteLensRequest}
-                />
-              </div>
-              <div className="shrink-0">{lensHeaderActions}</div>
-            </div>
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData.lens}
+              lenses={folderLenses}
+              folderId={folderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+              onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
+              onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+              onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+              onPasteDock={() => setIsPasteDockOpen(true)}
+            />
           </div>
           <div className={`${pageShellClassName} pt-6`}>
             <BoardLens
@@ -989,6 +1106,25 @@ export default function FolderViewPage() {
         </div>
       ) : shouldRenderCanvasLens && lensData ? (
         <div className="relative h-screen overflow-hidden">
+          <div className={`${pageShellClassName} pb-0 pt-8`}>
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData.lens}
+              lenses={folderLenses}
+              folderId={folderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+              onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
+              onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+              onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+              onPasteDock={() => setIsPasteDockOpen(true)}
+            />
+          </div>
           <div className="pointer-events-none absolute inset-x-0 top-0 z-40 px-4 pt-4 sm:px-6 sm:pt-6">
             <FolderCanvasTopOverlay
               overlayRef={topLeftOverlayRef}
@@ -1025,27 +1161,6 @@ export default function FolderViewPage() {
               canvasSaveFeedback={canvasSaveFeedback}
               layoutChangeUrgency={layoutChangeUrgency}
             />
-          </div>
-          <div className="pointer-events-none absolute right-4 top-4 z-40 sm:right-6 sm:top-6">
-            <div
-              ref={topRightToolbarRef}
-              className="pointer-events-auto flex max-w-[min(32rem,calc(100vw-2rem))] flex-col gap-2 rounded-2xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-gray-700 dark:bg-gray-800/95"
-            >
-              <LensToolbar
-                viewMode="lens"
-                selectedLensId={selectedLensId}
-                currentLens={lensData.lens}
-                lenses={folderLenses}
-                folderId={folderId}
-                orgId={orgId || orgIdFromParams}
-                placement="inline"
-                onViewChange={handleViewChangeFromToolbar}
-                onCreateLens={() => setIsCreateLensModalOpen(true)}
-                onEditLens={handleEditLensRequest}
-                onDeleteLens={handleDeleteLensRequest}
-              />
-              {lensHeaderActions}
-            </div>
           </div>
           {isCanvasNavigatorOpen && canvasNavigatorPresentation === 'overlay' && (
             <div className="pointer-events-none absolute left-4 top-20 z-40 w-[min(22rem,calc(100vw-2rem))] sm:left-6 sm:top-24">
@@ -1254,24 +1369,136 @@ export default function FolderViewPage() {
       ) : shouldRenderStudyLens && folderId ? (
         <div className="min-h-screen bg-gray-50">
           <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0 flex-1">
-                <LensToolbar
-                  viewMode="lens"
-                  selectedLensId={selectedLensId}
-                  currentLens={lensData?.lens || null}
-                  lenses={folderLenses}
-                  folderId={folderId}
-                  orgId={orgId || orgIdFromParams}
-                  placement="inline"
-                  onViewChange={handleViewChangeFromToolbar}
-                  onCreateLens={() => setIsCreateLensModalOpen(true)}
-                  onEditLens={handleEditLensRequest}
-                  onDeleteLens={handleDeleteLensRequest}
-                />
+            <nav className="mb-4">
+              <ol className="flex items-center space-x-1 text-sm text-gray-500">
+                {fullBreadcrumbPath.map((segment, index) => {
+                  const isLast = index === fullBreadcrumbPath.length - 1;
+                  const href = segment.id === ''
+                    ? `/orgs/${orgIdFromParams}/airunote`
+                    : `/orgs/${orgIdFromParams}/airunote/folder/${segment.id}`;
+
+                  return (
+                    <li key={segment.id || 'home'} className="flex items-center">
+                      {index > 0 && <span className="mx-1.5 text-gray-400">›</span>}
+                      {isLast ? (
+                        <span className="text-gray-700">{segment.name}</span>
+                      ) : (
+                        <Link
+                          href={href}
+                          className="transition-colors duration-150 hover:text-blue-600"
+                        >
+                          {segment.name}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </nav>
+
+            <div className="mb-6">
+              <div className="flex flex-col gap-2">
+                <div className="flex-1">
+                  <div className="mb-0.5 flex items-center gap-1.5 text-sm font-medium text-gray-500">
+                    <span className="text-base" aria-hidden="true">{studyFolderTypeIcon}</span>
+                    {isEditingStudyFolderType ? (
+                      <select
+                        value={editingStudyFolderType}
+                        onChange={(event) => {
+                          const nextType = event.target.value as AiruFolderType;
+                          setEditingStudyFolderType(nextType);
+                          void handleSaveStudyFolderType(nextType);
+                        }}
+                        onBlur={handleCancelStudyFolderType}
+                        autoFocus
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm font-medium text-gray-700 outline-none focus:border-gray-300"
+                      >
+                        {FOLDER_TYPE_OPTIONS.map((type) => (
+                          <option key={type} value={type}>
+                            {formatFolderTypeLabel(type)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingStudyFolderType(true)}
+                        className="rounded-lg px-2 py-1 text-sm font-medium text-gray-500 transition-all duration-150 hover:bg-gray-100 hover:text-gray-900"
+                        title="Edit folder type"
+                      >
+                        {studyFolderTypeLabel}
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="group flex items-center gap-2">
+                        {isEditingStudyFolderName ? (
+                          <input
+                            type="text"
+                            value={editingStudyFolderName}
+                            onChange={(event) => setEditingStudyFolderName(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                void handleSaveStudyFolderName();
+                              } else if (event.key === 'Escape') {
+                                handleCancelStudyFolderName();
+                              }
+                            }}
+                            onBlur={() => void handleSaveStudyFolderName()}
+                            autoFocus
+                            className="min-w-0 flex-1 border-b-2 border-blue-500 bg-transparent text-2xl font-semibold tracking-tight text-gray-900 focus:outline-none sm:text-3xl"
+                          />
+                        ) : (
+                          <>
+                            <h1 className="truncate text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">
+                              {currentFolder?.humanId || 'Folder'}
+                            </h1>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingStudyFolderName(true)}
+                              className="rounded-lg px-2 py-1 text-xs text-gray-500 opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-900"
+                              title="Edit folder name"
+                            >
+                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {studyFolderDescription ? (
+                        <p className="mt-1 truncate text-sm text-gray-600">{studyFolderDescription}</p>
+                      ) : null}
+
+                      {studyHeaderMetadataText ? (
+                        <p className="mt-1 text-sm text-gray-500">{studyHeaderMetadataText}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="shrink-0">{lensHeaderActions}</div>
             </div>
+
+            <LensToolbar
+              viewMode="lens"
+              selectedLensId={selectedLensId}
+              currentLens={lensData?.lens || null}
+              lenses={folderLenses}
+              folderId={folderId}
+              orgId={orgId || orgIdFromParams}
+              placement="inline"
+              onViewChange={handleViewChangeFromToolbar}
+              onCreateLens={() => setIsCreateLensModalOpen(true)}
+              onEditLens={handleEditLensRequest}
+              onDeleteLens={handleDeleteLensRequest}
+              onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
+              onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+              onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+              onPasteDock={() => setIsPasteDockOpen(true)}
+              showSearchRow={false}
+            />
           </div>
           <StudyLensRenderer folderId={folderId} />
         </div>
@@ -1300,6 +1527,9 @@ export default function FolderViewPage() {
           setSelectedLensId(lensId);
         }}
         defaultViewMode={desiredViewMode || undefined}
+        onEditLens={handleEditLensRequest}
+        onDeleteLens={handleDeleteLensRequest}
+        onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
         />
       )}
 

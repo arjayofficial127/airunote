@@ -10,22 +10,42 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAirunoteStore } from '../stores/airunoteStore';
-import { SearchBar } from './SearchBar';
 import { FolderTreeView } from './FolderTreeView';
 import { FolderCountBadge } from './FolderCountBadge';
 import { DocumentList } from './DocumentList';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { EditFolderModal } from './EditFolderModal';
-import { CreateEntryActions } from './CreateEntryActions';
+import { LensToolbar } from './LensToolbar';
 import { getFolderTypeIcon } from '../utils/folderTypeIcon';
-import { useFolderLens } from '../hooks/useFolderLens';
-import { useLens } from '../hooks/useLens';
 import { useUpdateFolder } from '../hooks/useUpdateFolder';
 import { useMoveDocument } from '../hooks/useMoveDocument';
 import { CreateFolderLensModal } from './CreateFolderLensModal';
-import { ViewSwitcher } from './ViewSwitcher';
 import { useFolderLenses } from '@/hooks/useAirunoteLenses';
+import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 import type { AiruFolder, AiruDocument, AiruDocumentMetadata, AiruFolderType } from '../types';
+
+const FOLDER_TYPE_OPTIONS: AiruFolderType[] = [
+  'box',
+  'book',
+  'board',
+  'project',
+  'pipeline',
+  'ledger',
+  'wiki',
+  'notebook',
+  'journal',
+  'contacts',
+  'canvas',
+  'manual',
+  'collection',
+];
+
+function formatFolderTypeLabel(type: AiruFolderType | undefined | null) {
+  if (!type) {
+    return 'Folder';
+  }
+
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
 
 interface FolderViewLayoutProps {
   folderId: string | null;
@@ -45,6 +65,9 @@ interface FolderViewLayoutProps {
   onLensSelected?: (lensId: string | null) => void; // Callback when lens is selected
   selectedLensId?: string | null; // External lens selection (from parent)
   defaultViewMode?: 'grid' | 'tree'; // Default view mode when switching from lens
+  onEditLens?: (lens: AiruLens) => void;
+  onDeleteLens?: (lens: AiruLens) => void;
+  onSetDefaultLens?: (lens: AiruLens) => void;
 }
 
 export function FolderViewLayout({
@@ -65,6 +88,9 @@ export function FolderViewLayout({
   onLensSelected,
   selectedLensId: externalSelectedLensId,
   defaultViewMode,
+  onEditLens,
+  onDeleteLens,
+  onSetDefaultLens,
 }: FolderViewLayoutProps) {
   const params = useParams();
   const orgIdFromParams = params.orgId as string;
@@ -83,8 +109,11 @@ export function FolderViewLayout({
   const [editingFolder, setEditingFolder] = useState<AiruFolder | null>(null);
   const [isEditingFolderName, setIsEditingFolderName] = useState(false);
   const [editingFolderName, setEditingFolderName] = useState('');
+  const [isEditingFolderType, setIsEditingFolderType] = useState(false);
+  const [editingFolderType, setEditingFolderType] = useState<AiruFolderType>('box');
   const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
   const [activeDraggedDocumentId, setActiveDraggedDocumentId] = useState<string | null>(null);
+  const [searchInputValue, setSearchInputValue] = useState('');
   const updateFolder = useUpdateFolder();
   const moveDocument = useMoveDocument();
   const sensors = useSensors(
@@ -105,8 +134,10 @@ export function FolderViewLayout({
     getFolderCounts,
     foldersById,
     documentsById,
+    setSearchQuery: setGlobalSearchQuery,
     updateDocumentMetadata,
   } = useAirunoteStore();
+  const currentSelectedLens = selectedLensId ? folderLenses.find((lens) => lens.id === selectedLensId) ?? null : null;
   
   // Get current folder for inline editing
   const currentFolder = folderId ? foldersById.get(folderId) as AiruFolder | undefined : null;
@@ -116,9 +147,14 @@ export function FolderViewLayout({
   useEffect(() => {
     if (currentFolder && !isRootFolder) {
       setEditingFolderName(currentFolder.humanId);
+      setEditingFolderType(currentFolder.type || 'box');
     }
   }, [currentFolder, isRootFolder]);
-  
+
+  useEffect(() => {
+    setGlobalSearchQuery(searchInputValue);
+  }, [searchInputValue, setGlobalSearchQuery]);
+
   // Handle inline folder name save
   const handleSaveFolderName = async () => {
     if (!currentFolder || isRootFolder || !editingFolderName.trim()) return;
@@ -150,44 +186,77 @@ export function FolderViewLayout({
     setIsEditingFolderName(false);
   };
 
-  // Fetch lens for folder (Phase 1+)
-  // Phase 5: For desktop lenses, we need to fetch via GET /lenses/:id
-  // But FolderViewLayout is folder-based, so we only use useFolderLens here
-  // Desktop lenses will have their own page route
-  const { data: lens, isLoading: isLoadingLens } = useFolderLens({
-    folderId,
-    orgId,
-    userId,
-    enabled: !!folderId && !!orgId && !!userId,
-  });
+  const handleSaveFolderType = async (nextType?: AiruFolderType) => {
+    if (!currentFolder || isRootFolder) return;
+
+    const resolvedType = nextType || editingFolderType;
+    if (resolvedType === (currentFolder.type || 'box')) {
+      setIsEditingFolderType(false);
+      return;
+    }
+
+    try {
+      await updateFolder.mutateAsync({
+        folderId: currentFolder.id,
+        orgId,
+        userId,
+        type: resolvedType,
+      });
+      setEditingFolderType(resolvedType);
+      setIsEditingFolderType(false);
+    } catch (err) {
+      setEditingFolderType(currentFolder.type || 'box');
+    }
+  };
+
+  const handleCancelFolderType = () => {
+    if (currentFolder) {
+      setEditingFolderType(currentFolder.type || 'box');
+    }
+    setIsEditingFolderType(false);
+  };
 
   // Get direct children (filtered by search)
   const childFolders = folderId ? getFilteredFolders(folderId) : [];
   const documents = folderId ? getFilteredDocuments(folderId) : [];
 
-  // Format count text
-  const formatCounts = (folders: number, documents: number) => {
-    const parts: string[] = [];
-    if (folders > 0) {
-      parts.push(`${folders} ${folders === 1 ? 'folder' : 'folders'}`);
-    }
-    if (documents > 0) {
-      parts.push(`${documents} ${documents === 1 ? 'document' : 'documents'}`);
-    }
-    return parts.length > 0 ? parts.join(' • ') : '0 items';
-  };
-
-  const countText = formatCounts(childFolders.length, documents.length);
   const shouldShowViewHeader = !!folderId;
   const pageShellClassName = 'mx-auto w-full max-w-[1400px] overflow-y-auto px-6 py-8 lg:px-8';
-  const actionButtons = (
-    <CreateEntryActions
-      onCreateFolder={onCreateFolder}
-      onCreateDocument={onCreateDocument}
-      onPasteDock={onPasteDock}
-    />
-  );
   const activeDraggedDocument = activeDraggedDocumentId ? documentsById.get(activeDraggedDocumentId) : null;
+  const folderTypeLabel = formatFolderTypeLabel(currentFolder?.type);
+  const folderTypeIcon = getFolderTypeIcon(currentFolder?.type);
+  const folderDescription =
+    currentFolder && typeof currentFolder.metadata?.description === 'string'
+      ? currentFolder.metadata.description.trim()
+      : '';
+  const latestUpdatedAt = documents.reduce<Date | null>((latest, document) => {
+    const nextDate = document.updatedAt ? new Date(document.updatedAt) : null;
+    if (!nextDate || Number.isNaN(nextDate.getTime())) {
+      return latest;
+    }
+    if (!latest || nextDate.getTime() > latest.getTime()) {
+      return nextDate;
+    }
+    return latest;
+  }, null);
+  const headerMetadataParts = [
+    documents.length > 0 ? `${documents.length} ${documents.length === 1 ? 'note' : 'notes'}` : null,
+    childFolders.length > 0 ? `${childFolders.length} ${childFolders.length === 1 ? 'folder' : 'folders'}` : null,
+    latestUpdatedAt
+      ? `Updated ${new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(latestUpdatedAt)}`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+  const headerMetadataText = headerMetadataParts.join(' • ');
+
+  const handleControlViewChange = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
+    setViewMode(view);
+    const newLensId = lensId || null;
+    if (onLensSelected) {
+      onLensSelected(newLensId);
+    } else {
+      setInternalSelectedLensId(newLensId);
+    }
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDraggedDocumentId(String(event.active.id));
@@ -270,125 +339,156 @@ export function FolderViewLayout({
         </nav>
       )}
 
-      {hideHeader && (
-        <div className="mb-6 flex justify-end">
-          {actionButtons}
-        </div>
-      )}
-
       {/* Header */}
       {!hideHeader && (
         <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col gap-2">
             <div className="flex-1">
-              {isEditingFolderName && !isRootFolder && currentFolder ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editingFolderName}
-                    onChange={(e) => setEditingFolderName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSaveFolderName();
-                      } else if (e.key === 'Escape') {
-                        handleCancelFolderName();
-                      }
-                    }}
-                    onBlur={handleSaveFolderName}
-                    autoFocus
-                    className="text-3xl font-bold text-gray-900 border-b-2 border-blue-500 focus:outline-none bg-transparent"
-                  />
-                  <button
-                    onClick={handleSaveFolderName}
-                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                    title="Save"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleCancelFolderName}
-                    className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
-                    title="Cancel"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 group">
-                  <h1 className="text-3xl font-bold text-gray-900">{folderName}</h1>
-                  {!isRootFolder && currentFolder && (
-                    <button
-                      onClick={() => setIsEditingFolderName(true)}
-                      className="opacity-0 group-hover:opacity-100 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-all duration-150"
-                      title="Edit folder name"
+              {currentFolder && !isRootFolder ? (
+                <div className="mb-0.5 flex items-center gap-1.5 text-sm font-medium text-gray-500">
+                  <span className="text-base" aria-hidden="true">{folderTypeIcon}</span>
+                  {isEditingFolderType ? (
+                    <select
+                      value={editingFolderType}
+                      onChange={(event) => {
+                        const nextType = event.target.value as AiruFolderType;
+                        setEditingFolderType(nextType);
+                        void handleSaveFolderType(nextType);
+                      }}
+                      onBlur={handleCancelFolderType}
+                      autoFocus
+                      className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm font-medium text-gray-700 outline-none focus:border-gray-300"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
+                      {FOLDER_TYPE_OPTIONS.map((type) => (
+                        <option key={type} value={type}>
+                          {formatFolderTypeLabel(type)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingFolderType(true)}
+                      className="rounded-lg px-2 py-1 text-sm font-medium text-gray-500 transition-all duration-150 hover:bg-gray-100 hover:text-gray-900"
+                      title="Edit folder type"
+                    >
+                      {folderTypeLabel}
                     </button>
                   )}
                 </div>
-              )}
-              <p className="text-sm text-gray-600 mt-1">{countText}</p>
-              {currentFolder && (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-lg">{getFolderTypeIcon(currentFolder.type)}</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {currentFolder.type ? currentFolder.type.charAt(0).toUpperCase() + currentFolder.type.slice(1) : 'Folder'}
-                  </span>
+              ) : null}
+
+              {isEditingFolderName && !isRootFolder && currentFolder ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <input
+                      type="text"
+                      value={editingFolderName}
+                      onChange={(e) => setEditingFolderName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSaveFolderName();
+                        } else if (e.key === 'Escape') {
+                          handleCancelFolderName();
+                        }
+                      }}
+                      onBlur={handleSaveFolderName}
+                      autoFocus
+                      className="min-w-0 flex-1 border-b-2 border-blue-500 bg-transparent text-2xl font-semibold tracking-tight text-gray-900 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveFolderName}
+                      className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white transition-all duration-150 hover:bg-gray-800"
+                      title="Save"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelFolderName}
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-900"
+                      title="Cancel"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="group flex items-center gap-2">
+                      <h1 className="truncate text-2xl font-semibold tracking-tight text-gray-900 sm:text-3xl">{folderName}</h1>
+                      {!isRootFolder && currentFolder && (
+                        <button
+                          onClick={() => setIsEditingFolderName(true)}
+                          className="rounded-lg px-2 py-1 text-xs text-gray-500 opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-900"
+                          title="Edit folder name"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+
+                    {folderDescription ? (
+                      <p className="mt-1 truncate text-sm text-gray-600">{folderDescription}</p>
+                    ) : null}
+
+                    {headerMetadataText ? (
+                      <p className="mt-1 text-sm text-gray-500">{headerMetadataText}</p>
+                    ) : null}
+                  </div>
+
                 </div>
               )}
             </div>
-            {actionButtons}
           </div>
-          <SearchBar placeholder="Search..." />
         </div>
       )}
 
       {shouldShowViewHeader && (
-        <div className={`${hideHeader ? 'mb-6' : 'mb-8'} overflow-hidden rounded-2xl border border-slate-200/80 bg-white/92 shadow-sm`}>
-          <div className="border-b border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,0.9))] px-4 py-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">View System</div>
-                <div className="mt-1 text-sm font-semibold text-slate-900">Switch between structure, browsing, and lens-based work</div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
-                  {childFolders.length} folder{childFolders.length === 1 ? '' : 's'}
-                </span>
-                <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
-                  {documents.length} document{documents.length === 1 ? '' : 's'}
-                </span>
-                <span className="rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-600">
-                  {folderLenses.length} lens{folderLenses.length === 1 ? '' : 'es'}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="p-4">
-          <ViewSwitcher
+        <div className={hideHeader ? 'mb-6' : 'mb-8'}>
+          <LensToolbar
             viewMode={viewMode}
             selectedLensId={selectedLensId}
+            currentLens={currentSelectedLens}
             lenses={folderLenses}
-            onViewChange={(view, lensId) => {
-              setViewMode(view);
-              const newLensId = lensId || null;
-              if (onLensSelected) {
-                onLensSelected(newLensId);
-              } else {
-                setInternalSelectedLensId(newLensId);
-              }
-            }}
-            onCreateLens={() => setIsCreateLensModalOpen(true)}
             folderId={folderId}
+            orgId={orgId}
+            placement="inline"
+            onViewChange={handleControlViewChange}
+            onCreateLens={() => setIsCreateLensModalOpen(true)}
+            onEditLens={onEditLens}
+            onDeleteLens={onDeleteLens}
+            onSetDefaultLens={onSetDefaultLens}
+            onCreateFolder={onCreateFolder}
+            onCreateDocument={onCreateDocument}
+            onPasteDock={onPasteDock}
+            searchValue={searchInputValue}
+            onSearchChange={setSearchInputValue}
           />
+        </div>
+      )}
+
+      {viewMode === 'tree' && (childFolders.length > 0 || documents.length > 0) && (
+        <div className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">Contents</h2>
           </div>
+          <FolderTreeView
+            folders={childFolders}
+            documents={documents}
+            currentFolderId={folderId ?? undefined}
+            orgId={orgId}
+            parentFolderId={folderId ?? undefined}
+          />
         </div>
       )}
 
       {/* Folders Section */}
-      {childFolders.length > 0 && (
+      {viewMode !== 'tree' && childFolders.length > 0 && (
         <div className="mb-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Folders</h2>
@@ -411,14 +511,6 @@ export function FolderViewLayout({
                 );
               })}
             </div>
-          ) : viewMode === 'tree' ? (
-            <FolderTreeView
-              folders={childFolders}
-              documents={documents}
-              currentFolderId={folderId ?? undefined}
-              orgId={orgId}
-              parentFolderId={folderId ?? undefined}
-            />
           ) : (
             // Lens view - will be handled by parent component
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -442,7 +534,7 @@ export function FolderViewLayout({
       )}
 
       {/* Documents Section */}
-      {documents.length > 0 && (
+      {viewMode !== 'tree' && documents.length > 0 && (
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Documents</h2>
           <DocumentList
