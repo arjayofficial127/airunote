@@ -306,7 +306,6 @@ function NoteRow({
                 </span>
               ) : null}
             </div>
-
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {tags.map((tag) => {
                 const isActive = activeTag === tag;
@@ -355,6 +354,7 @@ function NoteRow({
                 isSaving={isSavingContent}
                 onSave={handleContentSave}
                 onCancel={() => undefined}
+                minimumEditorHeight={0}
               />
             </div>
           </div>

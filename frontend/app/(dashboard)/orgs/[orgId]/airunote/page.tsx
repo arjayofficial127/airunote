@@ -362,7 +362,8 @@ export default function AirunoteHomePage() {
 
   return (
     <>
-      <div className={sectionStackClassName}>
+      <div className="w-full bg-gray-100">
+        <div className={sectionStackClassName}>
         {/* Welcome Header with Latest Document */}
         <div className="mt-2 flex flex-col gap-8">
           <div>
@@ -462,31 +463,44 @@ export default function AirunoteHomePage() {
             </div>
           </section>
         )}
+        </div>
       </div>
+
+      {/* Full-width divider with inward shadow to make the above look inset */}
+      <div
+        className="w-full"
+        style={{
+          height: '3px',
+          background: 'linear-gradient(to bottom, #f9fafb,  #d1d5db )',
+          boxShadow: 'none'
+        }}
+      />
 
       {/* Lens switcher is now handled by ViewSwitcher in FolderViewLayout */}
 
       {/* Render Board Lens if active */}
       {shouldRenderBoardLens ? (
         <div className="min-h-screen bg-gray-50">
-          <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={selectedLensId}
-              currentLens={lensData?.lens || null}
-              lenses={folderLenses}
-              folderId={effectiveRootFolderId}
-              orgId={orgId || orgIdFromParams}
-              placement="inline"
-              onViewChange={handleViewChangeFromToolbar}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              onEditLens={handleEditLensRequest}
-              onDeleteLens={handleDeleteLensRequest}
-              onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
-              onCreateFolder={() => setIsCreateFolderModalOpen(true)}
-              onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
-              onPasteDock={() => setIsPasteDockOpen(true)}
-            />
+          <div className="w-full bg-gray-100" style={{ boxShadow: 'inset 0 -6px 8px -6px rgba(0,0,0,0.18)' }}>
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={selectedLensId}
+                currentLens={lensData?.lens || null}
+                lenses={folderLenses}
+                folderId={effectiveRootFolderId}
+                orgId={orgId || orgIdFromParams}
+                placement="inline"
+                onViewChange={handleViewChangeFromToolbar}
+                onCreateLens={() => setIsCreateLensModalOpen(true)}
+                onEditLens={handleEditLensRequest}
+                onDeleteLens={handleDeleteLensRequest}
+                onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
+                onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+                onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+                onPasteDock={() => setIsPasteDockOpen(true)}
+              />
+            </div>
           </div>
           <div className={`${pageShellClassName} pt-6`}>
             <BoardLens
@@ -500,24 +514,26 @@ export default function AirunoteHomePage() {
         </div>
       ) : shouldRenderCanvasLens ? (
         <div className="h-screen overflow-hidden bg-gray-50">
-          <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={selectedLensId}
-              currentLens={lensData?.lens || null}
-              lenses={folderLenses}
-              folderId={effectiveRootFolderId}
-              orgId={orgId || orgIdFromParams}
-              placement="inline"
-              onViewChange={handleViewChangeFromToolbar}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              onEditLens={handleEditLensRequest}
-              onDeleteLens={handleDeleteLensRequest}
-              onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
-              onCreateFolder={() => setIsCreateFolderModalOpen(true)}
-              onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
-              onPasteDock={() => setIsPasteDockOpen(true)}
-            />
+          <div className="w-full bg-gray-100" style={{ boxShadow: 'inset 0 -6px 8px -6px rgba(0,0,0,0.18)' }}>
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={selectedLensId}
+                currentLens={lensData?.lens || null}
+                lenses={folderLenses}
+                folderId={effectiveRootFolderId}
+                orgId={orgId || orgIdFromParams}
+                placement="inline"
+                onViewChange={handleViewChangeFromToolbar}
+                onCreateLens={() => setIsCreateLensModalOpen(true)}
+                onEditLens={handleEditLensRequest}
+                onDeleteLens={handleDeleteLensRequest}
+                onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
+                onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+                onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+                onPasteDock={() => setIsPasteDockOpen(true)}
+              />
+            </div>
           </div>
           {isLoadingLens ? (
             <div className="flex items-center justify-center h-full">
@@ -535,25 +551,27 @@ export default function AirunoteHomePage() {
         </div>
       ) : shouldRenderStudyLens && effectiveRootFolderId ? (
         <div className="min-h-screen bg-gray-50">
-          <div className={`${pageShellClassName} pb-0 pt-8`}>
-            <LensToolbar
-              viewMode="lens"
-              selectedLensId={selectedLensId}
-              currentLens={lensData?.lens || null}
-              lenses={folderLenses}
-              folderId={effectiveRootFolderId}
-              orgId={orgId || orgIdFromParams}
-              placement="inline"
-              onViewChange={handleViewChangeFromToolbar}
-              onCreateLens={() => setIsCreateLensModalOpen(true)}
-              onEditLens={handleEditLensRequest}
-              onDeleteLens={handleDeleteLensRequest}
-              onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
-              onCreateFolder={() => setIsCreateFolderModalOpen(true)}
-              onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
-              onPasteDock={() => setIsPasteDockOpen(true)}
-              showSearchRow={false}
-            />
+          <div className="w-full bg-gray-100" style={{ boxShadow: 'inset 0 -6px 8px -6px rgba(0,0,0,0.18)' }}>
+            <div className={`${pageShellClassName} pb-0 pt-8`}>
+              <LensToolbar
+                viewMode="lens"
+                selectedLensId={selectedLensId}
+                currentLens={lensData?.lens || null}
+                lenses={folderLenses}
+                folderId={effectiveRootFolderId}
+                orgId={orgId || orgIdFromParams}
+                placement="inline"
+                onViewChange={handleViewChangeFromToolbar}
+                onCreateLens={() => setIsCreateLensModalOpen(true)}
+                onEditLens={handleEditLensRequest}
+                onDeleteLens={handleDeleteLensRequest}
+                onSetDefaultLens={(lens) => void setFolderDefaultLens.mutateAsync({ lensId: lens.id })}
+                onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+                onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
+                onPasteDock={() => setIsPasteDockOpen(true)}
+                showSearchRow={false}
+              />
+            </div>
           </div>
           <StudyLensRenderer folderId={effectiveRootFolderId} />
         </div>

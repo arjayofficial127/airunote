@@ -33,6 +33,7 @@ interface InlineCanvasDocumentCardProps {
   onActionsChange?: (actions: InlineCanvasDocumentCardActions | null) => void;
   onDiffSummaryChange?: (summary: InlineCanvasDocumentDiffSummary | null) => void;
   hideActionBar?: boolean;
+  minimumEditorHeight?: number;
 }
 
 export interface InlineCanvasDocumentCardActions {
@@ -153,6 +154,7 @@ function InlineTextDocumentCard({
   onActionsChange,
   onDiffSummaryChange,
   hideActionBar = false,
+  minimumEditorHeight = 180,
 }: InlineCanvasDocumentCardProps) {
   const [draftContent, setDraftContent] = useState(document?.content ?? '');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -194,8 +196,8 @@ function InlineTextDocumentCard({
   const editorHeight = useMemo(() => {
     const content = draftContent || document?.content || '';
     const lineCount = content.split(/\r\n|\r|\n/).length;
-    return Math.max(180, lineCount * 22 + 40);
-  }, [document?.content, draftContent]);
+    return Math.max(minimumEditorHeight, lineCount * 22 + 40);
+  }, [document?.content, draftContent, minimumEditorHeight]);
 
   const handleSave = useCallback(async () => {
     if (!document || !hasUnsavedChanges) {
@@ -355,6 +357,7 @@ function InlineRichTextDocumentCard({
   onActionsChange,
   onDiffSummaryChange,
   hideActionBar = false,
+  minimumEditorHeight = 180,
 }: InlineCanvasDocumentCardProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
@@ -389,7 +392,7 @@ function InlineRichTextDocumentCard({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none h-full min-h-full overflow-y-auto break-words focus:outline-none',
+        class: 'prose prose-sm max-w-none min-h-[var(--inline-editor-min-height)] break-words focus:outline-none',
       },
       handleKeyDown: (_, event) => {
         if (!isEditing || !enableKeyboardShortcuts || !isKeyboardActive || event.isComposing) {
@@ -546,7 +549,10 @@ function InlineRichTextDocumentCard({
         setIsKeyboardActive(false);
       }}
     >
-      <div className="rounded-md bg-white px-3 py-2 [&_.ProseMirror]:min-h-[180px] [&_.ProseMirror]:overflow-visible [&_.ProseMirror]:overflow-x-hidden">
+      <div
+        className="rounded-md bg-white px-3 py-2 [&_.ProseMirror]:overflow-visible [&_.ProseMirror]:overflow-x-hidden"
+        style={{ ['--inline-editor-min-height' as string]: `${minimumEditorHeight}px` }}
+      >
         {editor ? <EditorContent editor={editor} /> : null}
       </div>
       {isEditing && !hideActionBar ? (
