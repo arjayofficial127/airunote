@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -1 /c/AOTECH/airunote/frontend/components/ | head -30)",
+      "Read(//c/AOTECH/airunote/frontend/components//**)",
+      "Bash(ls -1 /c/AOTECH/airunote/frontend/lib/ | head -30)",
+      "Read(//c/AOTECH/airunote/frontend/lib//**)",
+      "Bash(ls -1 /c/AOTECH/airunote/frontend/hooks/ | head -30)",
+      "Read(//c/AOTECH/airunote/frontend/hooks//**)",
+      "Bash(find /c/AOTECH/airunote/backend-node/src -type d -maxdepth 2 | sort)",
+      "Read(//c/AOTECH/airunote/backend-node/src/**)"
+    ]
+  }
+}
