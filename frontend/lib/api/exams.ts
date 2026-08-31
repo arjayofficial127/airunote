@@ -111,6 +111,7 @@ export interface ExamSectionInput {
 
 export interface ExamInput {
   title: string;
+  publicId?: string;
   description?: string | null;
   status?: ExamStatus;
   durationMinutes?: number;

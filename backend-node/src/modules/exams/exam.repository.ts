@@ -108,6 +108,11 @@ export class ExamRepository extends ExamAttemptRepository {
     return row ? this.hydrateDefinition(row) : null;
   }
 
+  async findExamIdByPublicId(publicId: string): Promise<string | null> {
+    const [row] = await db.select({ id: examsTable.id }).from(examsTable).where(eq(examsTable.publicId, publicId)).limit(1);
+    return row?.id ?? null;
+  }
+
   async getById(examId: string): Promise<ExamDefinitionView | null> {
     const [row] = await db.select().from(examsTable).where(eq(examsTable.id, examId)).limit(1);
     return row ? this.hydrateDefinition(row) : null;
@@ -163,6 +168,7 @@ export class ExamRepository extends ExamAttemptRepository {
         id: examId,
         orgId,
         createdByUserId: userId,
+        publicId: input.publicId,
         title: input.title,
         description: input.description ?? null,
         status: input.status ?? 'draft',
@@ -245,6 +251,7 @@ export class ExamRepository extends ExamAttemptRepository {
     await db.transaction(async (transaction) => {
       await transaction.update(examsTable).set({
         title: input.title,
+        publicId: input.publicId ?? existing.publicId,
         description: input.description ?? null,
         status: input.status ?? existing.status,
         durationMinutes: input.durationMinutes ?? existing.durationMinutes,

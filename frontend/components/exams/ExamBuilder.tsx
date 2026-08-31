@@ -1,5 +1,6 @@
 'use client';
 
+import axios from 'axios';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { examsApi, type ExamDefinition, type ExamInput } from '@/lib/api/exams';
@@ -45,7 +46,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
         await examsApi.replaceDefinition(orgId, examId, draft);
       } else {
         await examsApi.update(orgId, examId, {
-          title: draft.title, description: draft.description, status: draft.status,
+          title: draft.title, publicId: draft.publicId, description: draft.description, status: draft.status,
           durationMinutes: draft.durationMinutes, oneQuestionAtATime: draft.oneQuestionAtATime,
           preventFocusLoss: draft.preventFocusLoss, maxAttempts: draft.maxAttempts, reviewMode: draft.reviewMode,
           shuffleQuestions: draft.shuffleQuestions, shuffleOptions: draft.shuffleOptions,
@@ -63,7 +64,10 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
       setMessage('Exam saved. Reports use the latest grading rules.');
     } catch (error) {
       console.error('Failed to save exam', error);
-      setMessage('Could not save the exam. Check required fields and correct answers.');
+      const apiError = axios.isAxiosError<{ error?: { message?: string } }>(error)
+        ? error.response?.data?.error?.message
+        : null;
+      setMessage(apiError || 'Could not save the exam. Check required fields and correct answers.');
     } finally {
       setSaving(false);
     }

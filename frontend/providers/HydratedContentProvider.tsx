@@ -141,16 +141,22 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
    * - Guards against null activeOrgId
    * - Deduplicates per (entityType + id)
    */
-  const hydrate = useCallback(async (entityType: HydratedEntityType, id: string) => {
+  const hydrate = useCallback(async (
+    entityType: HydratedEntityType,
+    id: string,
+    options?: { force?: boolean; background?: boolean },
+  ) => {
     const requestKey = `${entityType}:${id}`;
     
     // Cache-first: Check if entity is already hydrated
     // Use ref to avoid recreating callback on every state change
     const existingRecord = hydratedRef.current[entityType]?.[id];
-    if (existingRecord) {
+    if (existingRecord && !options?.force) {
       // Entity already hydrated, return immediately (cache-first navigation)
       return;
     }
+
+    const isBackgroundRefresh = Boolean(options?.background && existingRecord);
     
     // If there's already an in-flight request, wait for it
     const existingRequest = inFlightRequestsRef.current[requestKey];
@@ -170,7 +176,9 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
     // Create new request promise
     const requestPromise = (async () => {
       try {
-        setState((prev) => ({ ...prev, status: 'loading', error: null }));
+        if (!isBackgroundRefresh) {
+          setState((prev) => ({ ...prev, status: 'loading', error: null }));
+        }
 
         let hydratedData: HydratedEntityData;
         let updatedAt: string;
@@ -217,11 +225,13 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
         }));
       } catch (err: any) {
         console.error(`[HydratedContentProvider] Failed to hydrate ${entityType} ${id}:`, err);
-        setState((prev) => ({
-          ...prev,
-          error: err.response?.data?.error?.message || `Failed to hydrate ${entityType}`,
-          status: 'error',
-        }));
+        if (!isBackgroundRefresh) {
+          setState((prev) => ({
+            ...prev,
+            error: err.response?.data?.error?.message || `Failed to hydrate ${entityType}`,
+            status: 'error',
+          }));
+        }
       } finally {
         // Clear in-flight request
         delete inFlightRequestsRef.current[requestKey];
@@ -296,17 +306,7 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
   }, []);
 
   const refreshEntity = useCallback(async (entityType: HydratedEntityType, id: string) => {
-    delete hydratedRef.current[entityType][id];
-    setState((prev) => ({
-      ...prev,
-      hydrated: {
-        ...prev.hydrated,
-        [entityType]: Object.fromEntries(
-          Object.entries(prev.hydrated[entityType]).filter(([entityId]) => entityId !== id),
-        ),
-      },
-    }));
-    await hydrate(entityType, id);
+    await hydrate(entityType, id, { force: true, background: true });
   }, [hydrate]);
 
   // Reset hydrated data when activeOrgId changes

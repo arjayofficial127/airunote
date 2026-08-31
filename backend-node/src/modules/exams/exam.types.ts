@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 export const examStatusSchema = z.enum(['draft', 'published', 'closed']);
 export const examReviewModeSchema = z.enum(['none', 'respondent_answers', 'with_correct_answers']);
+export const examPublicIdSchema = z.string()
+  .trim()
+  .toLowerCase()
+  .min(3, 'Public exam ID must be at least 3 characters')
+  .max(80, 'Public exam ID must be at most 80 characters')
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/, 'Use lowercase letters, numbers, and hyphens; start and end with a letter or number');
 export const examQuestionTypeSchema = z.enum([
   'single_choice',
   'multiple_choice',
@@ -51,6 +57,7 @@ export const examQuestionInputSchema = z.object({
 
 export const createExamSchema = z.object({
   title: z.string().trim().min(1).max(300),
+  publicId: examPublicIdSchema.optional(),
   description: z.string().max(10000).nullable().optional(),
   status: examStatusSchema.optional(),
   durationMinutes: z.number().int().min(1).max(1440).optional(),

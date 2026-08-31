@@ -3,6 +3,7 @@ import type { ExamDefinition, ExamInput } from '@/lib/api/exams';
 export function examDefinitionToInput(exam: ExamDefinition): ExamInput {
   return {
     title: exam.title,
+    publicId: exam.publicId,
     description: exam.description,
     status: exam.status,
     durationMinutes: exam.durationMinutes,

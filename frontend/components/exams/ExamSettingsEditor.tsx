@@ -20,6 +20,21 @@ export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps)
             <input value={value.title} onChange={(event) => update('title', event.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
           </label>
           <label className="block text-sm font-medium text-slate-700">
+            Public exam ID
+            <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-300 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+              <span className="border-r border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">/exam/</span>
+              <input
+                value={value.publicId ?? ''}
+                maxLength={80}
+                spellCheck={false}
+                onChange={(event) => update('publicId', event.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+                className="min-w-0 flex-1 px-4 py-3 font-mono text-sm text-slate-900 outline-none"
+                placeholder="fy2026-autumn-knowledge-check"
+              />
+            </div>
+            <span className="mt-2 block text-xs leading-5 text-slate-500">Use 3–80 lowercase letters, numbers, and hyphens. Changing this value replaces the old public link.</span>
+          </label>
+          <label className="block text-sm font-medium text-slate-700">
             Instructions
             <textarea value={value.description ?? ''} onChange={(event) => update('description', event.target.value)} rows={6} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 leading-6 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
           </label>

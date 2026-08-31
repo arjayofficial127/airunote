@@ -14,7 +14,7 @@ const questionSchema = z.object({
   correctAnswers: z.array(z.string()).optional(), options: z.array(optionSchema).optional(),
 });
 const examInputSchema = z.object({
-  title: z.string().min(1), description: z.string().nullable().optional(), status: z.enum(['draft', 'published', 'closed']).optional(),
+  title: z.string().min(1), publicId: z.string().trim().toLowerCase().min(3).max(80).regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/).optional(), description: z.string().nullable().optional(), status: z.enum(['draft', 'published', 'closed']).optional(),
   durationMinutes: z.number().int().min(1).optional(), oneQuestionAtATime: z.boolean().optional(), preventFocusLoss: z.boolean().optional(),
   maxAttempts: z.number().int().min(1).optional(), reviewMode: z.enum(['none', 'respondent_answers', 'with_correct_answers']).optional(),
   shuffleQuestions: z.boolean().optional(), shuffleOptions: z.boolean().optional(), requireEmail: z.boolean().optional(),

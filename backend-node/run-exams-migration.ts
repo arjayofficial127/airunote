@@ -37,6 +37,7 @@ async function main(): Promise<void> {
   const migrationPaths = [
     path.resolve(__dirname, 'drizzle', '0025_add_resident_exams.sql'),
     path.resolve(__dirname, 'drizzle', '0026_defer_exam_answer_question_constraint.sql'),
+    path.resolve(__dirname, 'drizzle', '0027_custom_exam_public_ids.sql'),
   ];
   const sql = postgres(connectionString, { max: 1, prepare: false, connect_timeout: 30 });
   try {
@@ -55,6 +56,14 @@ async function main(): Promise<void> {
     const present = new Set(rows.map((row) => row.table_name));
     const missing = expectedTables.filter((table) => !present.has(table));
     if (missing.length > 0) throw new Error(`Migration verification failed; missing: ${missing.join(', ')}`);
+    const [publicIdColumn] = await sql<{ data_type: string; character_maximum_length: number | null }[]>`
+      SELECT data_type, character_maximum_length
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'exams' AND column_name = 'public_id'
+    `;
+    if (publicIdColumn?.data_type !== 'character varying' || publicIdColumn.character_maximum_length !== 80) {
+      throw new Error('Migration verification failed; exams.public_id is not varchar(80)');
+    }
     console.log(`[Exams migration] Verified ${rows.length} resident exam tables.`);
   } finally {
     await sql.end();

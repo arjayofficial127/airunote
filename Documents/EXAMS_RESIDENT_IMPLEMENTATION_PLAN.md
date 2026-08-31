@@ -24,7 +24,7 @@ Make Exams the highlighted, primary workspace journey for exam-focused users whi
 
 ## Answering and identity
 
-- Public exam link; respondents do not need an airunote account.
+- Public exam link with an editable, globally unique public ID; respondents can open it whether signed out or already signed into airunote.
 - Capture name plus optional email/student ID, a local device identifier, and hashed request signals.
 - Persist a deterministic shuffled order per attempt.
 - Autosave each answer, update last-active time, and retain incomplete work.

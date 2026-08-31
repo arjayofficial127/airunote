@@ -66,6 +66,14 @@ function shuffleKeepingPinnedSlots<T extends { pinned: boolean }>(items: T[], en
 export class ExamService {
   constructor(private readonly repository = new ExamRepository()) {}
 
+  private async assertPublicIdAvailable(publicId: string | undefined, examId?: string): Promise<void> {
+    if (!publicId) return;
+    const ownerId = await this.repository.findExamIdByPublicId(publicId);
+    if (ownerId && ownerId !== examId) {
+      throw new ExamServiceError('That public exam ID is already in use', 409, 'EXAM_PUBLIC_ID_TAKEN');
+    }
+  }
+
   private hash(value: string): string {
     const pepper = process.env.EXAM_IDENTITY_PEPPER || process.env.JWT_SECRET || 'airunote-exam-local';
     return createHash('sha256').update(`${pepper}:${value}`).digest('hex');
@@ -98,6 +106,7 @@ export class ExamService {
   }
 
   async create(orgId: string, userId: string, input: CreateExamInput): Promise<ExamDefinitionView> {
+    await this.assertPublicIdAvailable(input.publicId);
     if (input.status === 'published' && (input.questions?.length ?? 0) === 0) {
       throw new ExamServiceError('Add at least one question before publishing', 400, 'EXAM_EMPTY');
     }
@@ -109,6 +118,7 @@ export class ExamService {
 
   async update(orgId: string, examId: string, input: UpdateExamInput): Promise<ExamDefinitionView> {
     const existing = await this.get(orgId, examId);
+    await this.assertPublicIdAvailable(input.publicId, examId);
     if (input.status === 'published' && existing.questions.length === 0) {
       throw new ExamServiceError('Add at least one question before publishing', 400, 'EXAM_EMPTY');
     }
@@ -124,6 +134,7 @@ export class ExamService {
 
   async replaceDefinition(orgId: string, examId: string, input: CreateExamInput): Promise<ExamDefinitionView> {
     const existing = await this.get(orgId, examId);
+    await this.assertPublicIdAvailable(input.publicId, examId);
     if (existing.attemptCount > 0) {
       throw new ExamServiceError('Question structure is locked after the first attempt. Grading and correct answers remain editable.', 409, 'EXAM_STRUCTURE_LOCKED');
     }

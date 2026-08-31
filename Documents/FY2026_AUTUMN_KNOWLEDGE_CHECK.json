@@ -1,0 +1,449 @@
+{
+  "title": "FY2026 Autumn Knowledge Check",
+  "publicId": "fy2026-autumn-knowledge-check",
+  "description": "Start with Integrity and Honesty",
+  "status": "draft",
+  "durationMinutes": 20,
+  "oneQuestionAtATime": true,
+  "preventFocusLoss": true,
+  "maxAttempts": 3,
+  "reviewMode": "respondent_answers",
+  "shuffleQuestions": false,
+  "shuffleOptions": false,
+  "requireEmail": false,
+  "requireIdentifier": false,
+  "startsAt": null,
+  "endsAt": null,
+  "sections": [
+    {
+      "key": "integrity-and-honesty",
+      "title": "Start with Integrity and Honesty",
+      "position": 0,
+      "pinned": true
+    }
+  ],
+  "questions": [
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "What is the Starbucks Lucky Bag, its price, and its selling date?",
+      "position": 0,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q01-a", "label": "Mystery bundle of pre-selected merchandise from September 21–25 for 2,495 (min. 2 items), retail value 3,600–4,000" },
+        { "key": "q01-b", "label": "Mystery bundle of pre-selected merchandise from September 8–13 for 2,495 (min. 2 items), retail value 3,600–4,000" },
+        { "key": "q01-c", "label": "Mystery bundle of pre-selected merchandise from September 25–30 for 2,495 (min. 2 items), retail value 3,600–4,000" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "What is the new selling price of Core RTD Noah’s Juice Apple, Orange, and Green, effective September 8?",
+      "position": 1,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q02-a", "label": "195" },
+        { "key": "q02-b", "label": "200" },
+        { "key": "q02-c", "label": "205" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Limited-time offer food. Tender chicken tossed in bold, spicy peri peri sauce, wrapped in a soft tortilla for a flavorful, satisfying meal with every bite.",
+      "position": 2,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q03-a", "label": "Blazing Chicken Teri Wrap" },
+        { "key": "q03-b", "label": "Blazing Chicken Peri Wrap" },
+        { "key": "q03-c", "label": "Blazing Chicken Meri Wrap" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "What is the selling tier of Bearista Siren and Snoopy Glass Cold Cup?",
+      "position": 3,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q04-a", "label": "Tier 1 – No purchase limit. Merchandise allocation on display at merchandise bay with no display restrictions." },
+        { "key": "q04-b", "label": "Tier 2 – Purchase limit strictly applied. Merchandise allocation on display at merchandise bay, with no display restrictions." },
+        { "key": "q04-c", "label": "Tier 3 – Purchase limit strictly applied. No actual merchandise on display at merchandise bay, limited to picture standee only for reference to reduce potential conflict." }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Target USD for Pumpkin Spice Latte (Hot/Iced)?",
+      "position": 4,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q05-a", "label": "5" },
+        { "key": "q05-b", "label": "10" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "From Asia Pacific growing region, a blonde roast, with flavor notes of Kalamansi and White Pepper. This blend brings together coffees from Sumatra, Papua New Guinea, Sulawesi, and Java—volcanic islands known for their tropical climate, high elevations, and dedicated smallholder farmers.",
+      "position": 5,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q06-a", "label": "Starbucks Sejati Blend" },
+        { "key": "q06-b", "label": "Starbucks Sulawesi Blend" },
+        { "key": "q06-c", "label": "Starbucks Java Blend" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "What’s the new Core RTE?",
+      "position": 6,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q07-a", "label": "Hazelnut Macchiato Popcorn and Pretzel" },
+        { "key": "q07-b", "label": "Caramel Macchiato Popcorn and Pretzel" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Can customers customize other beverages with promotional ingredients?",
+      "position": 7,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q08-a", "label": "Yes. Make it right for every customer, and always serve with the heart." },
+        { "key": "q08-b", "label": "No. Due to the limited availability of promotional ingredients, these may not be added into other beverages." }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "New Core Food. Coffee-inspired mochi doughnut with creamy latte notes and a soft, chewy texture for a delightful blend of rich flavor and comforting sweetness.",
+      "position": 8,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q09-a", "label": "Coffee Mochi Doughnut" },
+        { "key": "q09-b", "label": "Mocha Mochi Doughnut" },
+        { "key": "q09-c", "label": "Latte Mochi Doughnut" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Raspberry Blackcurrant juice Mark Out date?",
+      "position": 9,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q10-a", "label": "14 days Chilled" },
+        { "key": "q10-b", "label": "7 days Chilled" },
+        { "key": "q10-c", "label": "3 days Chilled" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "3 Key Priorities that bring Service With A Heart to life in the store, from the moment a customer joins the queue, to the moment their order is in their hands.",
+      "position": 10,
+      "required": true,
+      "graded": false,
+      "points": 2,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q11-a", "label": "1. Queue & POS; 2. Beverage Production; 3. Hand-Off" },
+        { "key": "q11-b", "label": "1. Queue & Merch; 2. Beverage Production; 3. Hand-Off" },
+        { "key": "q11-c", "label": "1. Queue & POS; 2. Cold Beverage; 3. Hand-Off" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "true_false",
+      "prompt": "The proper shaking of an Iced Shaken Espresso creates fine, creamy micro-foam, delivers a silky texture and near-freezing temperature, and enhances the beverage’s overall flavor, consistency, and espresso-forward character.",
+      "position": 11,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": []
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "The two allergens commonly found in Roasted Macadamia Oatmilk Iced Shaken Espresso are:",
+      "position": 12,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q13-a", "label": "Oat and Tree Nuts" },
+        { "key": "q13-b", "label": "Oat and Walnuts" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "This coffee celebrates our heritage of sourcing and roasting the highest quality beans. Named for the year Starbucks began as an independent roaster in Seattle. It is also one of the few coffees developed with direct customer input through taste testing. The result is a bold and satisfying cup with a full body and low acidity.",
+      "position": 13,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q14-a", "label": "Starbucks 1971 Dark Roast" },
+        { "key": "q14-b", "label": "Starbucks 1972 Dark Roast" },
+        { "key": "q14-c", "label": "Starbucks 1973 Dark Roast" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Limited-offer merchandise that brings the season of warmth and togetherness; reconnect with your inner child and celebrate the simple moments that bring people closer together.",
+      "position": 14,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q15-a", "label": "The Snow White and the Seven Dwarfs" },
+        { "key": "q15-b", "label": "Winnie The Pooh" },
+        { "key": "q15-c", "label": "Beauty And The Beast" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "This is a Signature espresso and steamed milk combined with a blend of pumpkin and traditional fall spice flavors. Topped with whipped cream and Cinnamon powder.",
+      "position": 15,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q16-a", "label": "Pumpkin Spice Latte" },
+        { "key": "q16-b", "label": "Pumpkin Spice Mocha" },
+        { "key": "q16-c", "label": "Pumpkin Spice Espresso" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Starbucks Rewards members earn Double Stars on the following dates:",
+      "position": 16,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q17-a", "label": "September 15 and 22" },
+        { "key": "q17-b", "label": "September 16 and 23" },
+        { "key": "q17-c", "label": "September 17 and 24" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Raspberry Blackcurrant blended beverage with Dark Mocha sauce. Topped with whipped cream, Dark Mocha sauce and cat ear and tail-shaped chocolate topping.",
+      "position": 17,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q18-a", "label": "Black Cat Frappuccino Blended Beverage" },
+        { "key": "q18-b", "label": "Dark Cat Frappuccino Blended Beverage" },
+        { "key": "q18-c", "label": "Raspberry Cat Frappuccino Blended Beverage" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "What are the four key MDGs (Merchandise Display Guidelines) you will follow to ensure that our merchandise remains clean, organized, and well-presented at all times?",
+      "position": 18,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q19-a", "label": "Height, Product Repetition, Pattern Blocking, Color Blocking" },
+        { "key": "q19-b", "label": "Weight, Item Repetition, Pattern Blocking, Color Blocking" },
+        { "key": "q19-c", "label": "Height, Product Repetition, Design Blocking, Tone Blocking" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "If there is defective merchandise in a Lucky Bag, can we have it replaced?",
+      "position": 19,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q20-a", "label": "Yes, with another core merchandise" },
+        { "key": "q20-b", "label": "Yes, with another Lucky Bag" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "BONUS 3 Points: I commit in doing my part in ensuring the success of the promotion by knowing the promo mechanics and guidelines while delivering the Starbucks Experience to customers.",
+      "position": 20,
+      "required": true,
+      "graded": false,
+      "points": 3,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q21-a", "label": "Yes. Of course" },
+        { "key": "q21-b", "label": "No. Just don’t like" },
+        { "key": "q21-c", "label": "Maybe. If not busy" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "This merchandise collaboration brings together Starbucks’ iconic autumn moments with beloved characters to create a meaningful celebration of warmth, connection, and kindness.",
+      "position": 21,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q22-a", "label": "Snoopy + Starbucks" },
+        { "key": "q22-b", "label": "Peanuts + Starbucks" },
+        { "key": "q22-c", "label": "Charlie Brown + Starbucks" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Minimum load for Mid-Autumn Festival and Pumpkin Spice Starbucks Card",
+      "position": 22,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q23-a", "label": "Mid Autumn – 300 / Pumpkin Spice – 500" },
+        { "key": "q23-b", "label": "Mid Autumn – 500 / Pumpkin Spice – 1000" },
+        { "key": "q23-c", "label": "Mid Autumn – 500 / Pumpkin Spice – 300" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Autumn launching date",
+      "position": 23,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q24-a", "label": "September 8 – November 2, 2026" },
+        { "key": "q24-b", "label": "September 9 – November 3, 2026" },
+        { "key": "q24-c", "label": "September 10 – November 4, 2026" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "This is a Signature espresso mixed with Roasted Macadamia flavored syrup. Topped with oatmilk and Macadamia topping.",
+      "position": 24,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q25-a", "label": "Rustic Macademia Oatmilk Iced Shaken Espresso" },
+        { "key": "q25-b", "label": "Roasted Macademia Oatmilk Iced Shaken Espresso" },
+        { "key": "q25-c", "label": "Toasted Macademia Oatmilk Iced Shaken Espresso" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Pumpkin Spice Sauce Mark Out date?",
+      "position": 25,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q26-a", "label": "14 days Ambient" },
+        { "key": "q26-b", "label": "7 days Ambient" },
+        { "key": "q26-c", "label": "3 days Ambient" }
+      ]
+    },
+    {
+      "sectionKey": "integrity-and-honesty",
+      "type": "single_choice",
+      "prompt": "Limited-offer merchandise featuring dual sipping rims, the cup reveals different flavor expressions from the same beverage, supporting coffee education, guided tastings, and meaningful engagement.",
+      "position": 26,
+      "required": true,
+      "graded": false,
+      "points": 1,
+      "pinned": false,
+      "correctAnswers": [],
+      "options": [
+        { "key": "q27-a", "label": "Starbucks Sensory Cup" },
+        { "key": "q27-b", "label": "Philippine Exclusive Satin Era" },
+        { "key": "q27-c", "label": "Siren The Muse" }
+      ]
+    }
+  ]
+}

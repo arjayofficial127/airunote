@@ -763,7 +763,7 @@ export const examsTable = pgTable('exams', {
   title: varchar('title', { length: 300 }).notNull(),
   description: text('description'),
   status: varchar('status', { length: 20 }).notNull().default('draft'),
-  publicId: uuid('public_id').notNull().defaultRandom().unique(),
+  publicId: varchar('public_id', { length: 80 }).notNull().default(sql`gen_random_uuid()::text`).unique(),
   durationMinutes: integer('duration_minutes').notNull().default(20),
   oneQuestionAtATime: boolean('one_question_at_a_time').notNull().default(true),
   preventFocusLoss: boolean('prevent_focus_loss').notNull().default(true),

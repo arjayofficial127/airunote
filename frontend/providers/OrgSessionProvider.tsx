@@ -440,6 +440,12 @@ export function OrgSessionProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
+    // Public exam links are standalone respondent routes. An authenticated
+    // Airunote session must never pull the respondent back into the admin app.
+    if (pathname?.startsWith('/exam/')) {
+      return;
+    }
+
     // Prevent infinite loops - skip if we're already syncing
     if (isSyncingRouteRef.current) {
       return;
