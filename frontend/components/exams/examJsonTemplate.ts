@@ -19,7 +19,7 @@ const examInputSchema = z.object({
   durationMinutes: z.number().int().min(1).optional(), oneQuestionAtATime: z.boolean().optional(), preventFocusLoss: z.boolean().optional(),
   maxAttempts: z.number().int().min(1).optional(), reviewMode: z.enum(['none', 'respondent_answers', 'with_correct_answers']).optional(),
   shuffleQuestions: z.boolean().optional(), shuffleOptions: z.boolean().optional(), requireEmail: z.boolean().optional(),
-  requireIdentifier: z.boolean().optional(), startsAt: z.string().nullable().optional(), endsAt: z.string().nullable().optional(),
+  requireIdentifier: z.boolean().optional(), startsAt: z.string().datetime().nullable().optional(), endsAt: z.string().datetime().nullable().optional(),
   sections: z.array(sectionSchema).optional(), questions: z.array(questionSchema).optional(),
 });
 
@@ -40,6 +40,8 @@ export const examJsonTemplate: ExamInput = {
   shuffleOptions: true,
   requireEmail: false,
   requireIdentifier: true,
+  startsAt: null,
+  endsAt: null,
   sections: [
     { key: 'instructions', title: 'Core questions', position: 0, pinned: true },
   ],

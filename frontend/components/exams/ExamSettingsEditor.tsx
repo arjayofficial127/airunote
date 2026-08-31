@@ -7,6 +7,19 @@ interface ExamSettingsEditorProps {
   onChange: (value: ExamInput) => void;
 }
 
+function toLocalDateTime(value: string | null | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function toIsoDateTime(value: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
 export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps) {
   const update = <K extends keyof ExamInput>(key: K, fieldValue: ExamInput[K]) => onChange({ ...value, [key]: fieldValue });
 
@@ -44,6 +57,14 @@ export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps)
             <label className="text-sm font-medium text-slate-700">Status<select value={value.status ?? 'draft'} onChange={(event) => update('status', event.target.value as ExamStatus)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="draft">Draft</option><option value="published">Published</option><option value="closed">Closed</option></select></label>
           </div>
           <label className="block text-sm font-medium text-slate-700">After submission<select value={value.reviewMode ?? 'respondent_answers'} onChange={(event) => update('reviewMode', event.target.value as ExamReviewMode)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="respondent_answers">Show their answers, hide correct answers</option><option value="with_correct_answers">Show answers and correct answers</option><option value="none">Show completion only</option></select></label>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div><h3 className="text-sm font-semibold text-slate-900">Response window</h3><p className="mt-1 text-xs leading-5 text-slate-500">Optional. Published exams wait until the start time and stop accepting new attempts after the end time.</p></div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-medium text-slate-700">Starts at (optional)<input type="datetime-local" value={toLocalDateTime(value.startsAt)} onChange={(event) => update('startsAt', toIsoDateTime(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5" /></label>
+              <label className="text-sm font-medium text-slate-700">Ends at (optional)<input type="datetime-local" value={toLocalDateTime(value.endsAt)} onChange={(event) => update('endsAt', toIsoDateTime(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5" /></label>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-500">Times use your current device time zone. Clear either field to leave that side of the window open.</p>
+          </div>
         </div>
       </section>
 

@@ -181,6 +181,10 @@ export interface PublicExamOverview {
   maxAttempts: number;
   requireEmail: boolean;
   requireIdentifier: boolean;
+  availability: 'open' | 'upcoming' | 'ended' | 'unavailable';
+  startsAt: string | null;
+  endsAt: string | null;
+  serverTime: string;
   questionCount: number;
   totalPoints: number;
 }
@@ -218,6 +222,8 @@ export interface PublicAttempt {
   oneQuestionAtATime: boolean;
   preventFocusLoss: boolean;
   reviewMode: ExamReviewMode;
+  startsAt: string | null;
+  endsAt: string | null;
   sections: ExamSection[];
   questions: PublicAttemptQuestion[];
 }

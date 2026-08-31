@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import type { PublicAttemptQuestion } from '@/lib/api/exams';
+import type { PublicAttemptQuestion, PublicExamOverview } from '@/lib/api/exams';
 import { ExamSponsorBrand, StoreNineCats } from './ExamSponsorBrand';
 import { PublicQuestionCard } from './PublicQuestionCard';
 import { usePublicExam } from './usePublicExam';
@@ -17,7 +17,46 @@ function answerLabel(question: PublicAttemptQuestion, answer: string): string {
   return question.options.find((option) => option.id === answer)?.label ?? answer;
 }
 
+function formatCountdown(seconds: number): string {
+  const safe = Math.max(0, seconds);
+  const days = Math.floor(safe / 86_400);
+  const hours = Math.floor((safe % 86_400) / 3_600);
+  const minutes = Math.floor((safe % 3_600) / 60);
+  const remainder = safe % 60;
+  return days > 0
+    ? `${days}d ${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${remainder.toString().padStart(2, '0')}s`
+    : `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+}
+
+function formatScheduleDate(value: string): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+}
+
 const autumnBackground = 'bg-[radial-gradient(circle_at_12%_15%,rgba(217,119,54,0.13),transparent_26%),radial-gradient(circle_at_90%_8%,rgba(0,117,74,0.10),transparent_22%),linear-gradient(180deg,#fbf5e9_0%,#f5eadb_100%)]';
+
+function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExamOverview; state: 'upcoming' | 'ended' | 'unavailable'; seconds?: number }) {
+  const upcoming = state === 'upcoming';
+  return (
+    <main className={`min-h-screen px-5 py-10 ${autumnBackground}`}>
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6"><ExamSponsorBrand /></div>
+        <section className="overflow-hidden rounded-[2rem] border border-[#dcc3a5] bg-[#fffdf8] shadow-[0_28px_80px_rgba(73,43,22,0.16)]">
+          <div className="bg-[#2c1d17] px-7 py-8 text-white sm:px-10">
+            <div className="text-xs font-bold uppercase tracking-[0.24em] text-[#f4b36f]">Scheduled graded exam</div>
+            <h1 className="mt-3 text-3xl font-bold tracking-tight">{overview.title}</h1>
+            {overview.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#ead8c7]">{overview.description}</p>}
+          </div>
+          <div className="p-7 text-center sm:p-10">
+            <div className={`mx-auto grid h-14 w-14 place-items-center rounded-full text-2xl ${upcoming ? 'bg-[#fff0d5] text-[#a94e21]' : 'bg-[#eee4d9] text-[#725441]'}`}>{upcoming ? '◷' : '—'}</div>
+            <h2 className="mt-5 text-2xl font-bold text-[#2f2118]">{upcoming ? 'You’re early — the exam opens soon' : state === 'ended' ? 'The response window has ended' : 'This exam isn’t open right now'}</h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#705746]">{upcoming ? 'You can keep this page open. The start form will appear automatically when the countdown reaches zero.' : state === 'ended' ? 'New attempts are no longer being accepted. If you believe you should still have access, please contact the exam administrator.' : 'The administrator may still be preparing this exam or may have paused responses. Please check the link again later or contact them for access.'}</p>
+            {upcoming && overview.startsAt && <><div className="mx-auto mt-7 max-w-md rounded-2xl border border-[#e5c08a] bg-[#fff8e8] px-5 py-5"><div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9a6b45]">Opens in</div><div className="mt-2 font-mono text-3xl font-black tracking-tight text-[#8d431e]" aria-live="polite">{formatCountdown(seconds ?? 0)}</div></div><p className="mt-4 text-xs font-semibold text-[#8c6a51]">Scheduled for {formatScheduleDate(overview.startsAt)}</p></>}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
 
 export function PublicExamPage({ publicId }: PublicExamPageProps) {
   const exam = usePublicExam(publicId);
@@ -28,13 +67,27 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
+  const [clockTick, setClockTick] = useState(() => Date.now());
   const initializedAttemptId = useRef<string | null>(null);
   const expiringQuestionId = useRef<string | null>(null);
+  const serverClockOffset = useRef(0);
 
   const questions = exam.attempt?.questions ?? [];
   const safeQuestionIndex = Math.min(questionIndex, Math.max(0, questions.length - 1));
   const current = questions[safeQuestionIndex];
   const currentQuestionId = current?.id;
+
+  useEffect(() => {
+    if (!exam.overview?.serverTime) return;
+    serverClockOffset.current = Date.parse(exam.overview.serverTime) - Date.now();
+    setClockTick(Date.now());
+  }, [exam.overview?.serverTime]);
+
+  useEffect(() => {
+    if (!exam.overview || (!exam.overview.startsAt && !exam.overview.endsAt)) return;
+    const timer = window.setInterval(() => setClockTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [exam.overview]);
 
   useEffect(() => {
     if (!exam.attempt || initializedAttemptId.current === exam.attempt.id) return;
@@ -66,7 +119,22 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   };
 
   if (exam.loading && !exam.attempt) return <div className={`flex min-h-screen items-center justify-center ${autumnBackground} text-sm font-medium text-[#7d5132]`}>Preparing your exam…</div>;
-  if (!exam.overview) return <div className={`flex min-h-screen items-center justify-center p-6 ${autumnBackground}`}><div className="max-w-md rounded-3xl border border-red-200 bg-[#fffdf8] p-8 text-center shadow-xl"><h1 className="text-xl font-semibold text-[#2f2118]">Exam unavailable</h1><p className="mt-2 text-sm text-red-700">{exam.error || 'This link is invalid or the exam is closed.'}</p></div></div>;
+  if (!exam.overview) return <div className={`flex min-h-screen items-center justify-center p-6 ${autumnBackground}`}><div className="max-w-md rounded-3xl border border-red-200 bg-[#fffdf8] p-8 text-center shadow-xl"><h1 className="text-xl font-semibold text-[#2f2118]">Exam unavailable</h1><p className="mt-2 text-sm text-red-700">{exam.error || 'This link is invalid or currently unavailable.'}</p></div></div>;
+
+  const scheduledNow = clockTick + serverClockOffset.current;
+  const secondsUntilStart = exam.overview.startsAt ? Math.max(0, Math.ceil((Date.parse(exam.overview.startsAt) - scheduledNow) / 1000)) : null;
+  const secondsUntilEnd = exam.overview.endsAt ? Math.ceil((Date.parse(exam.overview.endsAt) - scheduledNow) / 1000) : null;
+  const scheduledAvailability = exam.overview.availability === 'upcoming' && secondsUntilStart === 0
+    ? 'open'
+    : exam.overview.availability;
+  const availability = (scheduledAvailability === 'open' || scheduledAvailability === 'upcoming')
+    && secondsUntilEnd !== null && secondsUntilEnd <= 0
+    ? 'ended'
+    : scheduledAvailability;
+
+  if (!exam.attempt && availability === 'upcoming') return <ScheduledExamNotice overview={exam.overview} state="upcoming" seconds={secondsUntilStart ?? 0} />;
+  if (!exam.attempt && availability === 'ended') return <ScheduledExamNotice overview={exam.overview} state="ended" />;
+  if (!exam.attempt && availability === 'unavailable') return <ScheduledExamNotice overview={exam.overview} state="unavailable" />;
 
   if (!exam.attempt) return (
     <main className={`relative min-h-screen overflow-hidden px-5 py-8 sm:py-12 ${autumnBackground}`}>
@@ -94,6 +162,7 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
           </div>
           <form onSubmit={submitIdentity} className="space-y-5 p-7 sm:p-10">
             {exam.overview.preventFocusLoss && <div className="rounded-2xl border border-[#e9b95f] bg-[#fff6dc] px-4 py-3 text-sm leading-6 text-[#754116]"><strong>Before you begin:</strong> moving to another tab, minimizing, or losing window focus will end the attempt. You will need to contact the administrator for a continue link.</div>}
+            {secondsUntilEnd !== null && secondsUntilEnd > 0 && secondsUntilEnd <= 1_800 && <div className="rounded-2xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-900"><strong>The response window closes soon:</strong> {formatCountdown(secondsUntilEnd)} remaining, until {formatScheduleDate(exam.overview.endsAt!)}. Start only if you have enough time to finish.</div>}
             <label className="block text-sm font-semibold text-[#49372b]">Full name *<input required value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-xl border border-[#d9bea0] bg-white px-4 py-3 outline-none focus:border-[#d97838] focus:ring-2 focus:ring-[#f4d2ab]" /></label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-semibold text-[#49372b]">Email {exam.overview.requireEmail ? '*' : '(optional)'}<input required={exam.overview.requireEmail} type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[#d9bea0] bg-white px-4 py-3 outline-none focus:border-[#d97838] focus:ring-2 focus:ring-[#f4d2ab]" /></label>
@@ -131,6 +200,7 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
     <main className={`min-h-screen ${autumnBackground}`}>
       <header className="sticky top-0 z-10 border-b border-[#ddc6aa] bg-[#fffaf1]/95 px-5 py-3 backdrop-blur"><div className="mx-auto flex max-w-4xl items-center justify-between gap-4"><div className="hidden sm:block"><ExamSponsorBrand compact /></div><div className="min-w-0 flex-1 sm:text-center"><h1 className="truncate text-sm font-bold text-[#33241b]">{exam.attempt.title}</h1><p className="mt-0.5 text-xs text-[#8a6951]">{exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : 'All questions'} · {answeredCount} answered</p></div><div className={`rounded-xl px-4 py-2 font-mono text-lg font-bold ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[#2c1d17] text-[#fff5e7]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div></div></header>
       <div className="mx-auto max-w-4xl px-5 py-8">
+        {secondsUntilEnd !== null && secondsUntilEnd <= 1_800 && <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${secondsUntilEnd > 0 ? 'border-orange-300 bg-orange-50 text-orange-900' : 'border-red-300 bg-red-50 text-red-800'}`}>{secondsUntilEnd > 0 ? <>The public response window closes in <strong className="font-mono">{formatCountdown(secondsUntilEnd)}</strong>. Your current attempt remains saved as you work.</> : <>The public response window has closed to new attempts. Finish and submit this in-progress attempt now.</>}</div>}
         <div className="mb-5 h-2 overflow-hidden rounded-full bg-[#eadac7]"><div className="h-full rounded-full bg-gradient-to-r from-[#b95f2a] to-[#e49b45] transition-all" style={{ width: `${exam.attempt.oneQuestionAtATime ? ((safeQuestionIndex + 1) / questions.length) * 100 : (answeredCount / questions.length) * 100}%` }} /></div>
         <div className="space-y-5">{displayedQuestions.map(({ question, index }) => <PublicQuestionCard key={question.id} question={question} number={index + 1} shortValue={shortAnswers[question.id] ?? ''} saving={exam.savingQuestionId === question.id} onShortChange={(value) => setShortAnswers((answers) => ({ ...answers, [question.id]: value }))} onSaveShort={() => { if (!question.timedOut) void exam.saveAnswer(question.id, (shortAnswers[question.id] ?? '').trim() ? [(shortAnswers[question.id] ?? '').trim()] : []); }} onChoice={(value) => setChoice(question, value)} />)}</div>
         {exam.error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</div>}

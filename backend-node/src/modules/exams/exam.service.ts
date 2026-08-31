@@ -112,10 +112,18 @@ export class ExamService {
 
   private assertAvailable(exam: ExamDefinitionView): void {
     const now = Date.now();
-    if (exam.status !== 'published') throw new ExamServiceError('This exam is not accepting responses', 409, 'EXAM_NOT_PUBLISHED');
-    if (exam.startsAt && exam.startsAt.getTime() > now) throw new ExamServiceError('This exam has not started yet', 409, 'EXAM_NOT_STARTED');
-    if (exam.endsAt && exam.endsAt.getTime() <= now) throw new ExamServiceError('This exam is closed', 409, 'EXAM_CLOSED');
+    if (exam.status !== 'published') throw new ExamServiceError('This exam is not currently open for responses', 409, 'EXAM_NOT_PUBLISHED');
+    if (exam.startsAt && exam.startsAt.getTime() > now) throw new ExamServiceError('This exam is scheduled to open soon', 409, 'EXAM_NOT_STARTED');
+    if (exam.endsAt && exam.endsAt.getTime() <= now) throw new ExamServiceError('The response window for this exam has ended. New attempts are no longer accepted.', 409, 'EXAM_CLOSED');
     if (exam.questions.length === 0) throw new ExamServiceError('This exam has no questions', 409, 'EXAM_EMPTY');
+  }
+
+  private publicAvailability(exam: ExamDefinitionView): 'open' | 'upcoming' | 'ended' | 'unavailable' {
+    const now = Date.now();
+    if (exam.status !== 'published' || exam.questions.length === 0) return 'unavailable';
+    if (exam.startsAt && exam.startsAt.getTime() > now) return 'upcoming';
+    if (exam.endsAt && exam.endsAt.getTime() <= now) return 'ended';
+    return 'open';
   }
 
   async list(orgId: string) {
@@ -201,7 +209,6 @@ export class ExamService {
   async getPublicOverview(publicId: string) {
     const exam = await this.repository.getByPublicId(publicId);
     if (!exam) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
-    this.assertAvailable(exam);
     return {
       publicId: exam.publicId,
       title: exam.title,
@@ -212,6 +219,10 @@ export class ExamService {
       maxAttempts: exam.maxAttempts,
       requireEmail: exam.requireEmail,
       requireIdentifier: exam.requireIdentifier,
+      availability: this.publicAvailability(exam),
+      startsAt: exam.startsAt,
+      endsAt: exam.endsAt,
+      serverTime: new Date(),
       questionCount: exam.questions.length,
       totalPoints: exam.questions.filter((question) => question.graded && question.correctAnswers.length > 0).reduce((total, question) => total + question.points, 0),
     };
@@ -351,6 +362,8 @@ export class ExamService {
       oneQuestionAtATime: exam.oneQuestionAtATime,
       preventFocusLoss: exam.preventFocusLoss,
       reviewMode: exam.reviewMode,
+      startsAt: exam.startsAt,
+      endsAt: exam.endsAt,
       sections: exam.sections,
       questions,
     };
