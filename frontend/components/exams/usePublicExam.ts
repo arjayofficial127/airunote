@@ -150,7 +150,7 @@ export function usePublicExam(publicId: string) {
     if (!accessToken || attempt?.status !== 'in_progress') return;
     const heartbeat = window.setInterval(() => {
       void publicExamsApi.event(accessToken, 'heartbeat').catch(() => undefined);
-    }, 15_000);
+    }, 30_000);
     return () => window.clearInterval(heartbeat);
   }, [accessToken, attempt?.status]);
 

@@ -2,6 +2,11 @@ import { NextFunction, Request, Response, Router } from 'express';
 import { ZodError } from 'zod';
 import { ExamService, ExamServiceError } from '../../modules/exams/exam.service';
 import { attemptEventSchema, saveAnswerSchema, startAttemptSchema } from '../../modules/exams/exam.types';
+import {
+  publicExamAttemptRateLimit,
+  publicExamBrowseRateLimit,
+  publicExamStartRateLimit,
+} from '../middleware/rateLimitMiddleware';
 
 const router: ReturnType<typeof Router> = Router();
 const service = new ExamService();
@@ -24,7 +29,7 @@ function attemptToken(req: Request): string {
   return token;
 }
 
-router.get('/:publicId', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:publicId', publicExamBrowseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.json({ success: true, data: await service.getPublicOverview(req.params.publicId) });
   } catch (error) {
@@ -32,7 +37,7 @@ router.get('/:publicId', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
-router.post('/:publicId/start', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:publicId/start', publicExamStartRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = startAttemptSchema.parse(req.body);
     const forwarded = req.header('x-forwarded-for')?.split(',')[0]?.trim();
@@ -43,6 +48,8 @@ router.post('/:publicId/start', async (req: Request, res: Response, next: NextFu
     handleError(error, res, next);
   }
 });
+
+router.use('/attempts/current', publicExamAttemptRateLimit);
 
 router.get('/attempts/current', async (req: Request, res: Response, next: NextFunction) => {
   try {
