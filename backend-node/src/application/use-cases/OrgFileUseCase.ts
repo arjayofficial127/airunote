@@ -17,7 +17,7 @@ import {
 } from '../dtos/orgFile.dto';
 import { TYPES } from '../../core/di/types';
 import { OrgFile } from '../../domain/entities/OrgFile';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as path from 'path';
 
 export interface IOrgFileUseCase {
@@ -79,7 +79,7 @@ export class OrgFileUseCase implements IOrgFileUseCase {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    const fileId = uuidv4();
+    const fileId = randomUUID();
     const safeFileName = dto.fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storageKey = `orgs/${orgId}/files/${year}/${month}/${fileId}-${safeFileName}`;
 

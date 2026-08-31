@@ -19,4 +19,4 @@ function loadDevelopmentNeonUrl(): string {
 
 process.env.DATABASE_URL = loadDevelopmentNeonUrl();
 
-void import('./index');
+void import('./index.js');
