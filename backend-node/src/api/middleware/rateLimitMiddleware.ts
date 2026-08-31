@@ -90,7 +90,10 @@ export const publicExamStartRateLimit = rateLimit({
 // the same school/store network consume one shared IP allowance.
 export const publicExamAttemptRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  // A single attempt can legitimately produce question activations, autosaves,
+  // retries after reconnecting, heartbeats, and a final submission. Keep this
+  // per-attempt ceiling comfortably above normal exam traffic.
+  max: 900,
   message: publicExamError,
   standardHeaders: true,
   legacyHeaders: false,

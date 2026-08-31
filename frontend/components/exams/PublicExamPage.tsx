@@ -6,7 +6,7 @@ import { AutumnBackdrop, AutumnHeroBranches } from './AutumnDecorations';
 import { ExamSponsorBrand, StoreNineCats } from './ExamSponsorBrand';
 import { PublicQuestionCard } from './PublicQuestionCard';
 import { useExamSounds } from './useExamSounds';
-import { usePublicExam } from './usePublicExam';
+import { usePublicExam, type ExamSyncStatus } from './usePublicExam';
 
 interface PublicExamPageProps { publicId: string }
 
@@ -38,6 +38,20 @@ const autumnBackground = 'bg-[radial-gradient(circle_at_12%_15%,rgba(217,119,54,
 
 function SoundChip({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
   return <button type="button" onClick={onToggle} aria-pressed={enabled} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#d8b88f] bg-[#fffaf1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#704a31] shadow-sm"><span aria-hidden="true">{enabled ? '♪' : '×'}</span>{enabled ? 'Sound on' : 'Sound off'}</button>;
+}
+
+function SyncChip({ status, count, onRetry }: { status: ExamSyncStatus; count: number; onRetry: () => void }) {
+  const synced = status === 'synced' && count === 0;
+  const label = synced
+    ? 'Saved'
+    : status === 'saving'
+      ? `Saving ${count}`
+      : status === 'offline'
+        ? `${count} offline`
+        : status === 'error'
+          ? `${count} needs retry`
+          : `Retrying ${count}`;
+  return <button type="button" onClick={onRetry} disabled={synced || status === 'saving'} title={synced ? 'Every answer is saved on the server' : 'Answers are safe on this device. Select to retry server synchronization.'} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] shadow-sm disabled:cursor-default ${synced ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : status === 'error' || status === 'offline' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-sky-200 bg-sky-50 text-sky-800'}`}><span aria-hidden="true">{synced ? '✓' : status === 'offline' ? '↯' : '↻'}</span>{label}</button>;
 }
 
 function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExamOverview; state: 'upcoming' | 'ended' | 'unavailable'; seconds?: number }) {
@@ -219,20 +233,33 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   const displayedQuestions = exam.attempt.oneQuestionAtATime
     ? [{ question: current, index: safeQuestionIndex }]
     : questions.map((question, index) => ({ question, index }));
-  const goToNextQuestion = () => {
-    if (current.type === 'short_text' && !current.timedOut) {
-      const value = (shortAnswers[current.id] ?? '').trim();
-      void exam.saveAnswer(current.id, value ? [value] : []);
-    }
+  const answerFor = (question: PublicAttemptQuestion): string[] => {
+    if (question.type !== 'short_text') return question.selectedAnswers;
+    const value = (shortAnswers[question.id] ?? '').trim();
+    return value ? [value] : [];
+  };
+  const goToNextQuestion = async () => {
+    if (!current.timedOut && !await exam.saveAnswer(current.id, answerFor(current))) return;
     primeSound();
     playNext();
     setQuestionIndex((index) => Math.min(questions.length - 1, index + 1));
+  };
+  const submitFinal = async () => {
+    primeSound();
+    for (const question of questions) {
+      if (question.type !== 'short_text' || question.timedOut) continue;
+      const answer = answerFor(question);
+      if (answer.join('\u0000') === question.selectedAnswers.join('\u0000')) continue;
+      if (!await exam.saveAnswer(question.id, answer)) return;
+    }
+    const completed = await exam.submit();
+    if (completed) setConfirmingSubmit(false);
   };
 
   return (
     <main className={`relative min-h-screen overflow-hidden ${autumnBackground}`}>
       <AutumnBackdrop />
-      <header className="sticky top-0 z-20 border-b border-[#ddc6aa] bg-[#fffaf1]/95 px-5 py-3 backdrop-blur"><div className="mx-auto flex max-w-4xl items-center justify-between gap-3"><div className="hidden sm:block"><ExamSponsorBrand compact /></div><div className="min-w-0 flex-1 sm:text-center"><h1 className="truncate text-sm font-bold text-[#33241b]">{exam.attempt.title}</h1><p className="mt-0.5 text-xs text-[#8a6951]">{exam.attempt.isPreview ? `Admin preview · ${exam.attempt.previewedByEmail}` : exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : 'All questions'} · {answeredCount} answered</p></div><SoundChip enabled={soundEnabled} onToggle={toggleSound} /><div className={`rounded-xl px-3 py-2 font-mono text-base font-bold sm:px-4 sm:text-lg ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[#2c1d17] text-[#fff5e7]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div></div></header>
+      <header className="sticky top-0 z-20 border-b border-[#ddc6aa] bg-[#fffaf1]/95 px-5 py-3 backdrop-blur"><div className="mx-auto flex max-w-4xl items-center justify-between gap-3"><div className="hidden sm:block"><ExamSponsorBrand compact /></div><div className="min-w-0 flex-1 sm:text-center"><h1 className="truncate text-sm font-bold text-[#33241b]">{exam.attempt.title}</h1><p className="mt-0.5 text-xs text-[#8a6951]">{exam.attempt.isPreview ? `Admin preview · ${exam.attempt.previewedByEmail}` : exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : 'All questions'} · {answeredCount} answered</p></div><div className="hidden md:block"><SyncChip status={exam.syncStatus} count={exam.unsyncedCount} onRetry={exam.retrySync} /></div><SoundChip enabled={soundEnabled} onToggle={toggleSound} /><div className={`rounded-xl px-3 py-2 font-mono text-base font-bold sm:px-4 sm:text-lg ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[#2c1d17] text-[#fff5e7]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div></div></header>
       <div className="relative z-[1] mx-auto max-w-4xl px-5 py-7">
         <section className="relative mb-5 overflow-hidden rounded-[1.6rem] border border-[#7c3a14] bg-[linear-gradient(110deg,#1d0d08_0%,#32170d_58%,#28160e_100%)] px-6 py-5 text-white shadow-[0_16px_36px_rgba(66,33,15,.16)] sm:px-8">
           <AutumnHeroBranches />
@@ -242,12 +269,13 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
           </div>
         </section>
         {secondsUntilEnd !== null && secondsUntilEnd <= 1_800 && <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${secondsUntilEnd > 0 ? 'border-orange-300 bg-orange-50 text-orange-900' : 'border-red-300 bg-red-50 text-red-800'}`}>{secondsUntilEnd > 0 ? <>The public response window closes in <strong className="font-mono">{formatCountdown(secondsUntilEnd)}</strong>. Your current attempt remains saved as you work.</> : <>The public response window has closed to new attempts. Finish and submit this in-progress attempt now.</>}</div>}
+        {exam.unsyncedCount > 0 && <div className={`mb-5 flex flex-col gap-3 rounded-2xl border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${exam.syncStatus === 'error' || exam.syncStatus === 'offline' ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-sky-200 bg-sky-50 text-sky-950'}`} role="status" aria-live="polite"><div><strong>{exam.unsyncedCount} answer{exam.unsyncedCount === 1 ? '' : 's'} saved on this device.</strong> {exam.syncStatus === 'saving' ? 'Sending to the server now.' : exam.syncStatus === 'offline' ? 'You can keep answering; synchronization resumes when you reconnect.' : exam.syncStatus === 'error' ? 'The server has not accepted the answer yet.' : 'The server is temporarily unavailable; retrying automatically.'} Final submission stays locked until all answers are confirmed by the server.</div><button type="button" onClick={exam.retrySync} className="shrink-0 rounded-xl border border-current px-3 py-2 text-xs font-bold">Retry now</button></div>}
         <div className="mb-5 h-2 overflow-hidden rounded-full bg-[#eadac7]"><div className="h-full rounded-full bg-gradient-to-r from-[#b95f2a] to-[#e49b45] transition-all" style={{ width: `${exam.attempt.oneQuestionAtATime ? ((safeQuestionIndex + 1) / questions.length) * 100 : (answeredCount / questions.length) * 100}%` }} /></div>
-        <div className="space-y-5">{displayedQuestions.map(({ question, index }) => <PublicQuestionCard key={question.id} question={question} number={index + 1} shortValue={shortAnswers[question.id] ?? ''} saving={exam.savingQuestionId === question.id} onShortChange={(value) => setShortAnswers((answers) => ({ ...answers, [question.id]: value }))} onSaveShort={() => { if (!question.timedOut) void exam.saveAnswer(question.id, (shortAnswers[question.id] ?? '').trim() ? [(shortAnswers[question.id] ?? '').trim()] : []); }} onChoice={(value) => setChoice(question, value)} />)}</div>
+        <div className="space-y-5">{displayedQuestions.map(({ question, index }) => <PublicQuestionCard key={question.id} question={question} number={index + 1} shortValue={shortAnswers[question.id] ?? ''} saving={exam.savingQuestionId === question.id} onShortChange={(value) => { setShortAnswers((answers) => ({ ...answers, [question.id]: value })); if (!question.timedOut) void exam.saveAnswer(question.id, value.trim() ? [value.trim()] : []); }} onSaveShort={() => { if (!question.timedOut) void exam.saveAnswer(question.id, (shortAnswers[question.id] ?? '').trim() ? [(shortAnswers[question.id] ?? '').trim()] : []); }} onChoice={(value) => setChoice(question, value)} />)}</div>
         {exam.error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</div>}
-        {exam.attempt.oneQuestionAtATime ? <div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} disabled={safeQuestionIndex === 0} className="rounded-xl border border-[#d76c32] bg-[#fffdf8] px-5 py-2.5 text-sm font-semibold text-[#b55224] disabled:opacity-40">Previous</button>{safeQuestionIndex < questions.length - 1 ? <button type="button" onClick={goToNextQuestion} className="rounded-xl bg-[#d64e00] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#b84a18]/20">Save &amp; next</button> : <button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50">Submit exam</button>}</div> : <div className="mt-6 flex justify-end"><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-3 text-sm font-bold text-white disabled:opacity-50">Submit exam</button></div>}
+        {exam.attempt.oneQuestionAtATime ? <div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} disabled={safeQuestionIndex === 0} className="rounded-xl border border-[#d76c32] bg-[#fffdf8] px-5 py-2.5 text-sm font-semibold text-[#b55224] disabled:opacity-40">Previous</button>{safeQuestionIndex < questions.length - 1 ? <button type="button" onClick={() => void goToNextQuestion()} className="rounded-xl bg-[#d64e00] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#b84a18]/20">Save &amp; next</button> : <button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50">Submit exam</button>}</div> : <div className="mt-6 flex justify-end"><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-3 text-sm font-bold text-white disabled:opacity-50">Submit exam</button></div>}
       </div>
-      {confirmingSubmit && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#21140f]/70 p-5" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title"><section className="w-full max-w-md rounded-3xl border border-[#e4c7a3] bg-[#fffdf8] p-7 shadow-2xl"><h2 id="submit-exam-title" className="text-xl font-semibold text-[#2f2118]">Submit this exam?</h2><p className="mt-3 text-sm leading-6 text-[#705746]">Your latest answer will finish saving before the attempt is finalized.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setConfirmingSubmit(false)} className="rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d]">Keep reviewing</button><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(false); void exam.submit(); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{exam.loading ? 'Submitting…' : 'Submit exam'}</button></div></section></div>}
+      {confirmingSubmit && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#21140f]/70 p-5" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title"><section className="w-full max-w-md rounded-3xl border border-[#e4c7a3] bg-[#fffdf8] p-7 shadow-2xl"><h2 id="submit-exam-title" className="text-xl font-semibold text-[#2f2118]">Submit this exam?</h2><p className="mt-3 text-sm leading-6 text-[#705746]">The exam will complete only after your latest answers are successfully saved on the server.</p>{exam.unsyncedCount > 0 && <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"><strong>{exam.unsyncedCount} answer{exam.unsyncedCount === 1 ? '' : 's'} still syncing.</strong> Your work is safe on this device. This dialog will stay open if synchronization cannot finish.</div>}{exam.error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</div>}<div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setConfirmingSubmit(false)} disabled={exam.loading} className="rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d] disabled:opacity-50">Keep reviewing</button><button type="button" onClick={() => void submitFinal()} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{exam.loading ? (exam.unsyncedCount > 0 ? 'Syncing answers…' : 'Submitting…') : exam.unsyncedCount > 0 ? `Sync ${exam.unsyncedCount} & submit` : 'Submit exam'}</button></div></section></div>}
     </main>
   );
 }
