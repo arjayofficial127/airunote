@@ -30,11 +30,22 @@ interface PublicQuestion {
   position: number;
   required: boolean;
   points: number;
+  maxTimeSeconds: number | null;
+  timeStartedAt: string | null;
+  timeRemainingSeconds: number | null;
+  timedOut: boolean;
   options: Array<{ id: string; label: string }>;
   selectedAnswers?: string[];
   correctAnswers?: string[];
   explanation?: string | null;
 }
+
+interface QuestionTimingEntry {
+  startedAt: string;
+  timedOutAt?: string;
+}
+
+type QuestionTimingMap = Record<string, QuestionTimingEntry>;
 
 function readStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
@@ -45,6 +56,18 @@ function readOptionOrder(value: unknown): Record<string, string[]> {
   const order: Record<string, string[]> = {};
   for (const [questionId, optionIds] of Object.entries(value)) order[questionId] = readStringArray(optionIds);
   return order;
+}
+
+function readQuestionTiming(value: unknown): QuestionTimingMap {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+  const timing: QuestionTimingMap = {};
+  for (const [questionId, entry] of Object.entries(value)) {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) continue;
+    const startedAt = 'startedAt' in entry && typeof entry.startedAt === 'string' ? entry.startedAt : null;
+    const timedOutAt = 'timedOutAt' in entry && typeof entry.timedOutAt === 'string' ? entry.timedOutAt : undefined;
+    if (startedAt && Number.isFinite(Date.parse(startedAt))) timing[questionId] = { startedAt, ...(timedOutAt ? { timedOutAt } : {}) };
+  }
+  return timing;
 }
 
 function shuffle<T>(items: T[]): T[] {
@@ -255,9 +278,31 @@ export class ExamService {
     return Math.max(0, available - Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000));
   }
 
+  private questionRemainingSeconds(question: ExamQuestionView, entry: QuestionTimingEntry | undefined): number | null {
+    if (question.maxTimeSeconds === null) return null;
+    if (!entry) return question.maxTimeSeconds;
+    if (entry.timedOutAt) return 0;
+    return Math.max(0, question.maxTimeSeconds - Math.floor((Date.now() - Date.parse(entry.startedAt)) / 1000));
+  }
+
+  private cleanAnswer(question: ExamQuestionView, answer: string[]): string[] {
+    const cleaned = answer.map((value) => value.trim()).filter(Boolean);
+    if ((question.type === 'single_choice' || question.type === 'true_false' || question.type === 'short_text') && cleaned.length > 1) {
+      throw new ExamServiceError('This question accepts one answer', 400, 'TOO_MANY_ANSWERS');
+    }
+    if ((question.type === 'single_choice' || question.type === 'multiple_choice') && cleaned.some(
+      (value) => !question.options.some((option) => option.id === value),
+    )) throw new ExamServiceError('Answer contains an invalid option', 400, 'INVALID_ANSWER');
+    if (question.type === 'true_false' && cleaned.some((value) => value !== 'true' && value !== 'false')) {
+      throw new ExamServiceError('Answer must be true or false', 400, 'INVALID_ANSWER');
+    }
+    return cleaned;
+  }
+
   private buildPublicQuestions(exam: ExamDefinitionView, attempt: ExamAttemptRecord, answers: ExamAnswerRecord[], includeCorrect: boolean): PublicQuestion[] {
     const answerMap = new Map(answers.map((answer) => [answer.questionId, readStringArray(answer.answer)]));
     const optionOrder = readOptionOrder(attempt.optionOrder);
+    const questionTiming = readQuestionTiming(attempt.questionTiming);
     const questionsById = new Map(exam.questions.map((question) => [question.id, question]));
     return readStringArray(attempt.questionOrder).flatMap((questionId) => {
       const question = questionsById.get(questionId);
@@ -265,6 +310,7 @@ export class ExamService {
       const optionsById = new Map(question.options.map((option) => [option.id, option]));
       const orderedOptions = (optionOrder[question.id] ?? question.options.map((option) => option.id))
         .flatMap((optionId) => optionsById.get(optionId) ?? []);
+      const timing = questionTiming[question.id];
       return [{
         id: question.id,
         sectionId: question.sectionId,
@@ -273,6 +319,10 @@ export class ExamService {
         position: question.position,
         required: question.required,
         points: question.points,
+        maxTimeSeconds: question.maxTimeSeconds,
+        timeStartedAt: timing?.startedAt ?? null,
+        timeRemainingSeconds: this.questionRemainingSeconds(question, timing),
+        timedOut: Boolean(timing?.timedOutAt),
         options: orderedOptions.map((option) => ({ id: option.id, label: option.label })),
         selectedAnswers: answerMap.get(question.id) ?? [],
         ...(includeCorrect ? { correctAnswers: question.correctAnswers, explanation: question.explanation } : {}),
@@ -330,18 +380,71 @@ export class ExamService {
     if (attempt.status !== 'in_progress') throw new ExamServiceError('This attempt is already finished', 409, 'ATTEMPT_FINISHED');
     const question = exam.questions.find((candidate) => candidate.id === questionId);
     if (!question) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
-    const cleaned = answer.map((value) => value.trim()).filter(Boolean);
-    if ((question.type === 'single_choice' || question.type === 'true_false' || question.type === 'short_text') && cleaned.length > 1) {
-      throw new ExamServiceError('This question accepts one answer', 400, 'TOO_MANY_ANSWERS');
+    const cleaned = this.cleanAnswer(question, answer);
+    const questionTiming = readQuestionTiming(attempt.questionTiming);
+    let timing = questionTiming[question.id];
+    if (question.maxTimeSeconds !== null && !timing) {
+      timing = { startedAt: new Date().toISOString() };
+      questionTiming[question.id] = timing;
+      await this.repository.updateAttempt(attempt.id, { questionTiming });
+      await this.repository.addEvent(attempt.id, 'question_timer_started', { questionId });
     }
-    if ((question.type === 'single_choice' || question.type === 'multiple_choice') && cleaned.some(
-      (value) => !question.options.some((option) => option.id === value),
-    )) throw new ExamServiceError('Answer contains an invalid option', 400, 'INVALID_ANSWER');
-    if (question.type === 'true_false' && cleaned.some((value) => value !== 'true' && value !== 'false')) {
-      throw new ExamServiceError('Answer must be true or false', 400, 'INVALID_ANSWER');
+    if (question.maxTimeSeconds !== null && this.questionRemainingSeconds(question, timing) === 0) {
+      throw new ExamServiceError('Time for this question has expired', 409, 'QUESTION_TIME_EXPIRED');
     }
     const savedAt = await this.repository.saveAnswer(attempt.id, questionId, cleaned);
     return { savedAt };
+  }
+
+  async activateQuestion(accessToken: string, questionId: string) {
+    const { exam, attempt, answers } = await this.loadAttempt(accessToken);
+    if (attempt.status !== 'in_progress') return this.buildAttemptPayload(exam, attempt, answers, false);
+    const question = exam.questions.find((candidate) => candidate.id === questionId);
+    if (!question) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
+    if (question.maxTimeSeconds === null) return this.buildAttemptPayload(exam, attempt, answers, true);
+
+    const questionTiming = readQuestionTiming(attempt.questionTiming);
+    let timing = questionTiming[question.id];
+    let updatedAttempt = attempt;
+    if (!timing) {
+      timing = { startedAt: new Date().toISOString() };
+      questionTiming[question.id] = timing;
+      updatedAttempt = await this.repository.updateAttempt(attempt.id, { questionTiming, lastActiveAt: new Date() }) ?? attempt;
+      await this.repository.addEvent(attempt.id, 'question_timer_started', { questionId });
+    } else if (!timing.timedOutAt && this.questionRemainingSeconds(question, timing) === 0) {
+      timing.timedOutAt = new Date().toISOString();
+      updatedAttempt = await this.repository.updateAttempt(attempt.id, { questionTiming, lastActiveAt: new Date() }) ?? attempt;
+      await this.repository.addEvent(attempt.id, 'question_time_expired', { questionId });
+    }
+    return this.buildAttemptPayload(exam, updatedAttempt, answers, true);
+  }
+
+  async expireQuestion(accessToken: string, questionId: string, answer: string[]) {
+    const { exam, attempt } = await this.loadAttempt(accessToken);
+    if (attempt.status !== 'in_progress') {
+      const answers = await this.repository.getAnswers(attempt.id);
+      return this.buildAttemptPayload(exam, attempt, answers, false);
+    }
+    const question = exam.questions.find((candidate) => candidate.id === questionId);
+    if (!question) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
+    if (question.maxTimeSeconds === null) throw new ExamServiceError('This question does not have a time limit', 409, 'QUESTION_NOT_TIMED');
+    const questionTiming = readQuestionTiming(attempt.questionTiming);
+    const existing = questionTiming[question.id];
+    if (!existing) throw new ExamServiceError('The question timer has not started', 409, 'QUESTION_TIMER_NOT_STARTED');
+    if (!existing.timedOutAt && this.questionRemainingSeconds(question, existing)! > 0) {
+      throw new ExamServiceError('Time remains for this question', 409, 'QUESTION_TIME_REMAINS');
+    }
+    const cleaned = this.cleanAnswer(question, answer);
+    await this.repository.saveAnswer(attempt.id, questionId, cleaned);
+
+    if (!existing?.timedOutAt) {
+      const now = new Date().toISOString();
+      questionTiming[question.id] = { startedAt: existing?.startedAt ?? now, timedOutAt: now };
+      await this.repository.updateAttempt(attempt.id, { questionTiming, lastActiveAt: new Date() });
+      await this.repository.addEvent(attempt.id, 'question_time_expired', { questionId });
+    }
+    const updatedAttempt = await this.repository.findAttemptByTokenHash(this.tokenHash(accessToken)) ?? attempt;
+    return this.buildAttemptPayload(exam, updatedAttempt, await this.repository.getAnswers(attempt.id), true);
   }
 
   async recordEvent(accessToken: string, eventType: 'focus_lost' | 'heartbeat', metadata: Record<string, unknown>) {
@@ -370,7 +473,12 @@ export class ExamService {
     const answeredQuestionIds = new Set(
       answers.filter((answer) => readStringArray(answer.answer).length > 0).map((answer) => answer.questionId),
     );
-    const missingRequired = exam.questions.filter((question) => question.required && !answeredQuestionIds.has(question.id));
+    const timedOutQuestionIds = new Set(Object.entries(readQuestionTiming(attempt.questionTiming))
+      .filter(([, timing]) => Boolean(timing.timedOutAt))
+      .map(([questionId]) => questionId));
+    const missingRequired = exam.questions.filter((question) => question.required
+      && !answeredQuestionIds.has(question.id)
+      && !timedOutQuestionIds.has(question.id));
     if (missingRequired.length > 0) {
       throw new ExamServiceError(
         `Answer ${missingRequired.length} required question${missingRequired.length === 1 ? '' : 's'} before submitting`,

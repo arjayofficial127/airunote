@@ -64,6 +64,7 @@ function mapQuestion(
     graded: row.graded,
     points: row.points,
     pinned: row.pinned,
+    maxTimeSeconds: row.maxTimeSeconds,
     correctAnswers: readStringArray(row.correctAnswers),
     options: options
       .filter((option) => option.questionId === row.id)
@@ -223,6 +224,7 @@ export class ExamRepository extends ExamAttemptRepository {
           graded: question.graded ?? true,
           points: question.points ?? 1,
           pinned: question.pinned ?? false,
+          maxTimeSeconds: question.maxTimeSeconds ?? null,
           correctAnswers,
         });
         if (options.length > 0) await transaction.insert(examQuestionOptionsTable).values(options);
@@ -307,6 +309,7 @@ export class ExamRepository extends ExamAttemptRepository {
           graded: question.graded ?? true,
           points: question.points ?? 1,
           pinned: question.pinned ?? false,
+          maxTimeSeconds: question.maxTimeSeconds ?? null,
           correctAnswers: (question.correctAnswers ?? []).map((answer) => optionIdsByKey.get(answer) ?? answer),
         });
         if (options.length > 0) await transaction.insert(examQuestionOptionsTable).values(options);

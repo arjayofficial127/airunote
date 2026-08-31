@@ -11,6 +11,7 @@ const questionSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_text']), prompt: z.string().min(1),
   explanation: z.string().nullable().optional(), position: z.number().int().min(0).optional(), required: z.boolean().optional(),
   graded: z.boolean().optional(), points: z.number().int().min(0).optional(), pinned: z.boolean().optional(),
+  maxTimeSeconds: z.number().int().min(5).max(3600).nullable().optional(),
   correctAnswers: z.array(z.string()).optional(), options: z.array(optionSchema).optional(),
 });
 const examInputSchema = z.object({
@@ -51,6 +52,7 @@ export const examJsonTemplate: ExamInput = {
       pinned: true,
       graded: true,
       points: 1,
+      maxTimeSeconds: 45,
       options: [
         { key: 'a', label: 'Answer A' },
         { key: 'b', label: 'Answer B' },

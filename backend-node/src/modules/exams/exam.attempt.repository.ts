@@ -76,7 +76,7 @@ export class ExamAttemptRepository {
   }
 
   async updateAttempt(attemptId: string, values: Partial<Pick<ExamAttemptRecord,
-    'accessTokenHash' | 'status' | 'focusViolationCount' | 'resumeCount' | 'extraTimeSeconds' | 'terminationReason' | 'lastActiveAt' | 'completedAt'
+    'accessTokenHash' | 'status' | 'questionTiming' | 'focusViolationCount' | 'resumeCount' | 'extraTimeSeconds' | 'terminationReason' | 'lastActiveAt' | 'completedAt'
   >>): Promise<ExamAttemptRecord | null> {
     const [attempt] = await db.update(examAttemptsTable).set({ ...values, updatedAt: new Date() }).where(eq(examAttemptsTable.id, attemptId)).returning();
     return attempt ?? null;

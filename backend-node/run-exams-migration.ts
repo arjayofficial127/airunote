@@ -38,6 +38,7 @@ async function main(): Promise<void> {
     path.resolve(__dirname, 'drizzle', '0025_add_resident_exams.sql'),
     path.resolve(__dirname, 'drizzle', '0026_defer_exam_answer_question_constraint.sql'),
     path.resolve(__dirname, 'drizzle', '0027_custom_exam_public_ids.sql'),
+    path.resolve(__dirname, 'drizzle', '0028_exam_question_time_limits.sql'),
   ];
   const sql = postgres(connectionString, { max: 1, prepare: false, connect_timeout: 30 });
   try {
@@ -63,6 +64,19 @@ async function main(): Promise<void> {
     `;
     if (publicIdColumn?.data_type !== 'character varying' || publicIdColumn.character_maximum_length !== 80) {
       throw new Error('Migration verification failed; exams.public_id is not varchar(80)');
+    }
+    const [timeLimitColumn] = await sql<{ data_type: string }[]>`
+      SELECT data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'exam_questions' AND column_name = 'max_time_seconds'
+    `;
+    const [questionTimingColumn] = await sql<{ data_type: string }[]>`
+      SELECT data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'exam_attempts' AND column_name = 'question_timing'
+    `;
+    if (timeLimitColumn?.data_type !== 'integer' || questionTimingColumn?.data_type !== 'jsonb') {
+      throw new Error('Migration verification failed; exam question timing columns are missing');
     }
     console.log(`[Exams migration] Verified ${rows.length} resident exam tables.`);
   } finally {

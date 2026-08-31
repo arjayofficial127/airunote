@@ -42,6 +42,7 @@ export const examQuestionInputSchema = z.object({
   graded: z.boolean().optional(),
   points: z.number().int().min(0).max(10000).optional(),
   pinned: z.boolean().optional(),
+  maxTimeSeconds: z.number().int().min(5).max(3600).nullable().optional(),
   correctAnswers: z.array(z.string().max(2000)).max(100).optional(),
   options: z.array(examOptionInputSchema).max(100).optional(),
 }).superRefine((question, context) => {
@@ -138,6 +139,7 @@ export interface ExamQuestionView {
   graded: boolean;
   points: number;
   pinned: boolean;
+  maxTimeSeconds: number | null;
   correctAnswers: string[];
   options: ExamOptionView[];
 }

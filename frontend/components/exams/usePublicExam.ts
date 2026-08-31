@@ -105,6 +105,31 @@ export function usePublicExam(publicId: string) {
     }
   }, [accessToken, attempt]);
 
+  const activateQuestion = useCallback(async (questionId: string) => {
+    if (!accessToken || attempt?.status !== 'in_progress') return;
+    try {
+      setError(null);
+      setAttempt(await publicExamsApi.activateQuestion(accessToken, questionId));
+    } catch (caught) {
+      setError(apiMessage(caught));
+    }
+  }, [accessToken, attempt?.status]);
+
+  const expireQuestion = useCallback(async (questionId: string, answer: string[]) => {
+    if (!accessToken || attempt?.status !== 'in_progress') return false;
+    setSavingQuestionId(questionId);
+    try {
+      await pendingSavesRef.current.catch(() => undefined);
+      setAttempt(await publicExamsApi.expireQuestion(accessToken, questionId, answer));
+      return true;
+    } catch (caught) {
+      setError(`The question timer expired, but its last answer could not be saved: ${apiMessage(caught)}`);
+      return false;
+    } finally {
+      setSavingQuestionId((current) => current === questionId ? null : current);
+    }
+  }, [accessToken, attempt?.status]);
+
   const submit = useCallback(async () => {
     if (!accessToken || submittingRef.current) return;
     submittingRef.current = true;
@@ -151,7 +176,13 @@ export function usePublicExam(publicId: string) {
   useEffect(() => {
     if (attempt?.status !== 'in_progress') return;
     const timer = window.setInterval(() => {
-      setAttempt((current) => current?.status === 'in_progress' ? { ...current, remainingSeconds: Math.max(0, current.remainingSeconds - 1) } : current);
+      setAttempt((current) => current?.status === 'in_progress' ? {
+        ...current,
+        remainingSeconds: Math.max(0, current.remainingSeconds - 1),
+        questions: current.questions.map((question) => question.timeStartedAt && !question.timedOut && question.timeRemainingSeconds !== null
+          ? { ...question, timeRemainingSeconds: Math.max(0, question.timeRemainingSeconds - 1) }
+          : question),
+      } : current);
     }, 1000);
     return () => window.clearInterval(timer);
   }, [attempt?.status]);
@@ -169,5 +200,5 @@ export function usePublicExam(publicId: string) {
     setError(null);
   };
 
-  return { overview, attempt, loading, error, savingQuestionId, start, saveAnswer, submit, startAnother };
+  return { overview, attempt, loading, error, savingQuestionId, start, saveAnswer, activateQuestion, expireQuestion, submit, startAnother };
 }

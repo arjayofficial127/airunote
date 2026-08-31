@@ -35,6 +35,7 @@ export interface ExamQuestion {
   graded: boolean;
   points: number;
   pinned: boolean;
+  maxTimeSeconds: number | null;
   correctAnswers: string[];
   options: ExamOption[];
 }
@@ -96,6 +97,7 @@ export interface ExamQuestionInput {
   graded?: boolean;
   points?: number;
   pinned?: boolean;
+  maxTimeSeconds?: number | null;
   correctAnswers?: string[];
   options?: ExamOptionInput[];
 }
@@ -191,6 +193,10 @@ export interface PublicAttemptQuestion {
   position: number;
   required: boolean;
   points: number;
+  maxTimeSeconds: number | null;
+  timeStartedAt: string | null;
+  timeRemainingSeconds: number | null;
+  timedOut: boolean;
   options: Array<{ id: string; label: string }>;
   selectedAnswers: string[];
   correctAnswers?: string[];
@@ -246,6 +252,10 @@ export const publicExamsApi = {
   start: async (publicId: string, input: { respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> =>
     unwrap(await apiClient.post(`/public/exams/${publicId}/start`, input)),
   current: async (accessToken: string): Promise<PublicAttempt> => unwrap(await apiClient.get('/public/exams/attempts/current', attemptHeaders(accessToken))),
+  activateQuestion: async (accessToken: string, questionId: string): Promise<PublicAttempt> =>
+    unwrap(await apiClient.post(`/public/exams/attempts/current/questions/${questionId}/activate`, {}, attemptHeaders(accessToken))),
+  expireQuestion: async (accessToken: string, questionId: string, answer: string[]): Promise<PublicAttempt> =>
+    unwrap(await apiClient.post(`/public/exams/attempts/current/questions/${questionId}/expire`, { answer }, attemptHeaders(accessToken))),
   saveAnswer: async (accessToken: string, questionId: string, answer: string[]): Promise<{ savedAt: string }> =>
     unwrap(await apiClient.put(`/public/exams/attempts/current/answers/${questionId}`, { answer }, attemptHeaders(accessToken))),
   event: async (accessToken: string, eventType: 'focus_lost' | 'heartbeat', metadata: Record<string, unknown> = {}): Promise<PublicAttempt> =>

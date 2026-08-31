@@ -52,6 +52,23 @@ router.get('/attempts/current', async (req: Request, res: Response, next: NextFu
   }
 });
 
+router.post('/attempts/current/questions/:questionId/activate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await service.activateQuestion(attemptToken(req), req.params.questionId) });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+router.post('/attempts/current/questions/:questionId/expire', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const input = saveAnswerSchema.parse(req.body);
+    res.json({ success: true, data: await service.expireQuestion(attemptToken(req), req.params.questionId, input.answer) });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
 router.put('/attempts/current/answers/:questionId', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = saveAnswerSchema.parse(req.body);
