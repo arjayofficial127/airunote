@@ -7,6 +7,7 @@ import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { postsApi, type Post } from '@/lib/api/posts';
 import { collectionsApi, type Collection } from '@/lib/api/collections';
 import { filesApi, type OrgFile } from '@/lib/api/files';
+import { examsApi, type ExamListItem, type ExamOrgSettings } from '@/lib/api/exams';
 
 /**
  * Metadata Index status lifecycle
@@ -63,7 +64,7 @@ export interface FileMetadata {
 /**
  * Entity type keys for metadata index
  */
-export type MetadataKey = 'posts' | 'collections' | 'files';
+export type MetadataKey = 'posts' | 'collections' | 'files' | 'exams' | 'examSettings';
 
 /**
  * Metadata index state shape
@@ -75,6 +76,8 @@ interface MetadataIndexState {
     posts: PostMetadata[];
     collections: CollectionMetadata[];
     files: FileMetadata[];
+    exams: ExamListItem[];
+    examSettings: ExamOrgSettings | null;
   };
   error: string | null;
 }
@@ -176,6 +179,8 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     posts: [],
     collections: [],
     files: [],
+    exams: [],
+    examSettings: null,
   });
   const [error, setError] = useState<string | null>(null);
   
@@ -216,6 +221,8 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         posts: [],
         collections: [],
         files: [],
+        exams: [],
+        examSettings: null,
       });
       setError(null);
       // Clear in-flight requests
@@ -226,6 +233,8 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         posts: [],
         collections: [],
         files: [],
+        exams: [],
+        examSettings: null,
       };
     }
   }, [authSession.authInvalidateKey]);
@@ -253,6 +262,10 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
           return currentIndex.collections.length > 0;
         case 'files':
           return currentIndex.files.length > 0;
+        case 'exams':
+          return currentIndex.exams.length > 0;
+        case 'examSettings':
+          return currentIndex.examSettings !== null;
         default:
           return false;
       }
@@ -315,6 +328,22 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
             setIndex((prev) => ({ ...prev, files: filesMetadata }));
             break;
           }
+          case 'exams': {
+            const exams = await examsApi.list(orgId).catch((err) => {
+              console.error('[MetadataIndexProvider] Failed to load exams:', err);
+              return [];
+            });
+            setIndex((prev) => ({ ...prev, exams }));
+            break;
+          }
+          case 'examSettings': {
+            const examSettings = await examsApi.getSettings(orgId).catch((err) => {
+              console.error('[MetadataIndexProvider] Failed to load exam settings:', err);
+              return { journeyMode: 'exam_first' as const, visibleTopLevelApps: ['exams', 'airunote'] as Array<'exams' | 'airunote'> };
+            });
+            setIndex((prev) => ({ ...prev, examSettings }));
+            break;
+          }
         }
       } catch (err: any) {
         console.error(`[MetadataIndexProvider] Failed to load ${key}:`, err);
@@ -362,7 +391,11 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
 
         // Load all metadata in parallel
         // Skip collections/files on Airunote routes (endpoints return 404)
-        const loadPromises = [loadMetadataKey(orgId, 'posts')];
+        const loadPromises = [
+          loadMetadataKey(orgId, 'posts'),
+          loadMetadataKey(orgId, 'exams'),
+          loadMetadataKey(orgId, 'examSettings'),
+        ];
         if (!isAirunoteRoute) {
           loadPromises.push(
             loadMetadataKey(orgId, 'collections'),
@@ -436,6 +469,8 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         posts: [],
         collections: [],
         files: [],
+        exams: [],
+        examSettings: null,
       });
       setError(null);
       // Clear in-flight requests
@@ -454,6 +489,8 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         posts: [],
         collections: [],
         files: [],
+        exams: [],
+        examSettings: null,
       });
       setError(null);
       // Clear in-flight requests
@@ -468,7 +505,9 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     const hasData = 
       index.posts.length > 0 ||
       index.collections.length > 0 ||
-      index.files.length > 0;
+      index.files.length > 0 ||
+      index.exams.length > 0 ||
+      index.examSettings !== null;
 
     // Only fetch if data is missing or org changed
     if (!hasData || (previousOrgId !== null && previousOrgId !== currentOrgId)) {
@@ -492,6 +531,8 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         posts: [],
         collections: [],
         files: [],
+        exams: [],
+        examSettings: null,
       });
       setError(null);
       // Clear in-flight requests

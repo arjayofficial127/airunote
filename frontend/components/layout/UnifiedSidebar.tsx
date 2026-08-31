@@ -10,6 +10,7 @@ import { FolderTree } from '@/components/airunote/components/FolderTree';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
+import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
 
 interface NavItem {
   href: string;
@@ -72,6 +73,7 @@ export function UnifiedSidebar({
   // Get auth session for userId (needed for folder tree)
   const authSession = useAuthSession();
   const orgSession = useOrgSession();
+  const metadataIndex = useMetadataIndex();
   const user = authSession.user;
   const userId = authSession.user?.id ?? null;
   const [isAllExpanded, setIsAllExpanded] = useState(true);
@@ -237,6 +239,11 @@ export function UnifiedSidebar({
   };
 
   const role = !isSuperAdminLoadingState && !isPermissionsLoading ? getRole() : null;
+  const examSettings = metadataIndex.index.examSettings;
+  const visibleTopLevelApps = examSettings?.visibleTopLevelApps ?? ['exams', 'airunote'];
+  const showExams = visibleTopLevelApps.includes('exams');
+  const showAirunote = visibleTopLevelApps.includes('airunote');
+  const examFirst = examSettings?.journeyMode !== 'standard';
 
   // Build nav items based on context
   const getNavItems = (): NavItem[] => {
@@ -289,7 +296,7 @@ export function UnifiedSidebar({
       ]
     : [];
 
-  const renderIcon = (name: 'dashboard' | 'posts' | 'collections' | 'members' | 'settings' | 'home' | 'all' | 'knowledge') => {
+  const renderIcon = (name: 'dashboard' | 'posts' | 'collections' | 'members' | 'settings' | 'home' | 'all' | 'knowledge' | 'exam') => {
     switch (name) {
       case 'dashboard':
         return (
@@ -339,6 +346,12 @@ export function UnifiedSidebar({
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 5.5A2.5 2.5 0 016.5 3H20v18H6.5A2.5 2.5 0 014 18.5v-13z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7h8M8 11h8M8 15h5" />
+          </svg>
+        );
+      case 'exam':
+        return (
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zM9 8h6M9 12h6M9 16h3" />
           </svg>
         );
     }
@@ -469,6 +482,28 @@ export function UnifiedSidebar({
                 <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Content</div>
 
                 <div className="space-y-1">
+                  {showExams && (
+                    <Link
+                      href={`/orgs/${orgId}/exams`}
+                      onClick={onNavigate}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
+                        pathname?.includes(`/orgs/${orgId}/exams`)
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : examFirst
+                            ? 'bg-blue-50 font-semibold text-blue-800 ring-1 ring-blue-100 hover:bg-blue-100'
+                            : 'text-slate-900 hover:bg-slate-100/80'
+                      }`}
+                    >
+                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center">{renderIcon('exam')}</span>
+                      <span className="truncate">Exams</span>
+                      {examFirst && (
+                        <span className="ml-auto rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700">Primary</span>
+                      )}
+                    </Link>
+                  )}
+
+                  {showAirunote && (
+                  <>
                   <Link
                     href={`/orgs/${orgId}/airunote`}
                     onClick={onNavigate}
@@ -523,6 +558,8 @@ export function UnifiedSidebar({
                       </div>
                     </div>
                   </div>
+                  </>
+                  )}
 
                   {SHOW_KNOWLEDGE && (
                     <div className="rounded-2xl bg-white/80">

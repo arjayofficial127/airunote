@@ -1,4 +1,9 @@
 packages:
   - 'backend-node'
   - 'frontend'
-
+allowBuilds:
+  core-js: true
+  es5-ext: true
+  esbuild: true
+  msgpackr-extract: true
+  unrs-resolver: true

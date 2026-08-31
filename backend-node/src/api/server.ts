@@ -21,6 +21,8 @@ import lemonSqueezyWebhooksRoutes from './routes/lemonsqueezy-webhooks.routes';
 import airunoteInternalRoutes from '../modules/airunote/airunote.internal.routes';
 import airunoteLensesRoutes from './routes/airunote.lenses.routes';
 import airunoteRoutes from './routes/airunote.routes';
+import examsRoutes from './routes/exams.routes';
+import publicExamsRoutes from './routes/public-exams.routes';
 
 // Register services in DI container
 import '../core/di/container';
@@ -255,6 +257,8 @@ export function createApp(): Express {
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/orgs/:orgId/airunote', airunoteRoutes);
   app.use('/api/orgs/:orgId/airunote/lenses', airunoteLensesRoutes);
+  app.use('/api/orgs/:orgId/exams', examsRoutes);
+  app.use('/api/public/exams', publicExamsRoutes);
 
   // Internal routes (temporary, no auth)
   app.use('/api/internal/airunote', airunoteInternalRoutes);

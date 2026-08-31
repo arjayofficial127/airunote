@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { postsApi, type Post } from '@/lib/api/posts';
+import { examsApi, type ExamDefinition, type ExamReport } from '@/lib/api/exams';
 
 /**
  * Hydrated Content Provider status lifecycle
@@ -14,7 +15,8 @@ type HydratedContentStatus = 'idle' | 'loading' | 'ready' | 'error';
 /**
  * Entity types that can be hydrated
  */
-export type HydratedEntityType = 'post';
+export type HydratedEntityType = 'post' | 'exam' | 'examReport';
+type HydratedEntityData = Post | ExamDefinition | ExamReport;
 
 /**
  * Hydrated record with metadata
@@ -31,7 +33,9 @@ interface HydratedRecord<T> {
 interface HydratedContentState {
   status: HydratedContentStatus;
   hydrated: {
-    post: Record<string, HydratedRecord<Post>>;
+    post: Record<string, HydratedRecord<HydratedEntityData>>;
+    exam: Record<string, HydratedRecord<HydratedEntityData>>;
+    examReport: Record<string, HydratedRecord<HydratedEntityData>>;
   };
   error: string | null;
 }
@@ -47,6 +51,7 @@ interface HydratedContentContextValue {
   isHydrating: (entityType: HydratedEntityType, id: string) => boolean;
   clearHydrated: () => void;
   clearEntity: (entityType: HydratedEntityType, id: string) => void;
+  refreshEntity: (entityType: HydratedEntityType, id: string) => Promise<void>;
   error: string | null;
 }
 
@@ -72,6 +77,8 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
     status: 'idle',
     hydrated: {
       post: {},
+      exam: {},
+      examReport: {},
     },
     error: null,
   });
@@ -108,6 +115,8 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
         status: 'idle',
         hydrated: {
           post: {},
+          exam: {},
+          examReport: {},
         },
         error: null,
       });
@@ -117,6 +126,8 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
       activeOrgIdRef.current = null;
       hydratedRef.current = {
         post: {},
+        exam: {},
+        examReport: {},
       };
     }
   }, [authSession.authInvalidateKey]);
@@ -161,7 +172,7 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
       try {
         setState((prev) => ({ ...prev, status: 'loading', error: null }));
 
-        let hydratedData: Post;
+        let hydratedData: HydratedEntityData;
         let updatedAt: string;
 
         switch (entityType) {
@@ -169,6 +180,18 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
             const res = await postsApi.getById(orgId, id);
             hydratedData = res.data;
             updatedAt = res.data.updatedAt;
+            break;
+          }
+          case 'exam': {
+            const exam = await examsApi.get(orgId, id);
+            hydratedData = exam;
+            updatedAt = exam.updatedAt;
+            break;
+          }
+          case 'examReport': {
+            const report = await examsApi.report(orgId, id);
+            hydratedData = report;
+            updatedAt = report.generatedAt;
             break;
           }
           default: {
@@ -245,6 +268,8 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
       status: 'idle',
       hydrated: {
         post: {},
+        exam: {},
+        examReport: {},
       },
       error: null,
     });
@@ -269,6 +294,20 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
       };
     });
   }, []);
+
+  const refreshEntity = useCallback(async (entityType: HydratedEntityType, id: string) => {
+    delete hydratedRef.current[entityType][id];
+    setState((prev) => ({
+      ...prev,
+      hydrated: {
+        ...prev.hydrated,
+        [entityType]: Object.fromEntries(
+          Object.entries(prev.hydrated[entityType]).filter(([entityId]) => entityId !== id),
+        ),
+      },
+    }));
+    await hydrate(entityType, id);
+  }, [hydrate]);
 
   // Reset hydrated data when activeOrgId changes
   useEffect(() => {
@@ -297,6 +336,7 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
     isHydrating,
     clearHydrated,
     clearEntity,
+    refreshEntity,
     error: state.error,
   };
 

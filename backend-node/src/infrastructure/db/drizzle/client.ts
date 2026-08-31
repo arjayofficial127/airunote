@@ -41,10 +41,9 @@ export async function warmupDatabase() {
   try {
     await client`SELECT 1`;
     console.log('[DB] Connection pool warmed up');
-    return true;
   } catch (error) {
     console.error('[DB] Warmup failed:', error);
-    return false;
+    throw error;
   }
 }
 
@@ -57,4 +56,3 @@ if (typeof process !== 'undefined' && process.versions && process.versions.node)
 }
 
 export const db = drizzle(client, { schema });
-

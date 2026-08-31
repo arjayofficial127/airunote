@@ -739,3 +739,156 @@ export const airuLensItemsTable = pgTable('airu_lens_items', {
   lensEntityIdx: index('idx_lens_items_lens_entity').on(table.lensId, table.entityType, table.entityId),
   lensColumnIdx: index('idx_lens_items_lens_column').on(table.lensId, table.columnId),
 }));
+
+// Resident Exams workspace preferences
+export const examOrgSettingsTable = pgTable('exam_org_settings', {
+  orgId: uuid('org_id')
+    .primaryKey()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  journeyMode: varchar('journey_mode', { length: 20 }).notNull().default('exam_first'),
+  visibleTopLevelApps: jsonb('visible_top_level_apps').notNull().default(['exams', 'airunote']),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// Resident Exams definitions
+export const examsTable = pgTable('exams', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id')
+    .notNull()
+    .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  createdByUserId: uuid('created_by_user_id')
+    .notNull()
+    .references(() => usersTable.id, { onDelete: 'restrict' }),
+  title: varchar('title', { length: 300 }).notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 20 }).notNull().default('draft'),
+  publicId: uuid('public_id').notNull().defaultRandom().unique(),
+  durationMinutes: integer('duration_minutes').notNull().default(20),
+  oneQuestionAtATime: boolean('one_question_at_a_time').notNull().default(true),
+  preventFocusLoss: boolean('prevent_focus_loss').notNull().default(true),
+  maxAttempts: integer('max_attempts').notNull().default(3),
+  reviewMode: varchar('review_mode', { length: 30 }).notNull().default('respondent_answers'),
+  shuffleQuestions: boolean('shuffle_questions').notNull().default(false),
+  shuffleOptions: boolean('shuffle_options').notNull().default(false),
+  requireEmail: boolean('require_email').notNull().default(false),
+  requireIdentifier: boolean('require_identifier').notNull().default(false),
+  startsAt: timestamp('starts_at'),
+  endsAt: timestamp('ends_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  orgStatusIdx: index('exams_org_status_idx').on(table.orgId, table.status),
+  publicIdIdx: uniqueIndex('exams_public_id_idx').on(table.publicId),
+  creatorIdx: index('exams_creator_idx').on(table.createdByUserId),
+}));
+
+export const examSectionsTable = pgTable('exam_sections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  examId: uuid('exam_id')
+    .notNull()
+    .references(() => examsTable.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 300 }).notNull(),
+  description: text('description'),
+  position: integer('position').notNull().default(0),
+  pinned: boolean('pinned').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  examPositionIdx: index('exam_sections_exam_position_idx').on(table.examId, table.position),
+}));
+
+export const examQuestionsTable = pgTable('exam_questions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  examId: uuid('exam_id')
+    .notNull()
+    .references(() => examsTable.id, { onDelete: 'cascade' }),
+  sectionId: uuid('section_id').references(() => examSectionsTable.id, { onDelete: 'set null' }),
+  type: varchar('type', { length: 30 }).notNull(),
+  prompt: text('prompt').notNull(),
+  explanation: text('explanation'),
+  position: integer('position').notNull().default(0),
+  required: boolean('required').notNull().default(true),
+  graded: boolean('graded').notNull().default(true),
+  points: integer('points').notNull().default(1),
+  pinned: boolean('pinned').notNull().default(false),
+  correctAnswers: jsonb('correct_answers').notNull().default([]),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  examPositionIdx: index('exam_questions_exam_position_idx').on(table.examId, table.position),
+  sectionIdx: index('exam_questions_section_idx').on(table.sectionId),
+}));
+
+export const examQuestionOptionsTable = pgTable('exam_question_options', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  questionId: uuid('question_id')
+    .notNull()
+    .references(() => examQuestionsTable.id, { onDelete: 'no action' }),
+  label: text('label').notNull(),
+  position: integer('position').notNull().default(0),
+}, (table) => ({
+  questionPositionIdx: index('exam_question_options_question_position_idx').on(table.questionId, table.position),
+}));
+
+// Every public answering session is durable, including incomplete sessions.
+export const examAttemptsTable = pgTable('exam_attempts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  examId: uuid('exam_id')
+    .notNull()
+    .references(() => examsTable.id, { onDelete: 'cascade' }),
+  accessTokenHash: varchar('access_token_hash', { length: 64 }).notNull().unique(),
+  respondentName: varchar('respondent_name', { length: 255 }).notNull(),
+  respondentEmail: varchar('respondent_email', { length: 255 }),
+  respondentIdentifier: varchar('respondent_identifier', { length: 255 }),
+  identityKeyHash: varchar('identity_key_hash', { length: 64 }).notNull(),
+  deviceHash: varchar('device_hash', { length: 64 }).notNull(),
+  ipHash: varchar('ip_hash', { length: 64 }).notNull(),
+  userAgentHash: varchar('user_agent_hash', { length: 64 }).notNull(),
+  attemptNumber: integer('attempt_number').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('in_progress'),
+  questionOrder: jsonb('question_order').notNull().default([]),
+  optionOrder: jsonb('option_order').notNull().default({}),
+  focusViolationCount: integer('focus_violation_count').notNull().default(0),
+  resumeCount: integer('resume_count').notNull().default(0),
+  extraTimeSeconds: integer('extra_time_seconds').notNull().default(0),
+  terminationReason: text('termination_reason'),
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  lastActiveAt: timestamp('last_active_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  examStatusIdx: index('exam_attempts_exam_status_idx').on(table.examId, table.status),
+  identityIdx: index('exam_attempts_exam_identity_idx').on(table.examId, table.identityKeyHash),
+  deviceIdx: index('exam_attempts_exam_device_idx').on(table.examId, table.deviceHash),
+  lastActiveIdx: index('exam_attempts_last_active_idx').on(table.lastActiveAt),
+}));
+
+export const examAnswersTable = pgTable('exam_answers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  attemptId: uuid('attempt_id')
+    .notNull()
+    .references(() => examAttemptsTable.id, { onDelete: 'cascade' }),
+  questionId: uuid('question_id')
+    .notNull()
+    .references(() => examQuestionsTable.id, { onDelete: 'cascade' }),
+  answer: jsonb('answer').notNull().default([]),
+  savedAt: timestamp('saved_at').notNull().defaultNow(),
+}, (table) => ({
+  attemptQuestionUnique: unique('exam_answers_attempt_question_unique').on(table.attemptId, table.questionId),
+  attemptIdx: index('exam_answers_attempt_idx').on(table.attemptId),
+  questionIdx: index('exam_answers_question_idx').on(table.questionId),
+}));
+
+export const examAttemptEventsTable = pgTable('exam_attempt_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  attemptId: uuid('attempt_id')
+    .notNull()
+    .references(() => examAttemptsTable.id, { onDelete: 'cascade' }),
+  eventType: varchar('event_type', { length: 40 }).notNull(),
+  metadata: jsonb('metadata').notNull().default({}),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  attemptCreatedIdx: index('exam_attempt_events_attempt_created_idx').on(table.attemptId, table.createdAt),
+  eventTypeIdx: index('exam_attempt_events_type_idx').on(table.eventType),
+}));

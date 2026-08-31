@@ -12,6 +12,7 @@ import { buildCheckoutUrl } from '@/lib/payments/checkout';
 import JoinCodeSettings from '@/components/orgs/JoinCodeSettings';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 import UnauthorizedError from '@/components/errors/UnauthorizedError';
+import { ExamJourneySettings } from '@/components/exams/ExamJourneySettings';
 
 type SettingsOrg = {
   id: string;
@@ -354,6 +355,8 @@ export default function SettingsPage() {
             }}
           />
         )}
+
+        {orgId && <ExamJourneySettings orgId={orgId} />}
 
         {/* Danger Zone */}
         <div className="bg-white rounded-lg shadow p-8 border-2 border-red-200">
