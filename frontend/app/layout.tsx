@@ -17,8 +17,8 @@ import { UpgradeReturnHandler } from '@/components/payments/UpgradeReturnHandler
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'airunote',
-  description: 'Multi-organization backend foundation',
+  title: 'airunote — Think in your own shape',
+  description: 'A calm knowledge workspace for notes, projects, records, learning, and teams.',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
