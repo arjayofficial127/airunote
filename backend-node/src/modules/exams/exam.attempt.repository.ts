@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   examAnswersTable,
@@ -24,6 +24,10 @@ export interface CreateAttemptRecordInput {
   attemptNumber: number;
   questionOrder: string[];
   optionOrder: Record<string, string[]>;
+  isPreview?: boolean;
+  previewedByUserId?: string | null;
+  previewedByEmail?: string | null;
+  previewedByRole?: string | null;
 }
 
 export interface AttemptIdentitySignals {
@@ -35,6 +39,8 @@ export class ExamAttemptRepository {
     const [result] = await db.select({ value: count(examAttemptsTable.id) }).from(examAttemptsTable).where(and(
       eq(examAttemptsTable.examId, examId),
       eq(examAttemptsTable.identityKeyHash, signals.identityKeyHash),
+      eq(examAttemptsTable.isPreview, false),
+      ne(examAttemptsTable.status, 'void'),
     ));
     return Number(result?.value ?? 0);
   }
@@ -76,7 +82,7 @@ export class ExamAttemptRepository {
   }
 
   async updateAttempt(attemptId: string, values: Partial<Pick<ExamAttemptRecord,
-    'accessTokenHash' | 'status' | 'questionTiming' | 'focusViolationCount' | 'resumeCount' | 'extraTimeSeconds' | 'terminationReason' | 'lastActiveAt' | 'completedAt'
+    'accessTokenHash' | 'status' | 'questionTiming' | 'focusViolationCount' | 'resumeCount' | 'extraTimeSeconds' | 'terminationReason' | 'lastActiveAt' | 'completedAt' | 'endedAt' | 'voidedAt' | 'voidedByUserId' | 'voidReason'
   >>): Promise<ExamAttemptRecord | null> {
     const [attempt] = await db.update(examAttemptsTable).set({ ...values, updatedAt: new Date() }).where(eq(examAttemptsTable.id, attemptId)).returning();
     return attempt ?? null;

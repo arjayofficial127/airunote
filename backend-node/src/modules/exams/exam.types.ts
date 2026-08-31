@@ -112,6 +112,10 @@ export const continueAttemptSchema = z.object({
   additionalMinutes: z.number().int().min(0).max(240).optional(),
 });
 
+export const voidAttemptSchema = z.object({
+  reason: z.string().trim().min(3).max(2000),
+});
+
 export type CreateExamInput = z.infer<typeof createExamSchema>;
 export type UpdateExamInput = z.infer<typeof updateExamSchema>;
 export type UpdateQuestionGradingInput = z.infer<typeof updateQuestionGradingSchema>;
@@ -171,6 +175,8 @@ export interface ExamDefinitionView {
   requireIdentifier: boolean;
   startsAt: Date | null;
   endsAt: Date | null;
+  archivedAt: Date | null;
+  archivedByUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
   sections: ExamSectionView[];

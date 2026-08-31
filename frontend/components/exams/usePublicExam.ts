@@ -35,7 +35,9 @@ export function usePublicExam(publicId: string) {
     void (async () => {
       setLoading(true);
       try {
-        const queryToken = new URLSearchParams(window.location.search).get('resume');
+        const query = new URLSearchParams(window.location.search);
+        const previewToken = query.get('preview');
+        const queryToken = query.get('resume') || previewToken;
         const storedToken = queryToken || window.localStorage.getItem(tokenKey);
         const publicOverview = await publicExamsApi.overview(publicId);
         if (!active) return;
@@ -46,7 +48,7 @@ export function usePublicExam(publicId: string) {
             if (!active) return;
             setAccessToken(storedToken);
             setAttempt(current);
-            window.localStorage.setItem(tokenKey, storedToken);
+            if (!previewToken) window.localStorage.setItem(tokenKey, storedToken);
             if (queryToken) window.history.replaceState({}, '', `/exam/${publicId}`);
           } catch (attemptError) {
             console.warn('Stored exam attempt could not be resumed', attemptError);

@@ -112,6 +112,7 @@ export class ExamService {
 
   private assertAvailable(exam: ExamDefinitionView): void {
     const now = Date.now();
+    if (exam.archivedAt) throw new ExamServiceError('This exam has been archived', 410, 'EXAM_ARCHIVED');
     if (exam.status !== 'published') throw new ExamServiceError('This exam is not currently open for responses', 409, 'EXAM_NOT_PUBLISHED');
     if (exam.startsAt && exam.startsAt.getTime() > now) throw new ExamServiceError('This exam is scheduled to open soon', 409, 'EXAM_NOT_STARTED');
     if (exam.endsAt && exam.endsAt.getTime() <= now) throw new ExamServiceError('The response window for this exam has ended. New attempts are no longer accepted.', 409, 'EXAM_CLOSED');
@@ -120,14 +121,14 @@ export class ExamService {
 
   private publicAvailability(exam: ExamDefinitionView): 'open' | 'upcoming' | 'ended' | 'unavailable' {
     const now = Date.now();
-    if (exam.status !== 'published' || exam.questions.length === 0) return 'unavailable';
+    if (exam.archivedAt || exam.status !== 'published' || exam.questions.length === 0) return 'unavailable';
     if (exam.startsAt && exam.startsAt.getTime() > now) return 'upcoming';
     if (exam.endsAt && exam.endsAt.getTime() <= now) return 'ended';
     return 'open';
   }
 
-  async list(orgId: string) {
-    return this.repository.list(orgId);
+  async list(orgId: string, archived = false) {
+    return this.repository.list(orgId, archived);
   }
 
   async get(orgId: string, examId: string): Promise<ExamDefinitionView> {
@@ -191,10 +192,60 @@ export class ExamService {
     return updated;
   }
 
-  async delete(orgId: string, examId: string): Promise<void> {
-    const exam = await this.get(orgId, examId);
-    if (exam.attemptCount > 0) throw new ExamServiceError('Exams with attempts cannot be deleted', 409, 'EXAM_HAS_ATTEMPTS');
-    if (!await this.repository.delete(orgId, examId)) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
+  async archive(orgId: string, examId: string, userId: string): Promise<void> {
+    await this.get(orgId, examId);
+    if (!await this.repository.setArchived(orgId, examId, userId)) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
+  }
+
+  async restore(orgId: string, examId: string): Promise<void> {
+    await this.get(orgId, examId);
+    if (!await this.repository.setArchived(orgId, examId, null)) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
+  }
+
+  async duplicate(orgId: string, examId: string, userId: string): Promise<ExamDefinitionView> {
+    const source = await this.get(orgId, examId);
+    const sectionKeys = new Map(source.sections.map((section, index) => [section.id, `section-${index + 1}`]));
+    const input: CreateExamInput = {
+      title: `${source.title} (Copy)`,
+      description: source.description,
+      status: 'draft',
+      durationMinutes: source.durationMinutes,
+      oneQuestionAtATime: source.oneQuestionAtATime,
+      preventFocusLoss: source.preventFocusLoss,
+      maxAttempts: source.maxAttempts,
+      reviewMode: source.reviewMode,
+      shuffleQuestions: source.shuffleQuestions,
+      shuffleOptions: source.shuffleOptions,
+      requireEmail: source.requireEmail,
+      requireIdentifier: source.requireIdentifier,
+      startsAt: null,
+      endsAt: null,
+      sections: source.sections.map((section, index) => ({
+        key: `section-${index + 1}`,
+        title: section.title,
+        description: section.description,
+        position: section.position,
+        pinned: section.pinned,
+      })),
+      questions: source.questions.map((question) => {
+        const optionKeys = new Map(question.options.map((option, index) => [option.id, `option-${index + 1}`]));
+        return {
+          type: question.type,
+          prompt: question.prompt,
+          explanation: question.explanation,
+          position: question.position,
+          sectionKey: question.sectionId ? sectionKeys.get(question.sectionId) ?? null : null,
+          required: question.required,
+          graded: question.graded,
+          points: question.points,
+          pinned: question.pinned,
+          maxTimeSeconds: question.maxTimeSeconds,
+          correctAnswers: question.correctAnswers.map((answer) => optionKeys.get(answer) ?? answer),
+          options: question.options.map((option, index) => ({ key: `option-${index + 1}`, label: option.label })),
+        };
+      }),
+    };
+    return this.create(orgId, userId, input);
   }
 
   async getOrgSettings(orgId: string) {
@@ -284,6 +335,37 @@ export class ExamService {
     return { accessToken: token, attempt: this.buildAttemptPayload(exam, attempt, [], true) };
   }
 
+  async startPreview(orgId: string, examId: string, user: { userId: string; email: string }) {
+    const exam = await this.get(orgId, examId);
+    if (exam.questions.length === 0) throw new ExamServiceError('This exam has no questions', 409, 'EXAM_EMPTY');
+    const token = this.createToken();
+    const identityKeyHash = this.hash(`preview:${user.userId}:${Date.now()}`);
+    const attempt = await this.repository.createAttempt({
+      examId: exam.id,
+      accessTokenHash: this.tokenHash(token),
+      respondentName: user.email,
+      respondentEmail: user.email,
+      respondentIdentifier: 'Admin preview',
+      identityKeyHash,
+      deviceHash: this.hash(`preview:${user.userId}`),
+      ipHash: this.hash('admin-preview'),
+      userAgentHash: this.hash('admin-preview'),
+      attemptNumber: 1,
+      questionOrder: this.createQuestionOrder(exam),
+      optionOrder: this.createOptionOrder(exam),
+      isPreview: true,
+      previewedByUserId: user.userId,
+      previewedByEmail: user.email,
+      previewedByRole: 'admin/examiner',
+    });
+    await this.repository.addEvent(attempt.id, 'admin_preview_started', { userId: user.userId, email: user.email, role: 'admin/examiner' });
+    return {
+      accessToken: token,
+      publicId: exam.publicId,
+      path: `/exam/${exam.publicId}?preview=${encodeURIComponent(token)}`,
+    };
+  }
+
   private remainingSeconds(exam: ExamDefinitionView, attempt: ExamAttemptRecord): number {
     const available = exam.durationMinutes * 60 + attempt.extraTimeSeconds;
     return Math.max(0, available - Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000));
@@ -357,6 +439,10 @@ export class ExamService {
       attemptNumber: attempt.attemptNumber,
       startedAt: attempt.startedAt,
       completedAt: attempt.completedAt,
+      endedAt: attempt.endedAt ?? attempt.completedAt,
+      isPreview: attempt.isPreview,
+      previewedByEmail: attempt.previewedByEmail,
+      previewedByRole: attempt.previewedByRole,
       remainingSeconds: attempt.status === 'in_progress' ? this.remainingSeconds(exam, attempt) : 0,
       durationMinutes: exam.durationMinutes,
       oneQuestionAtATime: exam.oneQuestionAtATime,
@@ -376,9 +462,14 @@ export class ExamService {
     if (!exam) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
     if (attempt.status === 'in_progress' && this.remainingSeconds(exam, attempt) <= 0) {
       attempt = await this.repository.updateAttempt(attempt.id, {
-        status: 'completed', completedAt: new Date(), terminationReason: 'time_expired', lastActiveAt: new Date(),
+        status: 'timed_out', completedAt: new Date(), endedAt: new Date(), terminationReason: 'time_expired', lastActiveAt: new Date(),
       }) ?? attempt;
       await this.repository.addEvent(attempt.id, 'time_expired', {});
+    } else if (attempt.status === 'in_progress' && !attempt.isPreview && Date.now() - attempt.lastActiveAt.getTime() >= 15 * 60_000) {
+      attempt = await this.repository.updateAttempt(attempt.id, {
+        status: 'abandoned', completedAt: attempt.lastActiveAt, endedAt: attempt.lastActiveAt, terminationReason: 'inactive_abandoned',
+      }) ?? attempt;
+      await this.repository.addEvent(attempt.id, 'abandoned', { inactiveMinutes: 15 });
     }
     return { exam, attempt, answers: await this.repository.getAnswers(attempt.id) };
   }
@@ -467,12 +558,18 @@ export class ExamService {
       const updated = await this.repository.updateAttempt(attempt.id, { lastActiveAt: new Date() });
       return this.buildAttemptPayload(exam, updated ?? attempt, answers, true);
     }
+    if (attempt.isPreview) {
+      await this.repository.addEvent(attempt.id, 'preview_focus_lost_ignored', metadata);
+      const updated = await this.repository.updateAttempt(attempt.id, { lastActiveAt: new Date() });
+      return this.buildAttemptPayload(exam, updated ?? attempt, answers, true);
+    }
     await this.repository.addEvent(attempt.id, 'focus_lost', metadata);
     const nextViolationCount = attempt.focusViolationCount + 1;
     const updated = await this.repository.updateAttempt(attempt.id, exam.preventFocusLoss ? {
       focusViolationCount: nextViolationCount,
       status: 'terminated',
       completedAt: new Date(),
+      endedAt: new Date(),
       lastActiveAt: new Date(),
       terminationReason: 'focus_lost',
     } : { focusViolationCount: nextViolationCount, lastActiveAt: new Date() });
@@ -500,7 +597,7 @@ export class ExamService {
       );
     }
     const updated = await this.repository.updateAttempt(attempt.id, {
-      status: 'completed', completedAt: new Date(), lastActiveAt: new Date(), terminationReason: null,
+      status: 'completed', completedAt: new Date(), endedAt: new Date(), lastActiveAt: new Date(), terminationReason: null,
     });
     await this.repository.addEvent(attempt.id, 'submitted', {});
     return this.buildAttemptPayload(exam, updated ?? attempt, answers, false);
@@ -510,11 +607,15 @@ export class ExamService {
     const exam = await this.get(orgId, examId);
     const attempt = await this.repository.findAttemptByOrg(orgId, examId, attemptId);
     if (!attempt) throw new ExamServiceError('Attempt not found', 404, 'ATTEMPT_NOT_FOUND');
+    if (attempt.status === 'completed' || attempt.status === 'void') {
+      throw new ExamServiceError('Completed or void attempts cannot be continued', 409, 'ATTEMPT_NOT_CONTINUABLE');
+    }
     const token = this.createToken();
     const updated = await this.repository.updateAttempt(attempt.id, {
       accessTokenHash: this.tokenHash(token),
       status: 'in_progress',
       completedAt: null,
+      endedAt: null,
       terminationReason: null,
       resumeCount: attempt.resumeCount + 1,
       extraTimeSeconds: attempt.extraTimeSeconds + additionalMinutes * 60,
@@ -525,8 +626,43 @@ export class ExamService {
     return { accessToken: token, publicId: exam.publicId, path: `/exam/${exam.publicId}?resume=${encodeURIComponent(token)}` };
   }
 
+  async voidAttempt(orgId: string, examId: string, attemptId: string, userId: string, reason: string) {
+    await this.get(orgId, examId);
+    const attempt = await this.repository.findAttemptByOrg(orgId, examId, attemptId);
+    if (!attempt) throw new ExamServiceError('Attempt not found', 404, 'ATTEMPT_NOT_FOUND');
+    if (attempt.status === 'void') throw new ExamServiceError('This attempt is already void', 409, 'ATTEMPT_ALREADY_VOID');
+    const now = new Date();
+    const updated = await this.repository.updateAttempt(attempt.id, {
+      status: 'void',
+      endedAt: attempt.endedAt ?? attempt.completedAt ?? now,
+      completedAt: attempt.completedAt ?? now,
+      lastActiveAt: now,
+      voidedAt: now,
+      voidedByUserId: userId,
+      voidReason: reason,
+    });
+    await this.repository.addEvent(attempt.id, 'voided_by_admin', { userId, reason });
+    return updated;
+  }
+
   async report(orgId: string, examId: string) {
     const exam = await this.get(orgId, examId);
-    return buildExamReport(exam, await this.repository.getReportData(examId));
+    const data = await this.repository.getReportData(examId);
+    const now = new Date();
+    for (const attempt of data.attempts) {
+      if (attempt.status !== 'in_progress') continue;
+      const expiresAt = new Date(attempt.startedAt.getTime() + (exam.durationMinutes * 60 + attempt.extraTimeSeconds) * 1000);
+      const abandoned = !attempt.isPreview && now.getTime() - attempt.lastActiveAt.getTime() >= 15 * 60_000 && expiresAt > now;
+      if (expiresAt > now && !abandoned) continue;
+      const terminalAt = abandoned ? attempt.lastActiveAt : expiresAt;
+      const updated = await this.repository.updateAttempt(attempt.id, abandoned ? {
+        status: 'abandoned', terminationReason: 'inactive_abandoned', completedAt: terminalAt, endedAt: terminalAt,
+      } : {
+        status: 'timed_out', terminationReason: 'time_expired', completedAt: terminalAt, endedAt: terminalAt,
+      });
+      if (updated) Object.assign(attempt, updated);
+      await this.repository.addEvent(attempt.id, abandoned ? 'abandoned' : 'time_expired', { normalizedByReport: true });
+    }
+    return buildExamReport(exam, data);
   }
 }

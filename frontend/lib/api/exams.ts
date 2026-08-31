@@ -15,6 +15,7 @@ export interface ExamListItem {
   maxAttempts: number;
   updatedAt: string;
   attemptCount: number;
+  archivedAt: string | null;
 }
 
 export interface ExamOption {
@@ -67,6 +68,8 @@ export interface ExamDefinition {
   requireIdentifier: boolean;
   startsAt: string | null;
   endsAt: string | null;
+  archivedAt: string | null;
+  archivedByUserId: string | null;
   createdAt: string;
   updatedAt: string;
   sections: ExamSection[];
@@ -137,26 +140,36 @@ export interface ExamReportRespondent {
   respondentEmail: string | null;
   respondentIdentifier: string | null;
   attemptNumber: number;
-  status: 'in_progress' | 'completed' | 'terminated';
+  status: 'in_progress' | 'completed' | 'terminated' | 'timed_out' | 'abandoned' | 'void';
+  classification: 'active' | 'inactive_stale' | 'focus_terminated' | 'timed_out' | 'abandoned' | 'submitted' | 'terminated' | 'void';
   terminationReason: string | null;
   focusViolationCount: number;
   startedAt: string;
   completedAt: string | null;
+  endedAt: string | null;
   lastActiveAt: string;
   timeInExamSeconds: number;
   remainingSeconds: number;
   active: boolean;
+  needsAdmin: boolean;
+  eligibleForContinue: boolean;
   activeQuestionId: string | null;
   earnedPoints: number;
   possiblePoints: number;
   percentage: number | null;
+  scoreIsProvisional: boolean;
   answers: Record<string, string[]>;
+  isPreview: boolean;
+  previewedByEmail: string | null;
+  previewedByRole: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
 }
 
 export interface ExamReport {
   exam: ExamDefinition;
   generatedAt: string;
-  summary: { totalAttempts: number; completed: number; inProgress: number; terminated: number; activeNow: number };
+  summary: { totalAttempts: number; completed: number; inProgress: number; terminated: number; needsAdmin: number; activeNow: number; inactiveStale: number; timedOut: number; voided: number; previews: number };
   respondents: ExamReportRespondent[];
   questionPerformance: Array<{
     questionId: string;
@@ -164,9 +177,14 @@ export interface ExamReport {
     graded: boolean;
     points: number;
     answeredCount: number;
+    skippedCount: number;
     correctCount: number;
+    incorrectCount: number;
+    averageResponseSeconds: number | null;
     correctPercentage: number | null;
     correctRespondents: Array<{ id: string; name: string }>;
+    incorrectRespondents: Array<{ id: string; name: string }>;
+    optionPerformance: Array<{ optionId: string; label: string; selectedCount: number; selectedPercentage: number; correct: boolean; respondents: Array<{ id: string; name: string }> }>;
   }>;
   recentEvents: Array<{ id: string; attemptId: string; eventType: string; metadata: Record<string, unknown>; createdAt: string }>;
 }
@@ -212,11 +230,15 @@ export interface PublicAttempt {
   publicId: string;
   title: string;
   description: string | null;
-  status: 'in_progress' | 'completed' | 'terminated';
+  status: 'in_progress' | 'completed' | 'terminated' | 'timed_out' | 'abandoned' | 'void';
   terminationReason: string | null;
   attemptNumber: number;
   startedAt: string;
   completedAt: string | null;
+  endedAt: string | null;
+  isPreview: boolean;
+  previewedByEmail: string | null;
+  previewedByRole: string | null;
   remainingSeconds: number;
   durationMinutes: number;
   oneQuestionAtATime: boolean;
@@ -233,13 +255,16 @@ function unwrap<T>(response: { data: { success: boolean; data: T } }): T {
 }
 
 export const examsApi = {
-  list: async (orgId: string): Promise<ExamListItem[]> => unwrap(await apiClient.get(`/orgs/${orgId}/exams`)),
+  list: async (orgId: string, archived = false): Promise<ExamListItem[]> => unwrap(await apiClient.get(`/orgs/${orgId}/exams`, { params: archived ? { archived: 'true' } : undefined })),
   get: async (orgId: string, examId: string): Promise<ExamDefinition> => unwrap(await apiClient.get(`/orgs/${orgId}/exams/${examId}`)),
   create: async (orgId: string, input: ExamInput): Promise<ExamDefinition> => unwrap(await apiClient.post(`/orgs/${orgId}/exams`, input)),
   importJson: async (orgId: string, input: ExamInput): Promise<ExamDefinition> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/import`, input)),
   update: async (orgId: string, examId: string, input: Partial<Omit<ExamInput, 'questions' | 'sections'>>): Promise<ExamDefinition> => unwrap(await apiClient.patch(`/orgs/${orgId}/exams/${examId}`, input)),
   replaceDefinition: async (orgId: string, examId: string, input: ExamInput): Promise<ExamDefinition> => unwrap(await apiClient.put(`/orgs/${orgId}/exams/${examId}/definition`, input)),
-  remove: async (orgId: string, examId: string): Promise<void> => { await apiClient.delete(`/orgs/${orgId}/exams/${examId}`); },
+  archive: async (orgId: string, examId: string): Promise<void> => { await apiClient.post(`/orgs/${orgId}/exams/${examId}/archive`); },
+  restore: async (orgId: string, examId: string): Promise<void> => { await apiClient.post(`/orgs/${orgId}/exams/${examId}/restore`); },
+  duplicate: async (orgId: string, examId: string): Promise<ExamDefinition> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/duplicate`)),
+  preview: async (orgId: string, examId: string): Promise<{ accessToken: string; publicId: string; path: string }> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/preview`)),
   getSettings: async (orgId: string): Promise<ExamOrgSettings> => unwrap(await apiClient.get(`/orgs/${orgId}/exams/settings`)),
   updateSettings: async (orgId: string, input: ExamOrgSettings): Promise<ExamOrgSettings> => unwrap(await apiClient.put(`/orgs/${orgId}/exams/settings`, input)),
   updateQuestionGrading: async (orgId: string, examId: string, questionId: string, input: { graded: boolean; points: number; correctAnswers: string[]; explanation?: string | null }): Promise<ExamDefinition> =>
@@ -247,6 +272,9 @@ export const examsApi = {
   report: async (orgId: string, examId: string): Promise<ExamReport> => unwrap(await apiClient.get(`/orgs/${orgId}/exams/${examId}/report`)),
   continueAttempt: async (orgId: string, examId: string, attemptId: string, additionalMinutes: number): Promise<{ accessToken: string; publicId: string; path: string }> =>
     unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/attempts/${attemptId}/continue`, { additionalMinutes })),
+  voidAttempt: async (orgId: string, examId: string, attemptId: string, reason: string): Promise<void> => {
+    await apiClient.post(`/orgs/${orgId}/exams/${examId}/attempts/${attemptId}/void`, { reason });
+  },
 };
 
 function attemptHeaders(accessToken: string) {

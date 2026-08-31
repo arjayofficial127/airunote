@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
   examAttemptsTable,
@@ -41,6 +41,7 @@ export interface ExamListItem {
   maxAttempts: number;
   updatedAt: Date;
   attemptCount: number;
+  archivedAt: Date | null;
 }
 
 function readStringArray(value: unknown): string[] {
@@ -74,14 +75,21 @@ function mapQuestion(
 }
 
 export class ExamRepository extends ExamAttemptRepository {
-  async list(orgId: string): Promise<ExamListItem[]> {
-    const rows = await db.select().from(examsTable).where(eq(examsTable.orgId, orgId)).orderBy(desc(examsTable.updatedAt));
+  async list(orgId: string, archived = false): Promise<ExamListItem[]> {
+    const rows = await db.select().from(examsTable).where(and(
+      eq(examsTable.orgId, orgId),
+      archived ? isNotNull(examsTable.archivedAt) : isNull(examsTable.archivedAt),
+    )).orderBy(desc(examsTable.updatedAt));
     if (rows.length === 0) return [];
 
     const counts = await db
       .select({ examId: examAttemptsTable.examId, value: count(examAttemptsTable.id) })
       .from(examAttemptsTable)
-      .where(inArray(examAttemptsTable.examId, rows.map((row) => row.id)))
+      .where(and(
+        inArray(examAttemptsTable.examId, rows.map((row) => row.id)),
+        eq(examAttemptsTable.isPreview, false),
+        ne(examAttemptsTable.status, 'void'),
+      ))
       .groupBy(examAttemptsTable.examId);
     const countsByExam = new Map(counts.map((entry) => [entry.examId, Number(entry.value)]));
 
@@ -96,6 +104,7 @@ export class ExamRepository extends ExamAttemptRepository {
       maxAttempts: row.maxAttempts,
       updatedAt: row.updatedAt,
       attemptCount: countsByExam.get(row.id) ?? 0,
+      archivedAt: row.archivedAt,
     }));
   }
 
@@ -148,6 +157,8 @@ export class ExamRepository extends ExamAttemptRepository {
       requireIdentifier: row.requireIdentifier,
       startsAt: row.startsAt,
       endsAt: row.endsAt,
+      archivedAt: row.archivedAt,
+      archivedByUserId: row.archivedByUserId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       sections: sections.map((section) => ({
@@ -338,9 +349,13 @@ export class ExamRepository extends ExamAttemptRepository {
     return this.getByOrg(orgId, examId);
   }
 
-  async delete(orgId: string, examId: string): Promise<boolean> {
-    const deleted = await db.delete(examsTable).where(and(eq(examsTable.id, examId), eq(examsTable.orgId, orgId))).returning({ id: examsTable.id });
-    return deleted.length > 0;
+  async setArchived(orgId: string, examId: string, userId: string | null): Promise<boolean> {
+    const [updated] = await db.update(examsTable).set({
+      archivedAt: userId ? new Date() : null,
+      archivedByUserId: userId,
+      updatedAt: new Date(),
+    }).where(and(eq(examsTable.id, examId), eq(examsTable.orgId, orgId))).returning({ id: examsTable.id });
+    return Boolean(updated);
   }
 
   async getOrgSettings(orgId: string): Promise<{ journeyMode: 'exam_first' | 'standard'; visibleTopLevelApps: Array<'exams' | 'airunote'> }> {

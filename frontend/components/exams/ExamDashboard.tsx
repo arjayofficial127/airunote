@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChangeEvent, useRef, useState } from 'react';
-import { examsApi } from '@/lib/api/exams';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { examsApi, type ExamListItem } from '@/lib/api/exams';
 import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { examJsonTemplateText, parseExamInputJson } from './examJsonTemplate';
@@ -23,8 +23,42 @@ export function ExamDashboard() {
   const [jsonText, setJsonText] = useState(examJsonTemplateText);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedExams, setArchivedExams] = useState<ExamListItem[]>([]);
   const orgId = orgSession.activeOrgId;
   const exams = metadata.index.exams;
+  const visibleExams = showArchived ? archivedExams : exams;
+
+  useEffect(() => {
+    if (!showArchived || !orgId) return;
+    void examsApi.list(orgId, true).then(setArchivedExams).catch(() => setError('Could not load archived exams.'));
+  }, [orgId, showArchived]);
+
+  const duplicateExam = async (examId: string) => {
+    if (!orgId) return;
+    setBusy(true);
+    try {
+      const created = await examsApi.duplicate(orgId, examId);
+      await metadata.refreshKey('exams');
+      router.push(`/orgs/${orgId}/exams/${created.id}`);
+    } catch (caught) {
+      console.error('Failed to duplicate exam', caught);
+      setError('Could not duplicate the exam.');
+    } finally { setBusy(false); }
+  };
+
+  const toggleArchive = async (examId: string, restore: boolean) => {
+    if (!orgId) return;
+    setBusy(true);
+    try {
+      if (restore) await examsApi.restore(orgId, examId); else await examsApi.archive(orgId, examId);
+      await metadata.refreshKey('exams');
+      if (showArchived) setArchivedExams(await examsApi.list(orgId, true));
+    } catch (caught) {
+      console.error('Failed to update archive state', caught);
+      setError('Could not update the exam archive.');
+    } finally { setBusy(false); }
+  };
 
   const createBlank = async () => {
     if (!orgId) return;
@@ -91,6 +125,9 @@ export function ExamDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setShowArchived((value) => !value)} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              {showArchived ? 'Active exams' : 'Archived exams'}
+            </button>
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={loadFile} className="hidden" />
             <button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
               Upload JSON
@@ -117,7 +154,7 @@ export function ExamDashboard() {
         )}
 
         <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {exams.map((exam) => (
+          {visibleExams.map((exam) => (
             <article key={exam.id} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md">
               <div className="flex items-start justify-between gap-3">
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ring-1 ${statusStyle(exam.status)}`}>{exam.status}</span>
@@ -131,18 +168,20 @@ export function ExamDashboard() {
                 {exam.preventFocusLoss && <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">Focus lock</span>}
               </div>
               <div className="mt-6 flex items-center gap-2 border-t border-slate-100 pt-4">
-                <Link href={`/orgs/${orgId}/exams/${exam.id}`} className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-center text-sm font-medium text-white hover:bg-slate-800">Edit</Link>
-                <Link href={`/orgs/${orgId}/exams/${exam.id}/reports`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Report</Link>
+                {!showArchived && <Link href={`/orgs/${orgId}/exams/${exam.id}`} className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-center text-sm font-medium text-white hover:bg-slate-800">Edit</Link>}
+                {!showArchived && <Link href={`/orgs/${orgId}/exams/${exam.id}/reports`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Report</Link>}
+                {!showArchived && <button type="button" disabled={busy} onClick={() => void duplicateExam(exam.id)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Duplicate</button>}
+                <button type="button" disabled={busy} onClick={() => void toggleArchive(exam.id, showArchived)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">{showArchived ? 'Restore' : 'Archive'}</button>
               </div>
             </article>
           ))}
         </section>
 
-        {exams.length === 0 && !showJson && (
+        {visibleExams.length === 0 && !showJson && (
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
-            <h2 className="text-lg font-semibold text-slate-900">Create Armel&apos;s first exam</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">Start visually or paste the complete JSON representation for a quick push.</p>
-            <button type="button" onClick={createBlank} className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white">Create exam</button>
+            <h2 className="text-lg font-semibold text-slate-900">{showArchived ? 'No archived exams' : 'Create your first exam'}</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-slate-600">{showArchived ? 'Archived exams remain preserved and can be restored at any time.' : 'Start visually or paste the complete JSON representation for a quick push.'}</p>
+            {!showArchived && <button type="button" onClick={createBlank} className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white">Create exam</button>}
           </div>
         )}
       </div>

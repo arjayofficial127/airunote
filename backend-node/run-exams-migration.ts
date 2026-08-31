@@ -39,6 +39,7 @@ async function main(): Promise<void> {
     path.resolve(__dirname, 'drizzle', '0026_defer_exam_answer_question_constraint.sql'),
     path.resolve(__dirname, 'drizzle', '0027_custom_exam_public_ids.sql'),
     path.resolve(__dirname, 'drizzle', '0028_exam_question_time_limits.sql'),
+    path.resolve(__dirname, 'drizzle', '0029_exam_admin_reporting.sql'),
   ];
   const sql = postgres(connectionString, { max: 1, prepare: false, connect_timeout: 30 });
   try {
@@ -77,6 +78,17 @@ async function main(): Promise<void> {
     `;
     if (timeLimitColumn?.data_type !== 'integer' || questionTimingColumn?.data_type !== 'jsonb') {
       throw new Error('Migration verification failed; exam question timing columns are missing');
+    }
+    const adminColumns = await sql<{ table_name: string; column_name: string }[]>`
+      SELECT table_name, column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND ((table_name = 'exams' AND column_name = 'archived_at')
+          OR (table_name = 'exam_attempts' AND column_name = ANY(ARRAY['ended_at', 'is_preview', 'voided_at'])))
+    `;
+    const verifiedAdminColumns = new Set(adminColumns.map((column) => `${column.table_name}.${column.column_name}`));
+    for (const expected of ['exams.archived_at', 'exam_attempts.ended_at', 'exam_attempts.is_preview', 'exam_attempts.voided_at']) {
+      if (!verifiedAdminColumns.has(expected)) throw new Error(`Migration verification failed; missing ${expected}`);
     }
     console.log(`[Exams migration] Verified ${rows.length} resident exam tables.`);
   } finally {

@@ -9,6 +9,7 @@ import {
   examOrgSettingsSchema,
   updateExamSchema,
   updateQuestionGradingSchema,
+  voidAttemptSchema,
 } from '../../modules/exams/exam.types';
 
 const router: ReturnType<typeof Router> = Router({ mergeParams: true });
@@ -52,7 +53,7 @@ router.put('/settings', async (req: Request, res: Response, next: NextFunction) 
 
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json({ success: true, data: await service.list(req.params.orgId) });
+    res.json({ success: true, data: await service.list(req.params.orgId, req.query.archived === 'true') });
   } catch (error) {
     handleError(error, res, next);
   }
@@ -100,6 +101,56 @@ router.post('/:examId/attempts/:attemptId/continue', async (req: Request, res: R
   }
 });
 
+router.post('/:examId/attempts/:attemptId/void', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new ExamServiceError('Authentication required', 401, 'UNAUTHORIZED');
+    const input = parse(voidAttemptSchema, req.body);
+    res.json({ success: true, data: await service.voidAttempt(req.params.orgId, req.params.examId, req.params.attemptId, userId, input.reason) });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+router.post('/:examId/preview', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new ExamServiceError('Authentication required', 401, 'UNAUTHORIZED');
+    res.status(201).json({ success: true, data: await service.startPreview(req.params.orgId, req.params.examId, req.user) });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+router.post('/:examId/duplicate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new ExamServiceError('Authentication required', 401, 'UNAUTHORIZED');
+    res.status(201).json({ success: true, data: await service.duplicate(req.params.orgId, req.params.examId, userId) });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+router.post('/:examId/archive', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new ExamServiceError('Authentication required', 401, 'UNAUTHORIZED');
+    await service.archive(req.params.orgId, req.params.examId, userId);
+    res.json({ success: true, data: { archived: true } });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
+router.post('/:examId/restore', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await service.restore(req.params.orgId, req.params.examId);
+    res.json({ success: true, data: { archived: false } });
+  } catch (error) {
+    handleError(error, res, next);
+  }
+});
+
 router.patch('/:examId/questions/:questionId/grading', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = parse(updateQuestionGradingSchema, req.body);
@@ -137,8 +188,10 @@ router.patch('/:examId', async (req: Request, res: Response, next: NextFunction)
 
 router.delete('/:examId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await service.delete(req.params.orgId, req.params.examId);
-    res.status(204).send();
+    const userId = req.user?.userId;
+    if (!userId) throw new ExamServiceError('Authentication required', 401, 'UNAUTHORIZED');
+    await service.archive(req.params.orgId, req.params.examId, userId);
+    res.json({ success: true, data: { archived: true } });
   } catch (error) {
     handleError(error, res, next);
   }
