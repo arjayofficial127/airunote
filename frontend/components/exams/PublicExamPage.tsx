@@ -2,8 +2,10 @@
 
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import type { PublicAttemptQuestion, PublicExamOverview } from '@/lib/api/exams';
+import { AutumnBackdrop, AutumnHeroBranches } from './AutumnDecorations';
 import { ExamSponsorBrand, StoreNineCats } from './ExamSponsorBrand';
 import { PublicQuestionCard } from './PublicQuestionCard';
+import { useExamSounds } from './useExamSounds';
 import { usePublicExam } from './usePublicExam';
 
 interface PublicExamPageProps { publicId: string }
@@ -34,17 +36,23 @@ function formatScheduleDate(value: string): string {
 
 const autumnBackground = 'bg-[radial-gradient(circle_at_12%_15%,rgba(217,119,54,0.13),transparent_26%),radial-gradient(circle_at_90%_8%,rgba(0,117,74,0.10),transparent_22%),linear-gradient(180deg,#fbf5e9_0%,#f5eadb_100%)]';
 
+function SoundChip({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return <button type="button" onClick={onToggle} aria-pressed={enabled} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#d8b88f] bg-[#fffaf1] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#704a31] shadow-sm"><span aria-hidden="true">{enabled ? '♪' : '×'}</span>{enabled ? 'Sound on' : 'Sound off'}</button>;
+}
+
 function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExamOverview; state: 'upcoming' | 'ended' | 'unavailable'; seconds?: number }) {
   const upcoming = state === 'upcoming';
   return (
     <main className={`min-h-screen px-5 py-10 ${autumnBackground}`}>
-      <div className="mx-auto max-w-3xl">
+      <AutumnBackdrop />
+      <div className="relative z-[1] mx-auto max-w-3xl">
         <div className="mb-6"><ExamSponsorBrand /></div>
         <section className="overflow-hidden rounded-[2rem] border border-[#dcc3a5] bg-[#fffdf8] shadow-[0_28px_80px_rgba(73,43,22,0.16)]">
-          <div className="bg-[#2c1d17] px-7 py-8 text-white sm:px-10">
-            <div className="text-xs font-bold uppercase tracking-[0.24em] text-[#f4b36f]">Scheduled graded exam</div>
+          <div className="relative overflow-hidden bg-[#2c1d17] px-7 py-8 text-white sm:px-10">
+            <AutumnHeroBranches />
+            <div className="relative"><div className="text-xs font-bold uppercase tracking-[0.24em] text-[#f4b36f]">Scheduled graded exam</div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight">{overview.title}</h1>
-            {overview.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#ead8c7]">{overview.description}</p>}
+            {overview.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#ead8c7]">{overview.description}</p>}</div>
           </div>
           <div className="p-7 text-center sm:p-10">
             <div className={`mx-auto grid h-14 w-14 place-items-center rounded-full text-2xl ${upcoming ? 'bg-[#fff0d5] text-[#a94e21]' : 'bg-[#eee4d9] text-[#725441]'}`}>{upcoming ? '◷' : '—'}</div>
@@ -61,6 +69,7 @@ function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExa
 export function PublicExamPage({ publicId }: PublicExamPageProps) {
   const exam = usePublicExam(publicId);
   const { activateQuestion, expireQuestion } = exam;
+  const { soundEnabled, toggleSound, primeSound, playNext, playCelebration } = useExamSounds();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -71,6 +80,7 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   const initializedAttemptId = useRef<string | null>(null);
   const expiringQuestionId = useRef<string | null>(null);
   const serverClockOffset = useRef(0);
+  const celebratedAttemptId = useRef<string | null>(null);
 
   const questions = exam.attempt?.questions ?? [];
   const safeQuestionIndex = Math.min(questionIndex, Math.max(0, questions.length - 1));
@@ -108,13 +118,23 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
     const text = (shortAnswers[current.id] ?? '').trim();
     const answer = current.type === 'short_text' ? (text ? [text] : []) : current.selectedAnswers;
     void expireQuestion(current.id, answer).then((saved) => {
-      if (saved && safeQuestionIndex < questions.length - 1) setQuestionIndex((index) => Math.min(questions.length - 1, index + 1));
+      if (saved && safeQuestionIndex < questions.length - 1) {
+        playNext();
+        setQuestionIndex((index) => Math.min(questions.length - 1, index + 1));
+      }
       expiringQuestionId.current = null;
     });
-  }, [current, exam.attempt?.oneQuestionAtATime, exam.attempt?.status, expireQuestion, questions.length, safeQuestionIndex, shortAnswers]);
+  }, [current, exam.attempt?.oneQuestionAtATime, exam.attempt?.status, expireQuestion, playNext, questions.length, safeQuestionIndex, shortAnswers]);
+
+  useEffect(() => {
+    if (exam.attempt?.status !== 'completed' || celebratedAttemptId.current === exam.attempt.id) return;
+    celebratedAttemptId.current = exam.attempt.id;
+    playCelebration();
+  }, [exam.attempt?.id, exam.attempt?.status, playCelebration]);
 
   const submitIdentity = (event: FormEvent) => {
     event.preventDefault();
+    primeSound();
     void exam.start({ respondentName: name, respondentEmail: email, respondentIdentifier: identifier });
   };
 
@@ -138,12 +158,14 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
 
   if (!exam.attempt) return (
     <main className={`relative min-h-screen overflow-hidden px-5 py-8 sm:py-12 ${autumnBackground}`}>
+      <AutumnBackdrop />
       <div className="pointer-events-none absolute -left-16 top-36 h-44 w-44 rounded-full border-[34px] border-[#d97736]/10" />
       <div className="pointer-events-none absolute -right-12 bottom-12 h-56 w-56 rotate-12 rounded-[45%] bg-[#1e3932]/5" />
-      <div className="relative mx-auto max-w-4xl">
-        <div className="mb-6"><ExamSponsorBrand /></div>
+      <div className="relative z-[1] mx-auto max-w-4xl">
+        <div className="mb-6 flex items-end justify-between gap-4"><ExamSponsorBrand /><SoundChip enabled={soundEnabled} onToggle={toggleSound} /></div>
         <section className="overflow-hidden rounded-[2rem] border border-[#dcc3a5] bg-[#fffdf8] shadow-[0_28px_80px_rgba(73,43,22,0.18)]">
           <div className="relative bg-[#2c1d17] px-7 py-8 text-white sm:px-10 sm:py-10">
+            <AutumnHeroBranches />
             <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_20%_30%,#d97838_0,transparent_25%),radial-gradient(circle_at_85%_10%,#00754a_0,transparent_24%)]" />
             <div className="relative flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
               <div className="max-w-xl">
@@ -177,10 +199,10 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
     </main>
   );
 
-  if (exam.attempt.status === 'terminated') return <main className={`flex min-h-screen items-center justify-center p-6 ${autumnBackground}`}><section className="max-w-lg rounded-[2rem] border border-[#e4c7a3] bg-[#fffdf8] p-8 text-center shadow-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl text-amber-900">!</div><h1 className="mt-5 text-2xl font-semibold text-[#2f2118]">Attempt completed by focus protection</h1><p className="mt-3 text-sm leading-6 text-[#705746]">The exam detected that this window lost focus. Your answers were saved. Contact your administrator and ask for a continue link.</p><p className="mt-5 rounded-xl bg-[#f4eadf] px-4 py-3 text-xs text-[#876650]">Attempt #{exam.attempt.attemptNumber} · reason: {exam.attempt.terminationReason || 'focus policy'}</p><button type="button" onClick={exam.startAnother} className="mt-5 rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d] hover:bg-[#fff5e8]">Different respondent</button><p className="mt-2 text-xs text-[#947056]">The terminated attempt stays saved for the administrator.</p></section></main>;
+  if (exam.attempt.status === 'terminated') return <main className={`relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[#e4c7a3] bg-[#fffdf8] p-8 text-center shadow-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl text-amber-900">!</div><h1 className="mt-5 text-2xl font-semibold text-[#2f2118]">Attempt completed by focus protection</h1><p className="mt-3 text-sm leading-6 text-[#705746]">The exam detected that this window lost focus. Your answers were saved. Contact your administrator and ask for a continue link.</p><p className="mt-5 rounded-xl bg-[#f4eadf] px-4 py-3 text-xs text-[#876650]">Attempt #{exam.attempt.attemptNumber} · reason: {exam.attempt.terminationReason || 'focus policy'}</p><button type="button" onClick={exam.startAnother} className="mt-5 rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d] hover:bg-[#fff5e8]">Different respondent</button><p className="mt-2 text-xs text-[#947056]">The terminated attempt stays saved for the administrator.</p></section></main>;
 
   if (exam.attempt.status === 'completed') return (
-    <main className={`min-h-screen px-5 py-10 ${autumnBackground}`}><div className="mx-auto max-w-3xl"><div className="mb-6"><ExamSponsorBrand /></div><section className="rounded-[2rem] border border-[#e4c7a3] bg-[#fffdf8] p-8 shadow-xl"><div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#dce9df] text-xl text-[#00754a]">✓</div><h1 className="mt-5 text-3xl font-semibold text-[#2f2118]">Exam complete</h1><p className="mt-2 text-sm text-[#705746]">Every saved answer remains available to the administrator.</p>{exam.attempt.questions.length > 0 && <div className="mt-8 space-y-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[#ead8c2] bg-white p-5"><h2 className="font-medium text-[#33241b]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[#624a3a]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[#00754a]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[#80634f]">{question.explanation}</p>}</article>)}</div>}<button type="button" onClick={exam.startAnother} className="mt-8 rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d]">Start another allowed attempt</button></section></div></main>
+    <main className={`relative min-h-screen overflow-hidden px-5 py-10 ${autumnBackground}`}><AutumnBackdrop /><div className="relative z-[1] mx-auto max-w-3xl"><div className="mb-6 flex items-end justify-between gap-4"><ExamSponsorBrand /><SoundChip enabled={soundEnabled} onToggle={toggleSound} /></div><section className="relative overflow-hidden rounded-[2rem] border border-[#e4c7a3] bg-[#fffdf8] p-8 shadow-xl"><div className="pointer-events-none absolute right-6 top-5 text-5xl">🍂</div><div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff0d5] text-2xl text-[#b95f2a]">✓</div><div className="mt-5 text-xs font-black uppercase tracking-[0.22em] text-[#d06426]">Hooray!</div><h1 className="mt-2 text-3xl font-bold text-[#2f2118]">You completed the exam 🎉</h1><p className="mt-2 text-sm leading-6 text-[#705746]">Great work! Your answers are safely saved and available to the administrator.</p>{exam.attempt.questions.length > 0 && <div className="mt-8 space-y-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[#ead8c2] bg-white p-5"><h2 className="font-medium text-[#33241b]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[#624a3a]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[#00754a]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[#80634f]">{question.explanation}</p>}</article>)}</div>}<button type="button" onClick={exam.startAnother} className="mt-8 rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d]">Start another allowed attempt</button></section></div></main>
   );
 
   if (!current) return null;
@@ -195,18 +217,35 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   const displayedQuestions = exam.attempt.oneQuestionAtATime
     ? [{ question: current, index: safeQuestionIndex }]
     : questions.map((question, index) => ({ question, index }));
+  const goToNextQuestion = () => {
+    if (current.type === 'short_text' && !current.timedOut) {
+      const value = (shortAnswers[current.id] ?? '').trim();
+      void exam.saveAnswer(current.id, value ? [value] : []);
+    }
+    primeSound();
+    playNext();
+    setQuestionIndex((index) => Math.min(questions.length - 1, index + 1));
+  };
 
   return (
-    <main className={`min-h-screen ${autumnBackground}`}>
-      <header className="sticky top-0 z-10 border-b border-[#ddc6aa] bg-[#fffaf1]/95 px-5 py-3 backdrop-blur"><div className="mx-auto flex max-w-4xl items-center justify-between gap-4"><div className="hidden sm:block"><ExamSponsorBrand compact /></div><div className="min-w-0 flex-1 sm:text-center"><h1 className="truncate text-sm font-bold text-[#33241b]">{exam.attempt.title}</h1><p className="mt-0.5 text-xs text-[#8a6951]">{exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : 'All questions'} · {answeredCount} answered</p></div><div className={`rounded-xl px-4 py-2 font-mono text-lg font-bold ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[#2c1d17] text-[#fff5e7]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div></div></header>
-      <div className="mx-auto max-w-4xl px-5 py-8">
+    <main className={`relative min-h-screen overflow-hidden ${autumnBackground}`}>
+      <AutumnBackdrop />
+      <header className="sticky top-0 z-20 border-b border-[#ddc6aa] bg-[#fffaf1]/95 px-5 py-3 backdrop-blur"><div className="mx-auto flex max-w-4xl items-center justify-between gap-3"><div className="hidden sm:block"><ExamSponsorBrand compact /></div><div className="min-w-0 flex-1 sm:text-center"><h1 className="truncate text-sm font-bold text-[#33241b]">{exam.attempt.title}</h1><p className="mt-0.5 text-xs text-[#8a6951]">{exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : 'All questions'} · {answeredCount} answered</p></div><SoundChip enabled={soundEnabled} onToggle={toggleSound} /><div className={`rounded-xl px-3 py-2 font-mono text-base font-bold sm:px-4 sm:text-lg ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[#2c1d17] text-[#fff5e7]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div></div></header>
+      <div className="relative z-[1] mx-auto max-w-4xl px-5 py-7">
+        <section className="relative mb-5 overflow-hidden rounded-[1.6rem] border border-[#7c3a14] bg-[linear-gradient(110deg,#1d0d08_0%,#32170d_58%,#28160e_100%)] px-6 py-5 text-white shadow-[0_16px_36px_rgba(66,33,15,.16)] sm:px-8">
+          <AutumnHeroBranches />
+          <div className="relative flex items-center justify-between gap-6">
+            <div className="min-w-0 max-w-2xl"><div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ef8a35]">Graded exam</div><h2 className="mt-2 truncate text-xl font-bold sm:text-2xl">{exam.attempt.title}</h2>{exam.attempt.description && <p className="mt-1 truncate text-xs text-[#ead1bf]">{exam.attempt.description}</p>}<div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold"><span className="rounded-full bg-white/10 px-2.5 py-1">{exam.attempt.durationMinutes} minutes</span><span className="rounded-full bg-white/10 px-2.5 py-1">{questions.length} questions</span>{exam.attempt.preventFocusLoss && <span className="rounded-full bg-[#d97706]/25 px-2.5 py-1 text-[#ffd28c]">Focus lock on</span>}</div></div>
+            <StoreNineCats compact />
+          </div>
+        </section>
         {secondsUntilEnd !== null && secondsUntilEnd <= 1_800 && <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${secondsUntilEnd > 0 ? 'border-orange-300 bg-orange-50 text-orange-900' : 'border-red-300 bg-red-50 text-red-800'}`}>{secondsUntilEnd > 0 ? <>The public response window closes in <strong className="font-mono">{formatCountdown(secondsUntilEnd)}</strong>. Your current attempt remains saved as you work.</> : <>The public response window has closed to new attempts. Finish and submit this in-progress attempt now.</>}</div>}
         <div className="mb-5 h-2 overflow-hidden rounded-full bg-[#eadac7]"><div className="h-full rounded-full bg-gradient-to-r from-[#b95f2a] to-[#e49b45] transition-all" style={{ width: `${exam.attempt.oneQuestionAtATime ? ((safeQuestionIndex + 1) / questions.length) * 100 : (answeredCount / questions.length) * 100}%` }} /></div>
         <div className="space-y-5">{displayedQuestions.map(({ question, index }) => <PublicQuestionCard key={question.id} question={question} number={index + 1} shortValue={shortAnswers[question.id] ?? ''} saving={exam.savingQuestionId === question.id} onShortChange={(value) => setShortAnswers((answers) => ({ ...answers, [question.id]: value }))} onSaveShort={() => { if (!question.timedOut) void exam.saveAnswer(question.id, (shortAnswers[question.id] ?? '').trim() ? [(shortAnswers[question.id] ?? '').trim()] : []); }} onChoice={(value) => setChoice(question, value)} />)}</div>
         {exam.error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</div>}
-        {exam.attempt.oneQuestionAtATime ? <div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} disabled={safeQuestionIndex === 0} className="rounded-xl border border-[#d3b18a] bg-[#fffdf8] px-5 py-2.5 text-sm font-semibold text-[#68452d] disabled:opacity-40">Previous</button>{safeQuestionIndex < questions.length - 1 ? <button type="button" onClick={() => setQuestionIndex((index) => Math.min(questions.length - 1, index + 1))} className="rounded-xl bg-[#2c1d17] px-6 py-2.5 text-sm font-bold text-white">Next question</button> : <button type="button" onClick={() => setConfirmingSubmit(true)} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50">Submit exam</button>}</div> : <div className="mt-6 flex justify-end"><button type="button" onClick={() => setConfirmingSubmit(true)} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-3 text-sm font-bold text-white disabled:opacity-50">Submit exam</button></div>}
+        {exam.attempt.oneQuestionAtATime ? <div className="mt-5 flex items-center justify-between gap-3"><button type="button" onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} disabled={safeQuestionIndex === 0} className="rounded-xl border border-[#d76c32] bg-[#fffdf8] px-5 py-2.5 text-sm font-semibold text-[#b55224] disabled:opacity-40">Previous</button>{safeQuestionIndex < questions.length - 1 ? <button type="button" onClick={goToNextQuestion} className="rounded-xl bg-[#d64e00] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-[#b84a18]/20">Save &amp; next</button> : <button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50">Submit exam</button>}</div> : <div className="mt-6 flex justify-end"><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-6 py-3 text-sm font-bold text-white disabled:opacity-50">Submit exam</button></div>}
       </div>
-      {confirmingSubmit && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#21140f]/70 p-5" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title"><section className="w-full max-w-md rounded-3xl border border-[#e4c7a3] bg-[#fffdf8] p-7 shadow-2xl"><h2 id="submit-exam-title" className="text-xl font-semibold text-[#2f2118]">Submit this exam?</h2><p className="mt-3 text-sm leading-6 text-[#705746]">Your latest answer will finish saving before the attempt is finalized.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setConfirmingSubmit(false)} className="rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d]">Keep reviewing</button><button type="button" onClick={() => { setConfirmingSubmit(false); void exam.submit(); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{exam.loading ? 'Submitting…' : 'Submit exam'}</button></div></section></div>}
+      {confirmingSubmit && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#21140f]/70 p-5" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title"><section className="w-full max-w-md rounded-3xl border border-[#e4c7a3] bg-[#fffdf8] p-7 shadow-2xl"><h2 id="submit-exam-title" className="text-xl font-semibold text-[#2f2118]">Submit this exam?</h2><p className="mt-3 text-sm leading-6 text-[#705746]">Your latest answer will finish saving before the attempt is finalized.</p><div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setConfirmingSubmit(false)} className="rounded-xl border border-[#d3b18a] px-4 py-2.5 text-sm font-semibold text-[#68452d]">Keep reviewing</button><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(false); void exam.submit(); }} disabled={exam.loading} className="rounded-xl bg-[#00754a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{exam.loading ? 'Submitting…' : 'Submit exam'}</button></div></section></div>}
     </main>
   );
 }

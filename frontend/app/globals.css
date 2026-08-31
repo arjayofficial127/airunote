@@ -2,6 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes autumnLeafDrift {
+  0%, 100% { transform: translate3d(0, -8px, 0) rotate(var(--leaf-rotation)); }
+  35% { transform: translate3d(18px, 18px, 0) rotate(calc(var(--leaf-rotation) + 35deg)); }
+  70% { transform: translate3d(-8px, 38px, 0) rotate(calc(var(--leaf-rotation) + 75deg)); }
+}
+
+@keyframes autumnBranchSway {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(2deg); }
+}
+
+.autumn-floating-leaf {
+  --leaf-rotation: 0deg;
+  position: absolute;
+  display: block;
+  width: 32px;
+  height: 20px;
+  opacity: .78;
+  animation: autumnLeafDrift 8s ease-in-out infinite;
+  filter: drop-shadow(0 5px 7px rgb(91 50 20 / .12));
+}
+.autumn-floating-leaf--1 { left: 1.5%; top: 9%; --leaf-rotation: -22deg; animation-duration: 9s; }
+.autumn-floating-leaf--2 { right: 3%; top: 16%; --leaf-rotation: 24deg; animation-delay: -3s; animation-duration: 11s; }
+.autumn-floating-leaf--3 { left: 4%; top: 62%; --leaf-rotation: 35deg; animation-delay: -6s; animation-duration: 10s; }
+.autumn-floating-leaf--4 { right: 2%; top: 54%; --leaf-rotation: -40deg; animation-delay: -4s; animation-duration: 12s; }
+.autumn-floating-leaf--5 { left: 14%; bottom: 4%; --leaf-rotation: 15deg; animation-delay: -2s; animation-duration: 13s; }
+.autumn-floating-leaf--6 { right: 15%; bottom: 7%; --leaf-rotation: -18deg; animation-delay: -8s; animation-duration: 10s; }
+.autumn-branch-sway { transform-origin: left bottom; animation: autumnBranchSway 5.5s ease-in-out infinite; }
+.autumn-branch-sway-reverse { transform-origin: right bottom; animation: autumnBranchSway 6.5s ease-in-out -2s infinite reverse; }
+
+@media (prefers-reduced-motion: reduce) {
+  .autumn-floating-leaf,
+  .autumn-branch-sway,
+  .autumn-branch-sway-reverse { animation: none !important; }
+}
+
 /* Accessibility: Screen reader only class */
 .sr-only {
   position: absolute;
@@ -502,4 +538,3 @@ tr:hover > .block-icon-wrapper .block-icon {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
-
