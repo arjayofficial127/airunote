@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={`flex items-center ${compact ? 'gap-3' : 'gap-4'}`} aria-label="airunote exams, sponsored by Starbucks 386 Nepo Center, Marry Furrmily">
+    <div className={`flex items-center ${compact ? 'gap-3' : 'gap-4'}`} aria-label="airunote exams, sponsored by Starbucks District 10, Marry Furrmily">
       <div className="shrink-0">
         <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#9a6b45]">airunote exams</div>
         <div className="mt-1 flex items-center gap-2">
