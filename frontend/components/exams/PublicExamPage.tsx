@@ -206,7 +206,7 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
             </div>
             {exam.error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</p>}
             <button type="submit" disabled={exam.loading} className="w-full rounded-xl bg-[#b95f2a] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#b95f2a]/20 transition hover:bg-[#99491f] disabled:opacity-50">{exam.loading ? 'Starting…' : 'Start exam'}</button>
-            <p className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-[#9b765a]">Autumn edition · Sponsored by Starbucks Store 386 Nepo Center, Marry Furrmily</p>
+            <p className="text-center text-[10px] font-bold uppercase tracking-[0.18em] text-[#9b765a]">Autumn edition · Sponsored by Starbucks District 10, Marry Furrmily</p>
           </form>
         </section>
       </div>
