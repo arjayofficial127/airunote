@@ -101,7 +101,7 @@ export function AirunoteLandingPage() {
                   <span className="block whitespace-nowrap">your own</span>
                   <span className="hero-shape-word block whitespace-nowrap">
                     <span className="sr-only">shape.</span>
-                    <span aria-hidden="true"><span className="hero-shape-glint">sha</span><span className="hero-shape-triangle" /><span className="hero-shape-glint">e.</span></span>
+                    <span aria-hidden="true"><span className="hero-shape-glint">shape.</span></span>
                   </span>
                   <span key={activeStory.line1} className="hero-story-enter hidden bg-gradient-to-r from-blue-700 via-blue-500 to-[#7a72ef] bg-clip-text pb-2 text-transparent">
                     <span className="block whitespace-nowrap">{activeStory.line1}</span>
