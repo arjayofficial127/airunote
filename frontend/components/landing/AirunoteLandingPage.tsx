@@ -69,7 +69,7 @@ export function AirunoteLandingPage() {
   const activeStory = heroStories[heroStory];
 
   return (
-    <div className="airunote-landing min-h-screen overflow-hidden bg-[#f7f8fa] text-[#101727] selection:bg-blue-200 selection:text-blue-950">
+    <div className="min-h-screen overflow-hidden bg-[#f7f8fa] text-[#101727] selection:bg-blue-200 selection:text-blue-950">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-[#f7f8fa]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
           <AirunoteLogo iconSize={22} textClassName="text-[15px] font-semibold tracking-[-0.02em] text-slate-950" />
@@ -99,15 +99,16 @@ export function AirunoteLandingPage() {
                 <h1 className="text-left text-[clamp(2.75rem,5.2vw,6rem)] font-semibold leading-[0.89] tracking-[-0.07em] text-[#101727]">
                   <span className="block whitespace-nowrap">Think in</span>
                   <span className="block whitespace-nowrap">your own</span>
-                  <span className="hero-shape-word block whitespace-nowrap">shape.</span>
+                  <span className="hero-shape-word block whitespace-nowrap">
+                    <span className="sr-only">shape.</span>
+                    <span aria-hidden="true"><span className="hero-shape-glint">sha</span><span className="hero-shape-triangle" /><span className="hero-shape-glint">e.</span></span>
+                  </span>
                   <span key={activeStory.line1} className="hero-story-enter hidden bg-gradient-to-r from-blue-700 via-blue-500 to-[#7a72ef] bg-clip-text pb-2 text-transparent">
                     <span className="block whitespace-nowrap">{activeStory.line1}</span>
                   </span>
                 </h1>
-                <div className="hero-copy-shape mt-7 max-w-xl">
-                  <p className="hero-copy-main text-balance text-lg leading-8 text-slate-600 sm:text-xl">Bring every kind of knowledge work into one calm workspace — from onboarding and teaching to client delivery, research, recruiting, coaching, CRM, and personal notes,</p>
-                  <p className="hero-organized-line hero-copy-tail text-balance text-lg leading-8 text-slate-600 sm:text-xl">organized the way your brain works.</p>
-                </div>
+                <p className="mt-7 max-w-xl text-balance text-lg leading-8 text-slate-600 sm:text-xl">Bring every kind of knowledge work into one calm workspace - from onboarding and teaching to client delivery, research, recruiting, coaching, CRM, and personal notes,</p>
+                <p className="hero-organized-line max-w-xl text-balance text-lg leading-8 text-slate-600 sm:text-xl">organized the way your brain works.</p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Link href="/register" className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#101727] px-7 py-3.5 text-[15px] font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-950/15">Create your workspace <span className="h-4 w-4 transition-transform group-hover:translate-x-0.5"><Arrow /></span></Link><Link href="#use-cases" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/90 px-7 py-3.5 text-[15px] font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-white">See what you can build</Link></div>
                 <div className="mt-8 hidden items-center gap-2" aria-label="Choose highlighted use case">{heroStories.map((story, index) => <button key={story.label} type="button" aria-label={`Show ${story.label}`} aria-pressed={index === heroStory} onClick={() => setHeroStory(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === heroStory ? 'w-10 bg-blue-600' : 'w-4 bg-slate-300 hover:bg-slate-400'}`} />)}</div>
               </div>
