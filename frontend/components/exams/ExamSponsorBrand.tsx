@@ -21,7 +21,7 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
       </div>
       <span className="h-9 w-px bg-[#d8c4ac]" aria-hidden="true" />
       <div className="rounded-full border border-[#d39a50] bg-[#fff8e7] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#7b4a25]">
-        386 Nepo Center
+        District 10
       </div>
     </div>
   );
