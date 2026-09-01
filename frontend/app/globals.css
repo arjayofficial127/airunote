@@ -2,6 +2,299 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes heroStoryEnter {
+  from { opacity: 0; transform: translateY(0.22em); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes heroProgress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes heroMarquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-50% - 0.375rem)); }
+}
+
+@keyframes heroOrganizedSettle {
+  0% {
+    opacity: .42;
+    letter-spacing: -.025em;
+    transform: translate3d(0, .45rem, 0);
+    filter: blur(5px);
+  }
+  48% {
+    opacity: 1;
+    letter-spacing: .012em;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    letter-spacing: 0;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+@keyframes heroOrganizedGlint {
+  0%, 18% { background-position: 120% 50%; }
+  48%, 100% { background-position: -40% 50%; }
+}
+
+@keyframes heroShapeSettle {
+  0% {
+    opacity: .55;
+    transform: translate3d(0, .08em, 0) scale(.985);
+    filter: blur(7px);
+  }
+  58% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.006);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes terrainSunBreathe {
+  0%, 100% {
+    opacity: .36;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  48% {
+    opacity: .52;
+    transform: translate3d(-1.8%, 1.5%, 0) scale(1.06);
+  }
+}
+
+@keyframes terrainSunRayDrift {
+  0%, 100% {
+    opacity: .16;
+    transform: translate3d(4%, -3%, 0) rotate(-7deg) scale(1);
+  }
+  52% {
+    opacity: .27;
+    transform: translate3d(-2%, 2%, 0) rotate(-4deg) scale(1.045);
+  }
+}
+
+@keyframes riverTrajectoryFlow {
+  to { stroke-dashoffset: -34; }
+}
+
+@keyframes terrainFlagWave {
+  0%, 100% { transform: skewY(-2deg) scaleX(.96); }
+  45% { transform: skewY(4deg) scaleX(1.04); }
+  72% { transform: skewY(-1deg) scaleX(.99); }
+}
+
+@keyframes imageMapAreaOneWake {
+  0%, 8% {
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+    transform: translate3d(0, 12%, 0) scale(.9, .18);
+    filter: drop-shadow(0 0 0 rgb(29 52 95 / 0));
+  }
+  26% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: drop-shadow(0 9px 7px rgb(29 52 95 / .18));
+  }
+  55% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translate3d(0, -1.5%, 0) rotate(.35deg) scale(1.012);
+    filter: drop-shadow(0 12px 9px rgb(29 52 95 / .22));
+  }
+  84% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: drop-shadow(0 9px 7px rgb(29 52 95 / .18));
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: drop-shadow(0 10px 8px rgb(29 52 95 / .16));
+  }
+}
+
+.hero-story-enter { animation: heroStoryEnter 520ms cubic-bezier(.2,.8,.2,1) both; }
+.hero-story-card { animation: heroStoryEnter 480ms cubic-bezier(.2,.8,.2,1) both; }
+.hero-progress { animation: heroProgress 3.2s linear both; }
+.hero-marquee { animation: heroMarquee 28s linear infinite; }
+.hero-marquee:hover { animation-play-state: paused; }
+.airunote-landing {
+  --airunote-copy-font: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", "Libre Baskerville", "Charter", Georgia, serif;
+}
+.airunote-landing p {
+  font-family: var(--airunote-copy-font);
+  font-feature-settings: "kern" 1, "liga" 1, "onum" 1;
+  letter-spacing: -0.012em;
+}
+.airunote-landing p[class*="uppercase"] {
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+.hero-shape-word {
+  background: linear-gradient(90deg, #101727 0%, #101727 35%, #214a9d 47%, #5267e8 56%, #101727 68%, #101727 100%);
+  background-clip: text;
+  background-size: 255% 100%;
+  color: transparent;
+  -webkit-background-clip: text;
+  animation: heroShapeSettle 980ms cubic-bezier(.2,.8,.2,1) both, heroOrganizedGlint 7.2s ease-in-out 1.25s infinite;
+  transform-origin: 0 80%;
+  will-change: transform, filter, background-position;
+}
+.hero-organized-line {
+  width: fit-content;
+  background: linear-gradient(90deg, rgb(71 85 105) 0%, rgb(71 85 105) 36%, rgb(37 99 235) 48%, rgb(124 58 237) 56%, rgb(71 85 105) 68%, rgb(71 85 105) 100%);
+  background-clip: text;
+  background-size: 260% 100%;
+  color: transparent;
+  -webkit-background-clip: text;
+  animation: heroOrganizedSettle 920ms cubic-bezier(.2,.8,.2,1) 120ms both, heroOrganizedGlint 6.4s ease-in-out 1.2s infinite;
+  will-change: transform, filter, background-position;
+}
+.terrain-sun-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  overflow: hidden;
+}
+.terrain-sun-glow::before,
+.terrain-sun-glow::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.terrain-sun-glow::before {
+  right: -18%;
+  top: -40%;
+  width: 76%;
+  height: 72%;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 68% 34%, rgb(255 255 246 / .62) 0 8%, rgb(255 224 168 / .42) 18%, rgb(255 184 96 / .17) 42%, rgb(255 184 96 / 0) 72%);
+  filter: blur(14px);
+  animation: terrainSunBreathe 14s ease-in-out infinite;
+}
+.terrain-sun-glow::after {
+  right: -8%;
+  top: -8%;
+  width: 72%;
+  height: 60%;
+  background:
+    linear-gradient(118deg, rgb(255 240 196 / .38) 0%, rgb(255 227 170 / .18) 28%, rgb(255 227 170 / 0) 64%),
+    linear-gradient(138deg, rgb(255 255 255 / .2) 0%, rgb(255 255 255 / 0) 42%);
+  filter: blur(18px);
+  -webkit-mask-image: radial-gradient(ellipse at 85% 0%, black 0 42%, transparent 76%);
+  mask-image: radial-gradient(ellipse at 85% 0%, black 0 42%, transparent 76%);
+  animation: terrainSunRayDrift 18s ease-in-out infinite;
+}
+.river-trajectory-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+.river-trajectory-guide {
+  display: none;
+  fill: none;
+  stroke: rgb(245 158 11 / .94);
+  stroke-dasharray: 10 11;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+  filter: drop-shadow(0 1px 2px rgb(255 255 255 / .85)) drop-shadow(0 4px 8px rgb(15 23 42 / .28));
+  vector-effect: non-scaling-stroke;
+}
+.river-trajectory-flow {
+  display: none;
+  fill: none;
+  stroke: rgb(255 255 255 / .72);
+  stroke-dasharray: 2 15;
+  stroke-linecap: round;
+  stroke-width: 1.6;
+  animation: riverTrajectoryFlow 5.5s linear infinite;
+  vector-effect: non-scaling-stroke;
+}
+.river-trajectory-point {
+  display: none;
+  fill: rgb(245 158 11);
+  stroke: white;
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 4px rgb(15 23 42 / .36));
+  vector-effect: non-scaling-stroke;
+}
+.river-trajectory-point-end {
+  fill: rgb(37 99 235);
+}
+.river-paper-boat-vector {
+  opacity: .98;
+  filter: drop-shadow(0 10px 9px rgb(0 0 0 / .28));
+}
+.river-paper-boat-vector-static {
+  display: none;
+  filter: drop-shadow(0 10px 9px rgb(0 0 0 / .28));
+}
+.river-paper-boat-ripple {
+  fill: rgb(255 255 255 / .24);
+  filter: blur(2px);
+}
+.terrain-wave-flag {
+  filter: drop-shadow(0 5px 7px rgb(15 23 42 / .2));
+}
+.terrain-wave-flag-mast {
+  stroke: rgb(181 133 44 / .95);
+  stroke-linecap: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.terrain-wave-flag-cloth {
+  animation: terrainFlagWave 3.8s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+}
+.terrain-wave-flag-mark {
+  opacity: .98;
+}
+.image-map-area-one {
+  animation: imageMapAreaOneWake 7.5s cubic-bezier(.2,.75,.2,1) infinite;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity, clip-path, filter;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-story-enter,
+  .hero-story-card,
+  .hero-progress,
+  .hero-marquee,
+  .hero-shape-word,
+  .hero-organized-line,
+  .terrain-sun-glow::before,
+  .terrain-sun-glow::after,
+  .river-trajectory-flow,
+  .terrain-wave-flag-cloth,
+  .image-map-area-one { animation: none !important; }
+  .hero-progress { width: 100%; }
+  .hero-shape-word { background: none; color: #101727; }
+  .hero-organized-line { background: none; color: rgb(71 85 105); }
+  .river-paper-boat-vector { display: none; }
+  .river-paper-boat-vector-static { display: block; }
+  .image-map-area-one { opacity: 1; clip-path: none; transform: none; }
+}
+
 @keyframes autumnLeafDrift {
   0%, 100% { transform: translate3d(0, -8px, 0) rotate(var(--leaf-rotation)); }
   35% { transform: translate3d(18px, 18px, 0) rotate(calc(var(--leaf-rotation) + 35deg)); }

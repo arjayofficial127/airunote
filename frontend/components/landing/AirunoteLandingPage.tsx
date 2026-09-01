@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 
 type FeatureIcon = 'folders' | 'lenses' | 'offline' | 'people' | 'records' | 'exams';
@@ -15,6 +15,28 @@ const capabilities: Array<{ icon: FeatureIcon; title: string; copy: string; meta
   { icon: 'records', title: 'More than documents', copy: 'Publish posts, group collections, attach files, and shape reusable records around the information you manage.', meta: 'Structured content' },
   { icon: 'exams', title: 'Turn knowledge into action', copy: 'Build public assessments, configure learning journeys, and understand outcomes through reporting.', meta: 'Exams + reports' },
 ];
+
+const heroStories = [
+  { line1: 'Searchable wiki', label: 'Searchable wiki', accent: 'bg-sky-500' },
+  { line1: 'Exams or surveys', label: 'Exams or surveys', accent: 'bg-emerald-500' },
+  { line1: 'Knowledge Stash', label: 'Knowledge Stash', accent: 'bg-amber-500' },
+] as const;
+
+const workflowValues = [
+  { label: 'Onboarding', accent: 'bg-blue-500' },
+  { label: 'Teaching', accent: 'bg-violet-500' },
+  { label: 'Freelancing', accent: 'bg-amber-500' },
+  { label: 'Surveys', accent: 'bg-emerald-500' },
+  { label: 'Certification', accent: 'bg-cyan-500' },
+  { label: 'Consulting', accent: 'bg-indigo-500' },
+  { label: 'Agency delivery', accent: 'bg-fuchsia-500' },
+  { label: 'Research', accent: 'bg-rose-500' },
+  { label: 'Company wiki', accent: 'bg-sky-500' },
+  { label: 'Recruitment', accent: 'bg-orange-500' },
+  { label: 'Coaching', accent: 'bg-teal-500' },
+  { label: 'Lightweight CRM', accent: 'bg-lime-500' },
+  { label: 'Personal knowledge', accent: 'bg-slate-700' },
+] as const;
 
 function Icon({ name }: { name: FeatureIcon }) {
   const paths: Record<FeatureIcon, ReactNode> = {
@@ -34,9 +56,20 @@ function Arrow() {
 
 export function AirunoteLandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [heroStory, setHeroStory] = useState(0);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => {
+      setHeroStory((current) => (current + 1) % heroStories.length);
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const activeStory = heroStories[heroStory];
 
   return (
-    <div className="min-h-screen overflow-hidden bg-[#f7f8fa] text-[#101727] selection:bg-blue-200 selection:text-blue-950">
+    <div className="airunote-landing min-h-screen overflow-hidden bg-[#f7f8fa] text-[#101727] selection:bg-blue-200 selection:text-blue-950">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-[#f7f8fa]/85 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
           <AirunoteLogo iconSize={22} textClassName="text-[15px] font-semibold tracking-[-0.02em] text-slate-950" />
@@ -57,28 +90,75 @@ export function AirunoteLandingPage() {
       </header>
 
       <main>
-        <section className="relative px-5 pb-16 pt-32 sm:px-8 sm:pb-24 sm:pt-40 lg:px-12 lg:pt-44">
+        <section className="relative px-5 pb-16 pt-28 sm:px-8 sm:pb-24 sm:pt-36 lg:px-12 lg:pt-40">
           <div className="pointer-events-none absolute left-1/2 top-20 h-[580px] w-[1000px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(55,105,230,0.12),rgba(255,255,255,0)_66%)]" />
           <div className="relative mx-auto max-w-[1440px]">
-            <div className="mx-auto max-w-5xl text-center">
-              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white/80 px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.13em] text-blue-700 shadow-sm shadow-blue-900/5"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(52,95,209,0.12)]" />Your knowledge, finally in shape</div>
-              <h1 className="text-balance text-[clamp(3.45rem,8.2vw,8.5rem)] font-semibold leading-[0.88] tracking-[-0.072em] text-[#101727]">Think in your<br /><span className="bg-gradient-to-r from-blue-700 via-blue-500 to-[#7a72ef] bg-clip-text text-transparent">own shape.</span></h1>
-              <p className="mx-auto mt-8 max-w-2xl text-balance text-lg leading-8 text-slate-600 sm:text-xl">Airunote turns notes, projects, records, and learning into one calm system—structured enough to trust, flexible enough to feel like yours.</p>
-              <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"><Link href="/register" className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#101727] px-7 py-3.5 text-[15px] font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-950/15 sm:w-auto">Create your workspace <span className="h-4 w-4 transition-transform group-hover:translate-x-0.5"><Arrow /></span></Link><Link href="#system" className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 bg-white/90 px-7 py-3.5 text-[15px] font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-white sm:w-auto">Explore the system</Link></div>
-              <p className="mt-4 text-xs text-slate-400">No feed. No algorithm. Your workspace stays yours.</p>
+            <div className="grid gap-12 lg:grid-cols-[0.88fr_1.12fr] lg:items-center lg:gap-16">
+              <div>
+                <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-white/80 px-3.5 py-2 text-xs font-semibold uppercase tracking-[0.13em] text-blue-700 shadow-sm shadow-blue-900/5"><span className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_0_4px_rgba(52,95,209,0.12)]" />One system. Many kinds of work.</div>
+                <h1 className="text-left text-[clamp(2.75rem,5.2vw,6rem)] font-semibold leading-[0.89] tracking-[-0.07em] text-[#101727]">
+                  <span className="block whitespace-nowrap">Think in</span>
+                  <span className="block whitespace-nowrap">your own</span>
+                  <span className="hero-shape-word block whitespace-nowrap">shape.</span>
+                  <span key={activeStory.line1} className="hero-story-enter hidden bg-gradient-to-r from-blue-700 via-blue-500 to-[#7a72ef] bg-clip-text pb-2 text-transparent">
+                    <span className="block whitespace-nowrap">{activeStory.line1}</span>
+                  </span>
+                </h1>
+                <div className="hero-copy-shape mt-7 max-w-xl">
+                  <p className="hero-copy-main text-balance text-lg leading-8 text-slate-600 sm:text-xl">Bring every kind of knowledge work into one calm workspace — from onboarding and teaching to client delivery, research, recruiting, coaching, CRM, and personal notes,</p>
+                  <p className="hero-organized-line hero-copy-tail text-balance text-lg leading-8 text-slate-600 sm:text-xl">organized the way your brain works.</p>
+                </div>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row"><Link href="/register" className="group inline-flex items-center justify-center gap-2 rounded-full bg-[#101727] px-7 py-3.5 text-[15px] font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-950/15">Create your workspace <span className="h-4 w-4 transition-transform group-hover:translate-x-0.5"><Arrow /></span></Link><Link href="#use-cases" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/90 px-7 py-3.5 text-[15px] font-semibold text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-white">See what you can build</Link></div>
+                <div className="mt-8 hidden items-center gap-2" aria-label="Choose highlighted use case">{heroStories.map((story, index) => <button key={story.label} type="button" aria-label={`Show ${story.label}`} aria-pressed={index === heroStory} onClick={() => setHeroStory(index)} className={`h-1.5 rounded-full transition-all duration-500 ${index === heroStory ? 'w-10 bg-blue-600' : 'w-4 bg-slate-300 hover:bg-slate-400'}`} />)}</div>
+              </div>
+              <div className="relative mx-auto w-full max-w-4xl">
+                <div className="relative aspect-[3/2] overflow-hidden rounded-[1.6rem] border border-white shadow-[0_42px_110px_-38px_rgba(15,27,61,0.5)] sm:rounded-[2rem]">
+                  <Image src="/airunote/knowledge-terrain-v1.png" alt="Airunote knowledge terrain" fill priority unoptimized className="object-cover" />
+                  <div className="terrain-sun-glow" aria-hidden="true" />
+                  <svg className="river-trajectory-layer" viewBox="0 0 1000 667" preserveAspectRatio="none" aria-hidden="true">
+                    <path id="river-paper-boat-path" d="M757 308 C770 319 766 333 742 354 C646 378 642 404 643 432 C619 467 495 482 448 497 C424 507 432 527 392 548 C308 552 285 590 222 607 C202 617 215 627 179 637" fill="none" />
+                    <use href="#river-paper-boat-path" className="river-trajectory-guide" />
+                    <use href="#river-paper-boat-path" className="river-trajectory-flow" />
+                    <circle className="river-trajectory-point river-trajectory-point-start" cx="750" cy="308" r="5" />
+                    <circle className="river-trajectory-point river-trajectory-point-end" cx="212" cy="642" r="5" />
+                    <g className="river-paper-boat-vector">
+                      <animateMotion dur="180s" repeatCount="indefinite" rotate="0" calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.88;1">
+                        <mpath href="#river-paper-boat-path" />
+                      </animateMotion>
+                      <ellipse className="river-paper-boat-ripple" cx="0" cy="10" rx="18" ry="4" />
+                      <g transform="rotate(-18)">
+                        <image className="river-paper-boat-vector-image" href="/airunote/paper-boat-3d-v1.png" x="-27" y="-18" width="54" height="36" preserveAspectRatio="xMidYMid meet" />
+                      </g>
+                    </g>
+                    <g className="river-paper-boat-vector-static" transform="translate(212 642) rotate(-18)">
+                      <ellipse className="river-paper-boat-ripple" cx="0" cy="10" rx="18" ry="4" />
+                      <image className="river-paper-boat-vector-image" href="/airunote/paper-boat-3d-v1.png" x="-27" y="-18" width="54" height="36" preserveAspectRatio="xMidYMid meet" />
+                    </g>
+                    <g className="terrain-wave-flag" transform="translate(245 85)">
+                      {/* <line className="terrain-wave-flag-mast" x1="0" y1="-45" x2="0" y2="0" /> */}
+                      <g className="terrain-wave-flag-cloth">
+                        <image
+                          className="terrain-wave-flag-mark"
+                          href="/airunote/airunote-swoosh.svg?v=20260901-blue"
+                          x="2"
+                          y="-45"
+                          width="40"
+                          height="20"
+                          preserveAspectRatio="xMidYMid meet"
+                        />
+                      </g>
+                    </g>
+                  </svg>
+                </div>
+              </div>
             </div>
-            <div className="relative mx-auto mt-16 max-w-6xl sm:mt-20">
-              <div className="absolute -inset-x-10 bottom-0 top-1/4 rounded-[50%] bg-blue-400/10 blur-3xl" />
-              <div className="relative overflow-hidden rounded-[1.4rem] border border-white/80 bg-white p-2 shadow-[0_35px_100px_-35px_rgba(15,27,61,0.35)] sm:rounded-[2rem] sm:p-3"><div className="overflow-hidden rounded-[1rem] border border-slate-200 bg-slate-50 sm:rounded-[1.45rem]"><Image src="/airunote/homepage.png" alt="Airunote workspace with folders and documents" width={1200} height={800} priority className="h-auto w-full" /></div><div className="absolute left-5 top-5 hidden rounded-full border border-white/70 bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-slate-600 shadow-md backdrop-blur sm:block">Live workspace</div></div>
-              <div className="absolute -bottom-8 -left-2 hidden w-52 rotate-[-3deg] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl lg:block"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Quick capture</p><p className="mt-2 text-sm font-semibold text-slate-800">The idea stays. The view can change.</p></div>
-              <div className="absolute -bottom-6 -right-1 hidden rotate-3 rounded-2xl bg-[#101727] px-5 py-4 text-white shadow-xl lg:block"><p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">Synced</p><p className="mt-1 text-sm font-semibold">Ready on every return.</p></div>
-            </div>
+            <div id="use-cases" className="mt-16 scroll-mt-24 overflow-hidden border-y border-slate-200 py-5"><div className="hero-marquee flex w-max gap-3 pr-3">{[...workflowValues, ...workflowValues].map((story, index) => <button key={`${story.label}-${index}`} type="button" onClick={() => setHeroStory(index % heroStories.length)} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-200 hover:text-blue-700"><span className={`h-1.5 w-1.5 rounded-full ${story.accent}`} />{story.label}</button>)}</div></div>
           </div>
         </section>
 
         <section id="system" className="scroll-mt-20 px-5 py-24 sm:px-8 sm:py-32 lg:px-12">
           <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">One connected system</p><h2 className="mt-5 max-w-xl text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-6xl">From a passing thought to shared knowledge.</h2></div><p className="max-w-2xl text-lg leading-8 text-slate-600 lg:justify-self-end">Airunote now covers the full life of knowledge: capture it, give it structure, view it from new angles, share it safely, and turn it into something people can use.</p></div>
+            <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end"><div><p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">One connected system</p><h2 className="mt-5 max-w-xl text-balance text-4xl font-semibold leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-6xl">One foundation. Dozens of real workflows.</h2></div><p className="max-w-2xl text-lg leading-8 text-slate-600 lg:justify-self-end">Onboard employees, teach a course, run freelance projects, survey customers, coach clients, document operations, conduct research, or build a personal knowledge system—without rebuilding your workspace each time.</p></div>
             <div className="mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{capabilities.map((feature, index) => <article key={feature.title} className={`group relative overflow-hidden rounded-[1.6rem] border border-slate-200 bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_22px_55px_-30px_rgba(30,58,139,0.38)] sm:p-8 ${index === 1 || index === 4 ? 'xl:translate-y-8 xl:hover:translate-y-7' : ''}`}><div className="flex items-start justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700 transition-colors group-hover:bg-blue-600 group-hover:text-white"><span className="h-6 w-6"><Icon name={feature.icon} /></span></span><span className="rounded-full bg-slate-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.11em] text-slate-500">{feature.meta}</span></div><h3 className="mt-8 text-xl font-semibold tracking-[-0.025em] text-slate-950">{feature.title}</h3><p className="mt-3 text-[15px] leading-7 text-slate-600">{feature.copy}</p><span className="pointer-events-none absolute -bottom-10 -right-8 h-28 w-28 rounded-full bg-blue-100/60 blur-2xl transition-transform group-hover:scale-150" /></article>)}</div>
           </div>
         </section>
