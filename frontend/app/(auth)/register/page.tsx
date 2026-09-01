@@ -74,10 +74,18 @@ function RegisterForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<RegisterInput>({
     resolver: zodResolver(RegisterSchema),
   });
+
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setValue('email', emailParam, { shouldValidate: true });
+    }
+  }, [searchParams, setValue]);
 
   const onSubmit = async (data: RegisterInput) => {
     setLoading(true);
