@@ -31,13 +31,26 @@ async function start() {
     logger.warn('[Warmup] Database warmup failed (will retry on first query):', error);
   });
 
-  app.listen(PORT, () => {
-    logger.info(`Server running on http://localhost:${PORT}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  await new Promise<void>((resolve, reject) => {
+    const server = app.listen(PORT, () => {
+      server.off('error', reject);
+      logger.info(`Server running on http://localhost:${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      resolve();
+    });
+
+    server.once('error', reject);
   });
 }
 
 start().catch((error) => {
+  if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+    console.error(`[Server] Port ${PORT} is already in use.`);
+    console.error('[Server] If Airunote is already running, keep that terminal open and do not start a second copy.');
+    console.error(`[Server] Otherwise stop the process using port ${PORT}, or change API_PORT in backend-node/.env.`);
+    process.exit(1);
+  }
+
   console.error('Failed to start server:', error);
   process.exit(1);
 });

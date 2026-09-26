@@ -1,22 +1,56 @@
-import fs from 'fs';
 import path from 'path';
+import * as dotenv from 'dotenv';
 
-function loadDevelopmentNeonUrl(): string {
+function loadDevelopmentEnvironment(): void {
   const envPath = path.resolve(process.cwd(), '.env');
-  const lines = fs.readFileSync(envPath, 'utf8').split(/\r?\n/);
+  const result = dotenv.config({ path: envPath });
 
-  for (const line of lines) {
-    const match = line.match(/^\s*#.*\bDATABASE_URL=(.+)\s*$/);
-    if (!match?.[1]) continue;
-
-    const value = match[1].trim().replace(/^['"]|['"]$/g, '');
-    const target = new URL(value);
-    if (target.hostname.endsWith('.neon.tech')) return value;
+  if (result.error) {
+    throw new Error(
+      `Development environment file not found at ${envPath}. Copy backend-node/.env.example to backend-node/.env and update it for your database.`
+    );
   }
 
-  throw new Error('Development requires the commented production Neon DATABASE_URL profile in backend-node/.env');
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (!databaseUrl) {
+    throw new Error(`DATABASE_URL is required in ${envPath}`);
+  }
+
+  const target = new URL(databaseUrl);
+  if (target.protocol !== 'postgres:' && target.protocol !== 'postgresql:') {
+    throw new Error('DATABASE_URL must use the postgres:// or postgresql:// protocol');
+  }
+
+  process.env.NODE_ENV ??= 'development';
 }
 
-process.env.DATABASE_URL = loadDevelopmentNeonUrl();
+async function isAirunoteAlreadyRunning(port: number): Promise<boolean> {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/`, {
+      signal: AbortSignal.timeout(1_000),
+    });
+    if (!response.ok) return false;
 
-void import('./index.js');
+    const payload = await response.json() as { name?: string; status?: string };
+    return payload.name === 'airunote API' && payload.status === 'running';
+  } catch {
+    return false;
+  }
+}
+
+async function startDevelopmentServer(): Promise<void> {
+  loadDevelopmentEnvironment();
+
+  const port = Number(process.env.PORT) || Number(process.env.API_PORT) || 4000;
+  if (await isAirunoteAlreadyRunning(port)) {
+    console.info(`[Server] Airunote is already running on http://localhost:${port}. Reusing the existing development server.`);
+    return;
+  }
+
+  await import('./index.js');
+}
+
+void startDevelopmentServer().catch((error) => {
+  console.error('Failed to start the Airunote development server:', error);
+  process.exitCode = 1;
+});
