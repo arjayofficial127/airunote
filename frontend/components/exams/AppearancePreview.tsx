@@ -147,16 +147,16 @@ export function AppearancePreview({
             className="rounded-lg border px-3 py-2 text-xs"
             onClick={() => setMobile(!mobile)}
           >
-            {mobile ? "Desktop" : "Mobile"}
+            {mobile ? "Fit container" : "Mobile"}
           </button>
         </div>
       </div>
       <p className="text-xs text-slate-500">
         Sample data only. This preview creates no attempts.
       </p>
-      <div className="overflow-auto rounded-2xl border bg-slate-100">
+      <div className="min-w-0 rounded-2xl border bg-slate-100">
         <PreviewFrame mobile={mobile}>
-          <fieldset disabled className="pointer-events-none">
+          <fieldset disabled className="pointer-events-none m-0 min-w-0 border-0 p-0">
             <ExamAppearanceProvider
               config={config}
               preview
@@ -183,13 +183,13 @@ function PreviewFrame({
     <>
       <iframe
         title="Exam appearance preview"
-        className="mx-auto block border-0"
-        style={{ width: mobile ? 390 : 900, height: 720 }}
-        srcDoc="<!doctype html><html><head></head><body style='margin:0'></body></html>"
+        className="mx-auto block w-full max-w-full rounded-2xl border-0"
+        style={{ maxWidth: mobile ? 390 : "100%", height: 720 }}
+        srcDoc="<!doctype html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'></head><body style='margin:0'></body></html>"
         onLoad={(event) => {
           const doc = event.currentTarget.contentDocument;
           if (!doc) return;
-          doc.head.replaceChildren();
+          doc.head.querySelectorAll('link[rel="stylesheet"],style').forEach((node) => node.remove());
           document
             .querySelectorAll('link[rel="stylesheet"],style')
             .forEach((node) => doc.head.appendChild(node.cloneNode(true)));

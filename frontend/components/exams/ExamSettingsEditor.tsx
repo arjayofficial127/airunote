@@ -24,8 +24,8 @@ export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps)
   const update = <K extends keyof ExamInput>(key: K, fieldValue: ExamInput[K]) => onChange({ ...value, [key]: fieldValue });
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="exam-settings-layout grid min-w-0 gap-6">
+      <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-950">Exam details</h2>
         <div className="mt-5 space-y-5">
           <label className="block text-sm font-medium text-slate-700">
@@ -51,7 +51,7 @@ export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps)
             Instructions
             <textarea value={value.description ?? ''} onChange={(event) => update('description', event.target.value)} rows={6} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 leading-6 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
           </label>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid min-w-0 gap-4 sm:grid-cols-3">
             <label className="text-sm font-medium text-slate-700">Duration (minutes)<input type="number" min={1} max={1440} value={value.durationMinutes ?? 20} onChange={(event) => update('durationMinutes', Number(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5" /></label>
             <label className="text-sm font-medium text-slate-700">Maximum takes<input type="number" min={1} max={100} value={value.maxAttempts ?? 3} onChange={(event) => update('maxAttempts', Number(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5" /></label>
             <label className="text-sm font-medium text-slate-700">Status<select value={value.status ?? 'draft'} onChange={(event) => update('status', event.target.value as ExamStatus)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="draft">Draft</option><option value="published">Published</option><option value="closed">Closed</option></select></label>
@@ -59,7 +59,7 @@ export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps)
           <label className="block text-sm font-medium text-slate-700">After submission<select value={value.reviewMode ?? 'respondent_answers'} onChange={(event) => update('reviewMode', event.target.value as ExamReviewMode)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="respondent_answers">Show their answers, hide correct answers</option><option value="with_correct_answers">Show answers and correct answers</option><option value="none">Show completion only</option></select></label>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div><h3 className="text-sm font-semibold text-slate-900">Response window</h3><p className="mt-1 text-xs leading-5 text-slate-500">Optional. Published exams wait until the start time and stop accepting new attempts after the end time.</p></div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="mt-4 grid gap-4 2xl:grid-cols-2">
               <label className="text-sm font-medium text-slate-700">Starts at (optional)<input type="datetime-local" value={toLocalDateTime(value.startsAt)} onChange={(event) => update('startsAt', toIsoDateTime(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5" /></label>
               <label className="text-sm font-medium text-slate-700">Ends at (optional)<input type="datetime-local" value={toLocalDateTime(value.endsAt)} onChange={(event) => update('endsAt', toIsoDateTime(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5" /></label>
             </div>

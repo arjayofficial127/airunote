@@ -93,7 +93,7 @@ export function ExamTemplates() {
   };
   if (!org) return null;
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 p-6 sm:p-10">
+    <div className="exam-editor exam-editor-container mx-auto max-w-[1600px] space-y-6 p-6 sm:p-10">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Exam templates</h1>
@@ -282,13 +282,13 @@ export function ExamTemplates() {
               </>
             )}
           </div>
-          <div className="grid items-start gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="exam-appearance-layout grid min-w-0 items-start gap-6">
             <AppearanceFields
               disabled={!admin || busy || Boolean(draft.archivedAt)}
               value={draft.config}
               onChange={(config) => setDraft({ ...draft, config })}
             />
-            <div className="min-w-0 xl:sticky xl:top-4">
+            <div className="min-w-0">
               <AppearancePreview config={draft.config} orgId={org} />
             </div>
           </div>

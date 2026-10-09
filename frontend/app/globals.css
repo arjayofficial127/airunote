@@ -894,3 +894,26 @@ tr:hover > .block-icon-wrapper .block-icon {
 .holiday-ornament { transform-origin: top center; animation: holidayOrnamentSway 7s ease-in-out infinite; }
 .exam-theme[data-animated="false"] .holiday-ornament { animation: none; }
 @media (prefers-reduced-motion: reduce) { .holiday-ornament { animation: none; } }
+
+/* Exam layouts fit their available column, including embedded previews. */
+.exam-theme {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.exam-theme input:not([type="checkbox"]):not([type="radio"]),
+.exam-theme textarea,
+.exam-editor input:not([type="checkbox"]):not([type="radio"]),
+.exam-editor textarea,
+.exam-editor select {
+  min-width: 0;
+  max-width: 100%;
+}
+.exam-editor-container { container-type: inline-size; }
+.exam-editor { overflow-wrap: anywhere; }
+.exam-editor label,
+.exam-appearance-layout > *,
+.exam-settings-layout > * { min-width: 0; }
+@container (min-width: 960px) {
+  .exam-appearance-layout { grid-template-columns: 300px minmax(0, 1fr); }
+  .exam-settings-layout { grid-template-columns: minmax(0, 1fr) 320px; }
+}

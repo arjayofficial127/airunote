@@ -9,3 +9,7 @@ Preserve existing uncommitted work. Do not redesign the approved hero/top sectio
 ## Working style: MODE MultiPoint
 
 Use MODE MultiPoint unless the user changes it: inspect the relevant systems first, complete a coordinated implementation pass, then run focused integration and browser smoke tests. Resolve routine issues autonomously and report verified outcomes and remaining deployment limits clearly. This mode does not imply delegation to subagents.
+
+### MODE MultiPoint UI
+
+For UI work, plan the complete responsive change, implement locally, then smoke-test the editor, preview, and actual user flow across supported themes and widths. Allow at most three full plan/implementation/smoke cycles per request; do not iterate indefinitely. Measure overflow and inspect screenshots, including mobile question states, before deploying.

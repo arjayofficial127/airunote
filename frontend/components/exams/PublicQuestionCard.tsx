@@ -19,8 +19,8 @@ export function PublicQuestionCard({ question, number, shortValue, saving, onSho
   const disabled = question.timedOut;
 
   return (
-    <section className="rounded-[2rem] border border-[var(--exam-color-e5c79f)] bg-[var(--exam-color-fffdf8)] p-6 shadow-[0_18px_50px_rgba(81,49,24,0.1)] sm:p-8">
-      <div className="flex items-start justify-between gap-4">
+    <section className="min-w-0 rounded-[2rem] border border-[var(--exam-color-e5c79f)] bg-[var(--exam-color-fffdf8)] p-6 shadow-[0_18px_50px_rgba(81,49,24,0.1)] sm:p-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--exam-color-b65b28)]">Question {number}</span>
           <div className="mt-1 text-xs text-[var(--exam-color-947056)]">{question.points} point{question.points === 1 ? '' : 's'}</div>
@@ -40,8 +40,8 @@ export function PublicQuestionCard({ question, number, shortValue, saving, onSho
         <div className="mt-6 space-y-3">
           {question.options.map((option) => (
             <label key={option.id} className={`flex items-start gap-3 rounded-2xl border p-4 transition ${disabled ? 'cursor-not-allowed opacity-65' : 'cursor-pointer'} ${question.selectedAnswers.includes(option.id) ? 'border-[var(--exam-color-d97838)] bg-[var(--exam-color-fff3df)] ring-2 ring-[var(--exam-color-f4d2ab)]' : 'border-[var(--exam-color-ead8c2)] bg-white hover:border-[var(--exam-color-d8ae7a)]'}`}>
-              <input disabled={disabled} type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={question.id} checked={question.selectedAnswers.includes(option.id)} onChange={() => onChoice(option.id)} className="mt-0.5 h-4 w-4 accent-[var(--exam-color-b85d2b)]" />
-              <span className="text-sm leading-6 text-[var(--exam-color-49372b)]">{option.label}</span>
+              <input disabled={disabled} type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={question.id} checked={question.selectedAnswers.includes(option.id)} onChange={() => onChoice(option.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--exam-color-b85d2b)]" />
+              <span className="min-w-0 [overflow-wrap:anywhere] text-sm leading-6 text-[var(--exam-color-49372b)]">{option.label}</span>
             </label>
           ))}
         </div>
@@ -59,7 +59,7 @@ export function PublicQuestionCard({ question, number, shortValue, saving, onSho
         <textarea disabled={disabled} value={shortValue} onChange={(event) => onShortChange(event.target.value)} onBlur={onSaveShort} rows={5} placeholder="Type your answer…" className="mt-6 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 leading-6 text-[var(--exam-color-49372b)] outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)] disabled:bg-[var(--exam-color-f6eee4)]" />
       )}
 
-      <div className="mt-3 h-5 text-xs text-[var(--exam-color-947056)]">{saving ? 'Saving answer…' : question.timedOut ? 'Question closed' : question.selectedAnswers.length > 0 ? 'Answer saved' : timed ? 'Your last answer will be saved when time expires.' : ''}</div>
+      <div className="mt-3 min-h-5 text-xs text-[var(--exam-color-947056)]">{saving ? 'Saving answer…' : question.timedOut ? 'Question closed' : question.selectedAnswers.length > 0 ? 'Answer saved' : timed ? 'Your last answer will be saved when time expires.' : ''}</div>
     </section>
   );
 }

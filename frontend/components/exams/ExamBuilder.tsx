@@ -93,18 +93,18 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
   ];
 
   return (
-    <div className="min-h-full bg-slate-50 px-5 py-7 sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-6xl">
+    <div className="exam-editor min-w-0 min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="exam-editor-container mx-auto min-w-0 max-w-7xl">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <Link href={`/orgs/${orgId}/exams`} className="text-sm font-medium text-blue-700 hover:text-blue-800">← All exams</Link>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <h1 className="truncate text-2xl font-semibold text-slate-950 sm:text-3xl">{draft.title}</h1>
+              <h1 className="[overflow-wrap:anywhere] text-2xl font-semibold text-slate-950 sm:text-3xl">{draft.title}</h1>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200">{draft.status ?? 'draft'}</span>
             </div>
             <p className="mt-2 text-sm text-slate-500">{exam.attemptCount} saved attempt{exam.attemptCount === 1 ? '' : 's'} · autosave occurs for every respondent answer</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-xs">
             <button type="button" onClick={copyPublicLink} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">Copy public link</button>
             <Link href={`/orgs/${orgId}/exams/${examId}/reports`} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">View report</Link>
             <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">{saving ? 'Saving…' : 'Save exam'}</button>
@@ -113,7 +113,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
 
         {message && <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{message}</div>}
 
-        <nav className="my-6 flex gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        <nav className="my-6 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
           {tabs.map((item) => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${tab === item.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{item.label}</button>)}
         </nav>
 

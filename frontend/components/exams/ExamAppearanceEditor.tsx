@@ -208,13 +208,13 @@ export function ExamAppearanceEditor({
           Only organization admins can change appearance.
         </p>
       )}
-      <div className="grid items-start gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+      <div className="exam-appearance-layout grid min-w-0 items-start gap-6">
         <AppearanceFields
           value={draft.config}
           disabled={!admin || busy}
           onChange={(config) => setDraft({ ...draft, config })}
         />
-        <div className="min-w-0 xl:sticky xl:top-4">
+        <div className="min-w-0">
           <AppearancePreview
             config={draft.config}
             title={title}
