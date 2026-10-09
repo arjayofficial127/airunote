@@ -1,16 +1,20 @@
 'use client';
 
+import { useExamAppearance, useExamPreview } from './ExamAppearanceProvider';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useExamSounds() {
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const config = useExamAppearance();
+  const preview = useExamPreview();
+  const [preferred, setSoundEnabled] = useState(config.sound.defaultEnabled);
+  const soundEnabled = config.sound.available && preferred;
   const contextRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem('airunote_exam_sounds');
-    if (saved !== null) setSoundEnabled(saved !== 'off');
-    return () => { void contextRef.current?.close(); };
-  }, []);
+    const saved = preview ? null : window.localStorage.getItem('airunote_exam_sounds');
+    setSoundEnabled(saved !== null ? saved !== 'off' : config.sound.defaultEnabled);
+  }, [config.sound.defaultEnabled, preview]);
+  useEffect(() => () => { void contextRef.current?.close(); contextRef.current = null; }, []);
 
   const audioContext = useCallback(() => {
     if (!contextRef.current) contextRef.current = new AudioContext();
@@ -19,11 +23,11 @@ export function useExamSounds() {
   }, []);
 
   const primeSound = useCallback(() => {
-    if (soundEnabled) audioContext();
-  }, [audioContext, soundEnabled]);
+    if (soundEnabled && !preview) audioContext();
+  }, [audioContext, soundEnabled, preview]);
 
   const playNext = useCallback(() => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || preview) return;
     const context = audioContext();
     const now = context.currentTime;
     [659.25, 880].forEach((frequency, index) => {
@@ -38,10 +42,10 @@ export function useExamSounds() {
       oscillator.start(now + index * 0.075);
       oscillator.stop(now + index * 0.075 + 0.18);
     });
-  }, [audioContext, soundEnabled]);
+  }, [audioContext, soundEnabled, preview]);
 
   const playCelebration = useCallback(() => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || preview) return;
     const context = audioContext();
     const now = context.currentTime;
     for (let clap = 0; clap < 9; clap += 1) {
@@ -72,16 +76,17 @@ export function useExamSounds() {
       oscillator.start(now + index * 0.09);
       oscillator.stop(now + index * 0.09 + 0.4);
     });
-  }, [audioContext, soundEnabled]);
+  }, [audioContext, soundEnabled, preview]);
 
   const toggleSound = useCallback(() => {
+    if (preview) return;
     setSoundEnabled((enabled) => {
       const next = !enabled;
       window.localStorage.setItem('airunote_exam_sounds', next ? 'on' : 'off');
       if (next) audioContext();
       return next;
     });
-  }, [audioContext]);
+  }, [audioContext, preview]);
 
   return { soundEnabled, toggleSound, primeSound, playNext, playCelebration };
 }

@@ -1,3 +1,4 @@
+import type { Appearance } from '@/lib/exam-appearance';
 import apiClient from './client';
 
 export type ExamStatus = 'draft' | 'published' | 'closed';
@@ -190,6 +191,7 @@ export interface ExamReport {
 }
 
 export interface PublicExamOverview {
+  appearance?: Appearance;
   publicId: string;
   title: string;
   description: string | null;
@@ -226,6 +228,7 @@ export interface PublicAttemptQuestion {
 }
 
 export interface PublicAttempt {
+  appearance?: Appearance;
   id: string;
   publicId: string;
   title: string;

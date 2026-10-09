@@ -1,3 +1,5 @@
+import { readAppearance } from '../exam-appearance/contract';
+import { recordAssetUsage } from '../exam-appearance/service';
 import { and, count, desc, eq, inArray, ne } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import {
@@ -46,7 +48,14 @@ export class ExamAttemptRepository {
   }
 
   async createAttempt(input: CreateAttemptRecordInput): Promise<ExamAttemptRecord> {
-    const [attempt] = await db.insert(examAttemptsTable).values(input).returning();
+    const attempt = await db.transaction(async (tx) => {
+      const [exam] = await tx.select().from(examsTable).where(eq(examsTable.id, input.examId)).for('share');
+      if (!exam) throw new Error('Exam not found');
+      const config = readAppearance(exam.appearanceConfig);
+      const [created] = await tx.insert(examAttemptsTable).values({ ...input, appearanceConfig: config }).returning();
+      await recordAssetUsage(tx, exam.orgId, 'attempt', created.id, config);
+      return created;
+    });
     if (!attempt) throw new Error('Attempt could not be created');
     await this.addEvent(attempt.id, 'started', {});
     return attempt;

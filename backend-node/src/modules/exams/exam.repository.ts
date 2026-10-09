@@ -1,3 +1,5 @@
+import { readAppearance } from '../exam-appearance/contract';
+import { defaultAppearance, recordAssetUsage } from '../exam-appearance/service';
 import { randomUUID } from 'crypto';
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, ne } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
@@ -141,6 +143,7 @@ export class ExamRepository extends ExamAttemptRepository {
     return {
       id: row.id,
       orgId: row.orgId,
+      appearanceConfig: row.appearanceConfig,
       createdByUserId: row.createdByUserId,
       title: row.title,
       description: row.description,
@@ -173,10 +176,17 @@ export class ExamRepository extends ExamAttemptRepository {
     };
   }
 
-  async create(orgId: string, userId: string, input: CreateExamInput): Promise<ExamDefinitionView> {
+  async create(orgId: string, userId: string, input: CreateExamInput, sourceExamId?: string): Promise<ExamDefinitionView> {
     const examId = randomUUID();
     await db.transaction(async (transaction) => {
+      let appearance = await defaultAppearance(transaction, orgId);
+      if (sourceExamId) {
+        const [source] = await transaction.select().from(examsTable).where(and(eq(examsTable.id,sourceExamId),eq(examsTable.orgId,orgId))).for('share');
+        if (!source) throw new Error('Source exam not found');
+        appearance = { config: readAppearance(source.appearanceConfig), templateId: source.appearanceTemplateId };
+      }
       await transaction.insert(examsTable).values({
+        appearanceConfig: appearance.config, appearanceTemplateId: appearance.templateId, appearanceRevision: 1,
         id: examId,
         orgId,
         createdByUserId: userId,
@@ -197,6 +207,7 @@ export class ExamRepository extends ExamAttemptRepository {
         endsAt: input.endsAt ? new Date(input.endsAt) : null,
       });
 
+      await recordAssetUsage(transaction, orgId, 'exam', examId, appearance.config);
       const sectionIdsByKey = new Map<string, string>();
       const sections = (input.sections ?? []).map((section, index) => {
         const id = section.id ?? randomUUID();

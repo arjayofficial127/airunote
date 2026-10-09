@@ -15,7 +15,9 @@
     "db:migrate": "tsx src/infrastructure/db/drizzle/migrate.ts",
     "db:migrate:view-mode": "tsx run-view-mode-migration.ts",
     "db:seed": "tsx src/infrastructure/db/drizzle/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:migrate:appearance": "tsx scripts/migrate-exam-appearance.ts",
+    "test:appearance": "tsx tests/integration/exam-appearance.smoke.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",
@@ -35,6 +37,7 @@
     "postgres": "^3.4.3",
     "reflect-metadata": "^0.1.14",
     "resend": "^4.0.0",
+    "sharp": "^0.34.0",
     "tsyringe": "^4.8.0",
     "uuid": "^13.0.0",
     "zod": "^3.23.8",

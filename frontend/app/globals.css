@@ -878,3 +878,14 @@ tr:hover > .block-icon-wrapper .block-icon {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari and Opera */
 }
+
+/* Exam appearance is scoped, so changing a template cannot affect the app shell. */
+.exam-page-background { background: var(--exam-background); }
+.exam-theme[data-animated="false"] .autumn-floating-leaf,
+.exam-theme[data-animated="false"] .autumn-branch-sway,
+.exam-theme[data-animated="false"] .autumn-branch-sway-reverse { animation: none; }
+.exam-theme[data-rounding="soft"] section { border-radius: 1rem; }
+.exam-theme[data-rounding="square"] section { border-radius: 0; }
+.exam-preview { position: relative; isolation: isolate; transform: translateZ(0); }
+.exam-preview main { min-height: 600px; }
+.exam-theme [hidden] { display: none; }

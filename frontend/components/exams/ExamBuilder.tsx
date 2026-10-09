@@ -7,6 +7,7 @@ import { examsApi, type ExamDefinition, type ExamInput } from '@/lib/api/exams';
 import { useHydratedContent } from '@/providers/HydratedContentProvider';
 import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
 import { useOrgSession } from '@/providers/OrgSessionProvider';
+import { ExamAppearanceEditor } from './ExamAppearanceEditor';
 import { ExamJsonEditor } from './ExamJsonEditor';
 import { ExamQuestionsEditor } from './ExamQuestionsEditor';
 import { ExamSettingsEditor } from './ExamSettingsEditor';
@@ -16,7 +17,7 @@ interface ExamBuilderProps {
   examId: string;
 }
 
-type BuilderTab = 'setup' | 'questions' | 'json';
+type BuilderTab = 'setup' | 'questions' | 'json' | 'appearance';
 
 export function ExamBuilder({ examId }: ExamBuilderProps) {
   const orgSession = useOrgSession();
@@ -88,6 +89,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
     { id: 'setup', label: 'Setup' },
     { id: 'questions', label: `Questions (${draft.questions?.length ?? 0})` },
     { id: 'json', label: 'JSON pro' },
+    { id: 'appearance', label: 'Appearance' },
   ];
 
   return (
@@ -115,6 +117,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
           {tabs.map((item) => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${tab === item.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{item.label}</button>)}
         </nav>
 
+        <div hidden={tab !== 'appearance'}><ExamAppearanceEditor examId={examId} title={draft.title} description={draft.description}/></div>
         {tab === 'setup' && <ExamSettingsEditor value={draft} onChange={setDraft} />}
         {tab === 'questions' && <ExamQuestionsEditor questions={draft.questions ?? []} sections={draft.sections ?? []} locked={locked} onQuestionsChange={(questions) => setDraft({ ...draft, questions })} onSectionsChange={(sections) => setDraft({ ...draft, sections })} />}
         {tab === 'json' && <ExamJsonEditor value={draft} locked={locked} onChange={setDraft} />}

@@ -1,3 +1,4 @@
+import { readAppearance } from '../exam-appearance/contract';
 import { createHash, randomBytes } from 'crypto';
 import { ExamRepository, ExamAttemptRecord, ExamAnswerRecord } from './exam.repository';
 import {
@@ -245,7 +246,7 @@ export class ExamService {
         };
       }),
     };
-    return this.create(orgId, userId, input);
+    return this.repository.create(orgId, userId, input, source.id);
   }
 
   async getOrgSettings(orgId: string) {
@@ -262,6 +263,7 @@ export class ExamService {
     if (!exam) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
     return {
       publicId: exam.publicId,
+      appearance: readAppearance(exam.appearanceConfig),
       title: exam.title,
       description: exam.description,
       durationMinutes: exam.durationMinutes,
@@ -431,6 +433,7 @@ export class ExamService {
       : [];
     return {
       id: attempt.id,
+      appearance: readAppearance(attempt.appearanceConfig),
       publicId: exam.publicId,
       title: exam.title,
       description: exam.description,

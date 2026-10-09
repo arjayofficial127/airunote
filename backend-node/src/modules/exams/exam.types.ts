@@ -157,6 +157,7 @@ export interface ExamSectionView {
 }
 
 export interface ExamDefinitionView {
+  appearanceConfig: unknown;
   id: string;
   orgId: string;
   createdByUserId: string;

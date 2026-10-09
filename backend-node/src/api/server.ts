@@ -1,3 +1,5 @@
+import nativeFilesRoutes, { publicAssetRouter } from './routes/files.routes';
+import appearanceRoutes from './routes/exam-appearance.routes';
 import express, { Express } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -257,6 +259,9 @@ export function createApp(): Express {
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/orgs/:orgId/airunote', airunoteRoutes);
   app.use('/api/orgs/:orgId/airunote/lenses', airunoteLensesRoutes);
+  app.use('/api/orgs/:orgId/files', nativeFilesRoutes);
+  app.use('/api/public/exam-assets', publicAssetRouter);
+  app.use('/api/orgs/:orgId/appearance', appearanceRoutes);
   app.use('/api/orgs/:orgId/exams', examsRoutes);
   app.use('/api/public/exams', publicExamsRoutes);
 

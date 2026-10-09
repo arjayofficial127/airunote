@@ -176,3 +176,16 @@ export const filesApi = {
     return response.data.data;
   },
 };
+
+const uploadIds = new WeakMap<File, string>();
+export const nativeFilesApi = {
+  capabilities: async (org: string): Promise<{ uploadsAvailable: boolean; maxBytes: number; types: string[] }> => (await apiClient.get(`/orgs/${org}/files/capabilities`)).data.data,
+  preview: async (org: string, id: string): Promise<Blob> => (await apiClient.get(`/orgs/${org}/files/${id}/content`, { responseType: 'blob' })).data,
+  details: async (org: string, id: string): Promise<OrgFile & { uses: { ownerKind: string; ownerId: string; label: string }[] }> => (await apiClient.get(`/orgs/${org}/files/${id}`)).data.data,
+  cleanup: async (org: string): Promise<OrgFile[]> => (await apiClient.get(`/orgs/${org}/files/cleanup`)).data.data,
+  upload: async (org: string, file: File, visibility: 'private' | 'public', onProgress: (n: number) => void): Promise<OrgFile> => {
+    const uploadId = uploadIds.get(file) || crypto.randomUUID(); uploadIds.set(file,uploadId);
+    const body = new FormData(); body.append('file',file); body.append('visibility',visibility); body.append('uploadId',uploadId);
+    return (await apiClient.post(`/orgs/${org}/files/upload`, body, { headers: {'Content-Type': undefined}, onUploadProgress: e => { if(e.total) onProgress(Math.round(e.loaded/e.total*100)); } })).data.data;
+  },
+};

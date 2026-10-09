@@ -259,3 +259,9 @@ Known non-blocking local warnings:
 3. Add conversion analytics for demo edits, lens switches, workspace-explorer opens, publishing-mode switches, and email CTA submissions.
 4. Run a final content polish after the product terminology is locked.
 5. Commit the landing-page, live-demo, handover, and backend development changes in clearly scoped commits.
+
+## Exam Appearance and Native Files — 2026-10-10
+
+Org-admin appearance editing, reusable templates/defaults, built-in asset selection, and native file management are implemented. The existing Autumn design is captured as migration data. Exams and attempts retain independent appearance snapshots; template changes are explicit. Built-ins include the existing Starbucks SVG and cats PNG, with no upload-storage dependency.
+
+See [docs/exam-appearance.md](./docs/exam-appearance.md) for migration order, storage configuration, validation, and rollout limits. Run the dedicated appearance migration before deploying the backend. Production was not changed. The Wrapped In Joy template/exam remains the next product step after rollout.

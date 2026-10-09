@@ -482,6 +482,8 @@ export function UnifiedSidebar({
                 <div className="mb-3 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Content</div>
 
                 <div className="space-y-1">
+                  <Link href={`/orgs/${orgId}/files`} onClick={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100">Files</Link>
+                  <Link href={`/orgs/${orgId}/exam-templates`} onClick={onNavigate} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-100">Exam templates</Link>
                   {showExams && (
                     <Link
                       href={`/orgs/${orgId}/exams`}

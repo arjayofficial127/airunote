@@ -316,10 +316,6 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
             break;
           }
           case 'files': {
-            // Skip files loading on Airunote routes (endpoints return 404)
-            if (isAirunoteRoute) {
-              break;
-            }
             const files = await filesApi.list(orgId).catch((err) => {
               console.error('[MetadataIndexProvider] Failed to load files:', err);
               return [];
@@ -395,11 +391,11 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
           loadMetadataKey(orgId, 'posts'),
           loadMetadataKey(orgId, 'exams'),
           loadMetadataKey(orgId, 'examSettings'),
+          loadMetadataKey(orgId, 'files'),
         ];
         if (!isAirunoteRoute) {
           loadPromises.push(
-            loadMetadataKey(orgId, 'collections'),
-            loadMetadataKey(orgId, 'files')
+            loadMetadataKey(orgId, 'collections')
           );
         }
         await Promise.all(loadPromises);

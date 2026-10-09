@@ -474,6 +474,8 @@ export const notificationsTable = pgTable('notifications', {
 
 // Org Files table (File Management App - Dropbox-like)
 export const orgFilesTable = pgTable('org_files', {
+  deletedAt: timestamp('deleted_at'),
+  storageDeletedAt: timestamp('storage_deleted_at'),
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id')
     .notNull()
@@ -741,10 +743,31 @@ export const airuLensItemsTable = pgTable('airu_lens_items', {
 }));
 
 // Resident Exams workspace preferences
+export const examTemplatesTable = pgTable('exam_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orgId: uuid('org_id').notNull().references(() => orgsTable.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 100 }).notNull(),
+  config: jsonb('config').notNull(),
+  revision: integer('revision').notNull().default(1),
+  legacyKey: varchar('legacy_key', { length: 50 }),
+  createdByUserId: uuid('created_by_user_id').references(() => usersTable.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  archivedAt: timestamp('archived_at'),
+}, (t) => ({ legacyUnique: unique('exam_templates_org_legacy_unique').on(t.orgId, t.legacyKey) }));
+
+export const examAssetUsageTable = pgTable('exam_asset_usage', {
+  fileId: uuid('file_id').notNull().references(() => orgFilesTable.id, { onDelete: 'restrict' }),
+  ownerKind: varchar('owner_kind', { length: 20 }).notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  orgId: uuid('org_id').notNull().references(() => orgsTable.id, { onDelete: 'cascade' }),
+}, (t) => ({ usageUnique: unique('exam_asset_usage_unique').on(t.fileId, t.ownerKind, t.ownerId) }));
+
 export const examOrgSettingsTable = pgTable('exam_org_settings', {
   orgId: uuid('org_id')
     .primaryKey()
     .references(() => orgsTable.id, { onDelete: 'cascade' }),
+  defaultExamTemplateId: uuid('default_exam_template_id').references(() => examTemplatesTable.id, { onDelete: 'restrict' }),
   journeyMode: varchar('journey_mode', { length: 20 }).notNull().default('exam_first'),
   visibleTopLevelApps: jsonb('visible_top_level_apps').notNull().default(['exams', 'airunote']),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -753,6 +776,9 @@ export const examOrgSettingsTable = pgTable('exam_org_settings', {
 
 // Resident Exams definitions
 export const examsTable = pgTable('exams', {
+  appearanceTemplateId: uuid('appearance_template_id').references(() => examTemplatesTable.id, { onDelete: 'restrict' }),
+  appearanceConfig: jsonb('appearance_config'),
+  appearanceRevision: integer('appearance_revision').notNull().default(0),
   id: uuid('id').defaultRandom().primaryKey(),
   orgId: uuid('org_id')
     .notNull()
@@ -835,6 +861,7 @@ export const examQuestionOptionsTable = pgTable('exam_question_options', {
 
 // Every public answering session is durable, including incomplete sessions.
 export const examAttemptsTable = pgTable('exam_attempts', {
+  appearanceConfig: jsonb('appearance_config'),
   id: uuid('id').defaultRandom().primaryKey(),
   examId: uuid('exam_id')
     .notNull()

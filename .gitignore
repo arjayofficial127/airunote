@@ -39,3 +39,7 @@ docker-compose.override.yml
 *.tsbuildinfo
 .cache/
 
+
+# Disposable integration-test database configuration and fixtures
+/backend-node/.smoke/
+

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "renderer": "autumn",
+  "headerLabel": "FY2026 · Graded exam",
+  "brand": {
+    "name": "STARBUCKS",
+    "visible": true,
+    "logo": {
+      "source": "builtin",
+      "assetId": "starbucks-logo"
+    },
+    "logoVisible": true,
+    "logoAlt": "Starbucks",
+    "badge": "District 10",
+    "badgeVisible": true
+  },
+  "artwork": {
+    "asset": {
+      "source": "builtin",
+      "assetId": "marry-furrmily-cats"
+    },
+    "visible": true,
+    "alt": "Marry Furrmily",
+    "caption": "Marry Furrmily"
+  },
+  "colors": {
+    "background": "#fbf5e9",
+    "backgroundEnd": "#f5eadb",
+    "glow": "#d97736",
+    "glowSecondary": "#00754a",
+    "header": "#2c1d17",
+    "headerText": "#ffffff",
+    "surface": "#fffdf8",
+    "text": "#2f2118",
+    "muted": "#705746",
+    "primary": "#00754a",
+    "primaryText": "#ffffff",
+    "accent": "#d97838",
+    "border": "#dcc3a5",
+    "selected": "#fff3df",
+    "logo": "#00754a"
+  },
+  "gradient": true,
+  "decorations": {
+    "leaves": true,
+    "backgroundBranches": true,
+    "headerBranches": true,
+    "animated": true,
+    "completion": true
+  },
+  "font": "sans",
+  "rounding": "rounded",
+  "footer": {
+    "visible": true,
+    "text": "Autumn edition · Sponsored by Starbucks District 10, Marry Furrmily"
+  },
+  "sound": {
+    "available": true,
+    "defaultEnabled": true
+  }
+}
