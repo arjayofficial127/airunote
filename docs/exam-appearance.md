@@ -1,6 +1,8 @@
 # Exam appearance and native file library
 
-Implemented locally on 2026-10-10. Production migration and deployment have not been run.
+Implemented on 2026-10-10. Production migration completed; hosted application deployment is in progress.
+
+Production recovery snapshot: Neon `production at 2026-10-09 18:16:45 UTC (manual)`. The atomic SQL backfill verified original exam/attempt field checksums and retained 4 exams, 27 attempts, and 360 answers. It created two organization templates and left no missing appearance values.
 
 ## Product behavior
 
@@ -13,7 +15,7 @@ Implemented locally on 2026-10-10. Production migration and deployment have not 
 
 ## Assets
 
-The browser-safe contract and asset catalog are in `backend-node/src/modules/exam-appearance/contract.ts`; the frontend reexports this pure Zod module. Keep it free of server/database imports. The frontend build needs the monorepo (including this contract), not only the frontend directory.
+The browser-safe contract and asset catalog are in `backend-node/src/modules/exam-appearance/contract.ts`; the frontend reexports this pure Zod module. Keep it free of server/database imports. The frontend build needs the monorepo source (including this contract). Its Webpack alias and TypeScript path resolve Zod from the frontend install, so separate frontend/backend dependency installations work.
 
 | Stable ID | Repository asset |
 | --- | --- |

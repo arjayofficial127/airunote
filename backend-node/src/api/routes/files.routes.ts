@@ -271,7 +271,7 @@ router.use((error: unknown, _r: Request, s: Response, next: NextFunction) => {
   ) {
     s.status(error instanceof AppearanceError ? error.status : 400).json({
       success: false,
-      error: { message: error.message },
+      error: { message: error instanceof Error ? error.message : 'Invalid file request.' },
     });
   } else next(error);
 });
