@@ -13,15 +13,8 @@ import {
 } from './exam.types';
 import { buildExamReport } from './exam.reporting';
 
-export class ExamServiceError extends Error {
-  constructor(
-    message: string,
-    public readonly statusCode: number,
-    public readonly code: string,
-  ) {
-    super(message);
-  }
-}
+import { ExamServiceError } from './exam.errors';
+export { ExamServiceError } from './exam.errors';
 
 interface PublicQuestion {
   id: string;
@@ -322,6 +315,7 @@ export class ExamService {
     const token = this.createToken();
     const attempt = await this.repository.createAttempt({
       examId: exam.id,
+      expectedUpdatedAt: exam.updatedAt,
       accessTokenHash: this.tokenHash(token),
       respondentName: input.respondentName,
       respondentEmail: input.respondentEmail ?? null,
@@ -344,6 +338,7 @@ export class ExamService {
     const identityKeyHash = this.hash(`preview:${user.userId}:${Date.now()}`);
     const attempt = await this.repository.createAttempt({
       examId: exam.id,
+      expectedUpdatedAt: exam.updatedAt,
       accessTokenHash: this.tokenHash(token),
       respondentName: user.email,
       respondentEmail: user.email,

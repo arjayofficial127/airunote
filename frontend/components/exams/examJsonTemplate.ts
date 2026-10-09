@@ -1,3 +1,4 @@
+import { sectionIssues } from '../../../backend-node/src/modules/exams/section-structure';
 import type { ExamInput } from '@/lib/api/exams';
 import { z } from 'zod';
 
@@ -24,7 +25,10 @@ const examInputSchema = z.object({
 });
 
 export function parseExamInputJson(text: string): ExamInput {
-  return examInputSchema.parse(JSON.parse(text));
+  const input = examInputSchema.parse(JSON.parse(text));
+  const issues = sectionIssues(input);
+  if (issues.length) throw new Error(issues.join(' ' ));
+  return input;
 }
 
 export const examJsonTemplate: ExamInput = {

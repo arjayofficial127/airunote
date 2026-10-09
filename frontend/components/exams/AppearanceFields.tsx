@@ -159,7 +159,7 @@ export function AppearanceFields({
       </section>
       <section className="space-y-3 rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Colors and presentation</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {Object.entries(v.colors).map(([key, color]) => (
             <label
               key={key}

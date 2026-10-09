@@ -1,3 +1,4 @@
+import { ExamServiceError } from './exam.errors';
 import { readAppearance } from '../exam-appearance/contract';
 import { recordAssetUsage } from '../exam-appearance/service';
 import { and, count, desc, eq, inArray, ne } from 'drizzle-orm';
@@ -15,6 +16,7 @@ export type ExamAttemptEventRecord = typeof examAttemptEventsTable.$inferSelect;
 
 export interface CreateAttemptRecordInput {
   examId: string;
+  expectedUpdatedAt?: Date;
   accessTokenHash: string;
   respondentName: string;
   respondentEmail: string | null;
@@ -51,8 +53,12 @@ export class ExamAttemptRepository {
     const attempt = await db.transaction(async (tx) => {
       const [exam] = await tx.select().from(examsTable).where(eq(examsTable.id, input.examId)).for('share');
       if (!exam) throw new Error('Exam not found');
+      if (input.expectedUpdatedAt && exam.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) {
+        throw new ExamServiceError('The exam changed while you were starting. Refresh and try again.', 409, 'EXAM_CHANGED');
+      }
+      const { expectedUpdatedAt: _version, ...values } = input;
       const config = readAppearance(exam.appearanceConfig);
-      const [created] = await tx.insert(examAttemptsTable).values({ ...input, appearanceConfig: config }).returning();
+      const [created] = await tx.insert(examAttemptsTable).values({ ...values, appearanceConfig: config }).returning();
       await recordAssetUsage(tx, exam.orgId, 'attempt', created.id, config);
       return created;
     });

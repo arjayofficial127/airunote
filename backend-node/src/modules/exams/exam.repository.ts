@@ -1,3 +1,4 @@
+import { ExamServiceError } from './exam.errors';
 import { readAppearance } from '../exam-appearance/contract';
 import { defaultAppearance, recordAssetUsage } from '../exam-appearance/service';
 import { randomUUID } from 'crypto';
@@ -211,7 +212,7 @@ export class ExamRepository extends ExamAttemptRepository {
       const sectionIdsByKey = new Map<string, string>();
       const sections = (input.sections ?? []).map((section, index) => {
         const id = section.id ?? randomUUID();
-        sectionIdsByKey.set(section.key ?? `section-${index + 1}`, id);
+        sectionIdsByKey.set(section.key ?? section.id ?? `section-${index + 1}`, id);
         return {
           id,
           examId,
@@ -273,6 +274,9 @@ export class ExamRepository extends ExamAttemptRepository {
     if (!existing) return null;
 
     await db.transaction(async (transaction) => {
+      await transaction.select({ id: examsTable.id }).from(examsTable).where(eq(examsTable.id, examId)).for('update');
+      const [attempts] = await transaction.select({ value: count(examAttemptsTable.id) }).from(examAttemptsTable).where(eq(examAttemptsTable.examId, examId));
+      if (Number(attempts.value) > 0) throw new ExamServiceError('Responses arrived while you were editing. Question structure is locked; your draft has been kept. Duplicate the exam to reorganize it.', 409, 'EXAM_STRUCTURE_LOCKED');
       await transaction.update(examsTable).set({
         title: input.title,
         publicId: input.publicId ?? existing.publicId,

@@ -1,4 +1,5 @@
 "use client";
+import type { ExamInput } from "@/lib/api/exams";
 import { useEffect, useState } from "react";
 import {
   appearanceApi,
@@ -19,7 +20,9 @@ export function ExamAppearanceEditor({
   examId,
   title,
   description,
+  examDraft,
 }: {
+  examDraft?: ExamInput;
   examId: string;
   title: string;
   description: string | null | undefined;
@@ -219,6 +222,7 @@ export function ExamAppearanceEditor({
             config={draft.config}
             title={title}
             description={description}
+            examDraft={examDraft}
             orgId={org}
           />
         </div>

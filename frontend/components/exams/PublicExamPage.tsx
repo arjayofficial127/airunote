@@ -197,7 +197,7 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
                 <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--exam-color-ead8c7)]">{exam.overview.description}</p>
                 <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.durationMinutes} minutes</span>
-                  <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.questionCount} questions</span>
+                  <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.questionCount} question{exam.overview.questionCount === 1 ? '' : 's'}</span>
                   <span className="rounded-full bg-white/10 px-3 py-1.5">Up to {exam.overview.maxAttempts} takes</span>
                   {exam.overview.preventFocusLoss && <span className="rounded-full bg-[color:var(--exam-color-d97706-25)] px-3 py-1.5 text-[var(--exam-color-ffd28c)]">Focus lock on</span>}
                 </div>
@@ -273,7 +273,7 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
         <section className="relative mb-5 overflow-hidden rounded-[1.6rem] border border-[var(--exam-color-7c3a14)] bg-[linear-gradient(110deg,var(--exam-color-1d0d08)_0%,var(--exam-color-32170d)_58%,var(--exam-color-28160e)_100%)] px-6 py-5 text-[var(--exam-header-text)] shadow-[0_16px_36px_rgba(66,33,15,.16)] sm:px-8">
           <AutumnHeroBranches />
           <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-6">
-            <div className="min-w-0 w-full flex-1 max-w-2xl"><div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--exam-color-ef8a35)]">Graded exam</div><h2 className="mt-2 text-xl font-bold sm:text-2xl">{exam.attempt.title}</h2>{exam.attempt.description && <p className="mt-1 truncate text-xs text-[var(--exam-color-ead1bf)]">{exam.attempt.description}</p>}<div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold"><span className="rounded-full bg-white/10 px-2.5 py-1">{exam.attempt.durationMinutes} minutes</span><span className="rounded-full bg-white/10 px-2.5 py-1">{questions.length} questions</span>{exam.attempt.preventFocusLoss && <span className="rounded-full bg-[color:var(--exam-color-d97706-25)] px-2.5 py-1 text-[var(--exam-color-ffd28c)]">Focus lock on</span>}</div></div>
+            <div className="min-w-0 w-full flex-1 max-w-2xl"><div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--exam-color-ef8a35)]">Graded exam</div><h2 className="mt-2 text-xl font-bold sm:text-2xl">{exam.attempt.title}</h2>{exam.attempt.description && <p className="mt-1 truncate text-xs text-[var(--exam-color-ead1bf)]">{exam.attempt.description}</p>}<div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold"><span className="rounded-full bg-white/10 px-2.5 py-1">{exam.attempt.durationMinutes} minutes</span><span className="rounded-full bg-white/10 px-2.5 py-1">{questions.length} question{questions.length === 1 ? '' : 's'}</span>{exam.attempt.preventFocusLoss && <span className="rounded-full bg-[color:var(--exam-color-d97706-25)] px-2.5 py-1 text-[var(--exam-color-ffd28c)]">Focus lock on</span>}</div></div>
             <StoreNineCats compact />
           </div>
         </section>

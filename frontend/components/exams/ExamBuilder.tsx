@@ -2,7 +2,9 @@
 
 import axios from 'axios';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { LeaveExamDialog } from './LeaveExamDialog';
+import { useEffect, useRef, useState } from 'react';
 import { examsApi, type ExamDefinition, type ExamInput } from '@/lib/api/exams';
 import { useHydratedContent } from '@/providers/HydratedContentProvider';
 import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
@@ -11,6 +13,7 @@ import { ExamAppearanceEditor } from './ExamAppearanceEditor';
 import { ExamJsonEditor } from './ExamJsonEditor';
 import { ExamQuestionsEditor } from './ExamQuestionsEditor';
 import { ExamSettingsEditor } from './ExamSettingsEditor';
+import { normalizeStructure, sectionIssues } from '../../../backend-node/src/modules/exams/section-structure';
 import { examDefinitionToInput } from './examDefinitionInput';
 
 interface ExamBuilderProps {
@@ -20,10 +23,14 @@ interface ExamBuilderProps {
 type BuilderTab = 'setup' | 'questions' | 'json' | 'appearance';
 
 export function ExamBuilder({ examId }: ExamBuilderProps) {
+  const router = useRouter();
+  const [leaveHref, setLeaveHref] = useState<string | null>(null);
   const orgSession = useOrgSession();
   const { getHydrated, hydrate, refreshEntity } = useHydratedContent();
   const metadata = useMetadataIndex();
   const [draft, setDraft] = useState<ExamInput | null>(null);
+  const [savedDraft, setSavedDraft] = useState('');
+  const dirtyRef = useRef(false);
   const [tab, setTab] = useState<BuilderTab>('setup');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -35,16 +42,39 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
   }, [examId, hydrate]);
 
   useEffect(() => {
-    if (exam) setDraft(examDefinitionToInput(exam));
+    if (exam && !dirtyRef.current) {
+      const input = examDefinitionToInput(exam);
+      const next = { ...input, ...normalizeStructure(input.sections ?? [], input.questions ?? []) };
+      setDraft(next); setSavedDraft(JSON.stringify(next));
+    }
   }, [exam]);
+
+  const dirty = !!draft && JSON.stringify(draft) !== savedDraft;
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => { if (dirtyRef.current) { event.preventDefault(); event.returnValue = ''; } };
+    const beforeNavigate = (event: MouseEvent) => {
+      const link = (event.target as HTMLElement).closest('a[href]');
+      if (dirtyRef.current && link && !event.ctrlKey && !event.metaKey && !event.shiftKey && (link as HTMLAnchorElement).target !== '_blank') { event.preventDefault(); event.stopPropagation(); setLeaveHref((link as HTMLAnchorElement).href); }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    document.addEventListener('click', beforeNavigate, true);
+    return () => { window.removeEventListener('beforeunload', beforeUnload); document.removeEventListener('click', beforeNavigate, true); };
+  }, []);
 
   const save = async () => {
     if (!orgId || !draft || !exam) return;
+    const issues = sectionIssues(draft);
+    if (issues.length) { setMessage(issues.join(' ')); return; }
     setSaving(true);
     setMessage(null);
     try {
       if (exam.attemptCount === 0) {
-        await examsApi.replaceDefinition(orgId, examId, draft);
+        const saved = await examsApi.replaceDefinition(orgId, examId, draft);
+        const input = examDefinitionToInput(saved);
+        const next = { ...input, ...normalizeStructure(input.sections ?? [], input.questions ?? []) };
+        setDraft(next); setSavedDraft(JSON.stringify(next));
+        dirtyRef.current = false;
       } else {
         await examsApi.update(orgId, examId, {
           title: draft.title, publicId: draft.publicId, description: draft.description, status: draft.status,
@@ -61,6 +91,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
           explanation: question.explanation ?? null,
         })] : []));
       }
+      if (exam.attemptCount > 0) { setSavedDraft(JSON.stringify(draft)); dirtyRef.current = false; }
       await Promise.all([refreshEntity('exam', examId), metadata.refreshKey('exams')]);
       setMessage('Exam saved. Reports use the latest grading rules.');
     } catch (error) {
@@ -94,6 +125,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
 
   return (
     <div className="exam-editor min-w-0 min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+      {leaveHref && <LeaveExamDialog onCancel={() => setLeaveHref(null)} onLeave={() => { dirtyRef.current = false; router.push(leaveHref); setLeaveHref(null); }} />}
       <div className="exam-editor-container mx-auto min-w-0 max-w-7xl">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 flex-1">
@@ -102,7 +134,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
               <h1 className="[overflow-wrap:anywhere] text-2xl font-semibold text-slate-950 sm:text-3xl">{draft.title}</h1>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 ring-1 ring-slate-200">{draft.status ?? 'draft'}</span>
             </div>
-            <p className="mt-2 text-sm text-slate-500">{exam.attemptCount} saved attempt{exam.attemptCount === 1 ? '' : 's'} · autosave occurs for every respondent answer</p>
+            <p className="mt-2 text-sm text-slate-500">{exam.attemptCount} saved attempt{exam.attemptCount === 1 ? '' : 's'} · {saving ? 'Saving…' : dirty ? 'Unsaved exam changes' : 'All exam changes saved'}</p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-xs">
             <button type="button" onClick={copyPublicLink} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">Copy public link</button>
@@ -111,16 +143,18 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
           </div>
         </header>
 
-        {message && <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{message}</div>}
+        {message && <div role="status" className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">{message}</div>}
 
         <nav className="my-6 flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
           {tabs.map((item) => <button key={item.id} type="button" onClick={() => setTab(item.id)} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${tab === item.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>{item.label}</button>)}
         </nav>
 
-        <div hidden={tab !== 'appearance'}><ExamAppearanceEditor examId={examId} title={draft.title} description={draft.description}/></div>
+        <div hidden={tab !== 'appearance'}><ExamAppearanceEditor examId={examId} title={draft.title} description={draft.description} examDraft={draft}/></div>
+        <fieldset disabled={saving} className="m-0 min-w-0 border-0 p-0">
         {tab === 'setup' && <ExamSettingsEditor value={draft} onChange={setDraft} />}
-        {tab === 'questions' && <ExamQuestionsEditor questions={draft.questions ?? []} sections={draft.sections ?? []} locked={locked} onQuestionsChange={(questions) => setDraft({ ...draft, questions })} onSectionsChange={(sections) => setDraft({ ...draft, sections })} />}
-        {tab === 'json' && <ExamJsonEditor value={draft} locked={locked} onChange={setDraft} />}
+        {tab === 'questions' && <ExamQuestionsEditor questions={draft.questions ?? []} sections={draft.sections ?? []} locked={locked} revision={savedDraft} onChange={(structure) => setDraft(current => current ? { ...current, ...structure } : current)} />}
+        {tab === 'json' && <ExamJsonEditor value={draft} locked={locked} onChange={value => setDraft({ ...value, ...normalizeStructure(value.sections ?? [], value.questions ?? []) })} />}
+        </fieldset>
       </div>
     </div>
   );

@@ -5,14 +5,16 @@ import { ExamAppearanceProvider } from "./ExamAppearanceProvider";
 import { ExamContent } from "./PublicExamPage";
 import type { usePublicExam } from "./usePublicExam";
 import type { Appearance } from "@/lib/exam-appearance";
-import type { PublicExamOverview, PublicAttempt } from "@/lib/api/exams";
+import type { PublicExamOverview, PublicAttempt, ExamInput } from "@/lib/api/exams";
 const noop = async () => undefined;
 export function AppearancePreview({
   config,
   title = "Your exam title",
   description = "Instructions for respondents",
   orgId,
+  examDraft,
 }: {
+  examDraft?: ExamInput;
   config: Appearance;
   title?: string;
   description?: string | null;
@@ -26,12 +28,12 @@ export function AppearancePreview({
       publicId: "preview",
       title,
       description: description || null,
-      durationMinutes: 15,
+      durationMinutes: examDraft?.durationMinutes ?? 15,
       oneQuestionAtATime: true,
       preventFocusLoss: false,
-      maxAttempts: 3,
-      requireEmail: false,
-      requireIdentifier: false,
+      maxAttempts: examDraft?.maxAttempts ?? 3,
+      requireEmail: examDraft?.requireEmail ?? false,
+      requireIdentifier: examDraft?.requireIdentifier ?? false,
       availability:
         screen === "upcoming"
           ? "upcoming"
@@ -44,7 +46,7 @@ export function AppearancePreview({
           : null,
       endsAt: null,
       serverTime: new Date().toISOString(),
-      questionCount: 1,
+      questionCount: examDraft?.questions?.length ?? 1,
       totalPoints: 1,
     };
     const attempt: PublicAttempt = {
@@ -69,8 +71,8 @@ export function AppearancePreview({
       isPreview: false,
       previewedByEmail: null,
       previewedByRole: null,
-      remainingSeconds: 900,
-      durationMinutes: 15,
+      remainingSeconds: (examDraft?.durationMinutes ?? 15) * 60,
+      durationMinutes: examDraft?.durationMinutes ?? 15,
       oneQuestionAtATime: true,
       preventFocusLoss: false,
       reviewMode: "respondent_answers",
@@ -116,7 +118,7 @@ export function AppearancePreview({
       retrySync: noop,
       startAnother: () => {},
     } as ReturnType<typeof usePublicExam>;
-  }, [config, title, description, screen]);
+  }, [config, title, description, screen, examDraft]);
   return (
     <section className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -152,7 +154,7 @@ export function AppearancePreview({
         </div>
       </div>
       <p className="text-xs text-slate-500">
-        Sample data only. This preview creates no attempts.
+        {examDraft ? "Entry uses your current exam settings; question screens use a sample question." : "Sample data only."} This preview creates no attempts.
       </p>
       <div className="min-w-0 rounded-2xl border bg-slate-100">
         <PreviewFrame mobile={mobile}>

@@ -1,3 +1,4 @@
+import { sectionIssues } from './section-structure';
 import { z } from 'zod';
 
 export const examStatusSchema = z.enum(['draft', 'published', 'closed']);
@@ -56,7 +57,7 @@ export const examQuestionInputSchema = z.object({
   }
 });
 
-export const createExamSchema = z.object({
+const createExamBaseSchema = z.object({
   title: z.string().trim().min(1).max(300),
   publicId: examPublicIdSchema.optional(),
   description: z.string().max(10000).nullable().optional(),
@@ -76,7 +77,11 @@ export const createExamSchema = z.object({
   questions: z.array(examQuestionInputSchema).max(1000).optional(),
 });
 
-export const updateExamSchema = createExamSchema
+export const createExamSchema = createExamBaseSchema.superRefine((input, context) => {
+  sectionIssues(input).forEach(message => context.addIssue({ code: z.ZodIssueCode.custom, path: ['sections'], message }));
+});
+
+export const updateExamSchema = createExamBaseSchema
   .omit({ sections: true, questions: true })
   .partial();
 
