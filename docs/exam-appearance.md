@@ -1,6 +1,6 @@
 # Exam appearance and native file library
 
-Implemented on 2026-10-10. Production migration completed; hosted application deployment is in progress.
+Implemented on 2026-10-10. Production migration and deployment completed. Frontend and backend run commit `c413f95`.
 
 Production recovery snapshot: Neon `production at 2026-10-09 18:16:45 UTC (manual)`. The atomic SQL backfill verified original exam/attempt field checksums and retained 4 exams, 27 attempts, and 360 answers. It created two organization templates and left no missing appearance values.
 
@@ -62,3 +62,11 @@ Rollback the application to the prior revision while retaining these additive co
 - Browser smoke checks: appearance save/reload, built-in picker, native navigation, reusable template creation, all seven previews, mobile iframe rendering, and original-vs-configurable computed style/geometry comparisons for the public entry page at desktop and 390px. Both comparisons matched for the 12 primary page elements.
 - Browser chooser upload was blocked by the ChatGPT extension's file-URL permission; multipart upload and storage cleanup passed the API integration check. Production R2/Supabase credentials and delivery have not been exercised.
 - Local fixture setup omits unrelated collection infrastructure; its collection-list errors do not validate that subsystem. No changes to landing/demo behavior were made.
+
+## Production verification — 2026-10-10
+
+- Render deployment `dep-db4jii8m7kps73c32200` is Live; Vercel deployment `G3D6AepsaV9mtr6s8grmyFFjeqD3` is Ready on www.airunote.com.
+- All four public exam API endpoints returned HTTP 200, retained their original titles and availability, and returned the saved legacy appearance with both built-in asset references.
+- The live shell-nlt4 ended-window screen matched the pre-release computed styles and geometry for its six primary elements.
+- Production admin browser verification awaits user sign-in after the previous session expired. Admin persistence, template controls, built-in selection, and preview states passed local integration/browser checks before deployment. No test respondent attempts were added in production.
+- The first hosted build identified isolated dependency resolution and error narrowing differences; these were corrected and the frontend rebuilt locally with backend dependencies absent before the successful release.

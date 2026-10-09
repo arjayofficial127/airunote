@@ -6,7 +6,11 @@ import {
   apiError,
   type ExamTemplate,
 } from "@/lib/api/appearance";
-import { plainAppearance, legacyAppearance } from "@/lib/exam-appearance";
+import {
+  plainAppearance,
+  legacyAppearance,
+  holidayAppearance,
+} from "@/lib/exam-appearance";
 import { AppearanceFields } from "./AppearanceFields";
 import { AppearancePreview } from "./AppearancePreview";
 export function ExamTemplates() {
@@ -65,12 +69,23 @@ export function ExamTemplates() {
     setSaved(JSON.stringify(next));
     setMessage("");
   };
-  const create = (autumn: boolean) => {
+  const create = (style: "plain" | "autumn" | "holiday") => {
     if (dirty && !window.confirm("Discard unsaved template changes?")) return;
     setDraft({
       id: "",
-      name: autumn ? "Autumn template" : "New template",
-      config: structuredClone(autumn ? legacyAppearance : plainAppearance),
+      name:
+        style === "holiday"
+          ? "Wrapped in Joy"
+          : style === "autumn"
+            ? "Autumn template"
+            : "New template",
+      config: structuredClone(
+        style === "holiday"
+          ? holidayAppearance
+          : style === "autumn"
+            ? legacyAppearance
+            : plainAppearance,
+      ),
       revision: 1,
       archivedAt: null,
     });
@@ -88,11 +103,11 @@ export function ExamTemplates() {
           </p>
         </div>
         {admin && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={busy}
-              onClick={() => create(false)}
+              onClick={() => create("plain")}
               className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white"
             >
               New plain template
@@ -100,10 +115,18 @@ export function ExamTemplates() {
             <button
               type="button"
               disabled={busy}
-              onClick={() => create(true)}
+              onClick={() => create("autumn")}
               className="rounded-xl border px-4 py-2 text-sm"
             >
               Start with Autumn
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => create("holiday")}
+              className="rounded-xl border px-4 py-2 text-sm"
+            >
+              Start with Wrapped in Joy
             </button>
           </div>
         )}

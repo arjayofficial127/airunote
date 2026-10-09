@@ -889,3 +889,8 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-preview { position: relative; isolation: isolate; transform: translateZ(0); }
 .exam-preview main { min-height: 600px; }
 .exam-theme [hidden] { display: none; }
+
+@keyframes holidayOrnamentSway { 0%, 100% { transform: rotate(-5deg) translateY(0); } 50% { transform: rotate(5deg) translateY(7px); } }
+.holiday-ornament { transform-origin: top center; animation: holidayOrnamentSway 7s ease-in-out infinite; }
+.exam-theme[data-animated="false"] .holiday-ornament { animation: none; }
+@media (prefers-reduced-motion: reduce) { .holiday-ornament { animation: none; } }

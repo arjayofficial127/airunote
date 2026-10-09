@@ -10,6 +10,13 @@ export const builtinAssets = [
     mask: true,
   },
   {
+    id: 'wrapped-in-joy-gifts',
+    name: 'Wrapped in Joy gifts',
+    path: '/exams/holiday/wrapped-in-joy.svg',
+    mimeType: 'image/svg+xml',
+    mask: false,
+  },
+  {
     id: 'marry-furrmily-cats',
     name: 'Marry Furrmily cats',
     path: '/exams/store-9/cats.png',
@@ -21,7 +28,7 @@ export const assetSchema = z.discriminatedUnion('source', [
   z
     .object({
       source: z.literal('builtin'),
-      assetId: z.enum(['starbucks-logo', 'marry-furrmily-cats']),
+      assetId: z.enum(['starbucks-logo', 'marry-furrmily-cats', 'wrapped-in-joy-gifts']),
     })
     .strict(),
   z.object({ source: z.literal('org-file'), fileId: z.string().uuid() }).strict(),
@@ -30,8 +37,9 @@ const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a six-digit hex color')
 export const appearanceSchema = z
   .object({
     schemaVersion: z.literal(1),
-    renderer: z.enum(['autumn', 'plain']),
+    renderer: z.enum(['autumn', 'plain', 'holiday']),
     headerLabel: z.string().max(120),
+    completionMessage: z.string().max(1000).optional(),
     brand: z
       .object({
         name: z.string().max(100),
@@ -176,6 +184,42 @@ export const plainAppearance: Appearance = {
     completion: false,
   },
   footer: { visible: false, text: '' },
+};
+export const holidayAppearance: Appearance = {
+  ...legacyAppearance,
+  renderer: 'holiday',
+  headerLabel: 'FY27 HOLIDAY PROMOTION',
+  completionMessage:
+    'END OF EXAM — Thank you for participating! Let’s get ready to celebrate the holiday season and create joyful moments for our customers.',
+  brand: { ...legacyAppearance.brand, badge: '386 NEPO CENTER' },
+  artwork: {
+    asset: { source: 'builtin', assetId: 'wrapped-in-joy-gifts' },
+    visible: true,
+    alt: 'Holiday gifts wrapped with gold ribbons',
+    caption: 'Wrapped in Joy',
+  },
+  colors: {
+    background: '#fff9ef',
+    backgroundEnd: '#f5e7d1',
+    glow: '#b82c46',
+    glowSecondary: '#0b5844',
+    header: '#153d32',
+    headerText: '#fff9ef',
+    surface: '#fffdf8',
+    text: '#273c32',
+    muted: '#687365',
+    primary: '#a9233f',
+    primaryText: '#ffffff',
+    accent: '#d6ac58',
+    border: '#dcc69c',
+    selected: '#fff0d2',
+    logo: '#00754a',
+  },
+  footer: {
+    visible: true,
+    text: '386 NEPO CENTER · WRAPPED IN JOY',
+  },
+  sound: { available: true, defaultEnabled: false },
 };
 export function readAppearance(value: unknown): Appearance {
   const parsed = appearanceSchema.safeParse(value);

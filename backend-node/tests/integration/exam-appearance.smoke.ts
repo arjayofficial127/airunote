@@ -9,7 +9,11 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { migrateAppearance } from '../../scripts/migrate-exam-appearance';
-import { legacyAppearance, plainAppearance } from '../../src/modules/exam-appearance/contract';
+import {
+  legacyAppearance,
+  plainAppearance,
+  holidayAppearance,
+} from '../../src/modules/exam-appearance/contract';
 
 async function main() {
   const url = process.env.DATABASE_URL!;
@@ -91,7 +95,7 @@ async function main() {
     };
     const legacy = await get(`${base}/appearance/exams/${fixtureIds[0]}`);
     assert.deepEqual(legacy.config, legacyAppearance);
-    assert.equal((await get(`${base}/appearance/assets`)).length, 2);
+    assert.equal((await get(`${base}/appearance/assets`)).length, 3);
     check('Built-in catalog and legacy appearance are available');
     const template = await post(`${base}/appearance/templates`, {
       name: 'Independent theme',
@@ -270,13 +274,32 @@ async function main() {
     delete process.env.FILE_STORAGE_LOCAL_DIR;
     const capabilities = await get(`${base}/files/capabilities`);
     assert.equal(capabilities.uploadsAvailable, false);
-    assert.equal((await get(`${base}/appearance/assets`)).length, 2);
+    assert.equal((await get(`${base}/appearance/assets`)).length, 3);
     process.env.FILE_STORAGE_LOCAL_DIR = oldLocal;
     check('Unsupported upload rejection and built-ins with storage disabled');
     await post(`${base}/appearance/templates/${template.id}/archive`, {});
     assert.equal((await get(`${base}/appearance/templates`)).defaultTemplateId, null);
     assert.deepEqual(await get(`${base}/appearance/exams/${another.id}`), anotherAppearance);
     check('Template archival preserves existing exams and clears its default');
+    const holiday = await post(`${base}/appearance/templates`, {
+      name: 'Wrapped in Joy',
+      config: holidayAppearance,
+    });
+    assert.deepEqual(holiday.config, holidayAppearance);
+    const holidayExam = await put(`${base}/appearance/exams/${another.id}`, {
+      ...anotherAppearance,
+      templateId: holiday.id,
+      config: holiday.config,
+    });
+    assert.equal(holidayExam.config.renderer, 'holiday');
+    assert.equal(holidayExam.config.artwork.asset.assetId, 'wrapped-in-joy-gifts');
+    assert.deepEqual(
+      (await get(`${base}/appearance/exams/${fixtureIds[0]}`)).config,
+      legacyAppearance
+    );
+    check(
+      'Holiday template and exam round-trip independently while legacy appearance is unchanged'
+    );
     const report = await get(`${base}/exams/${exam.id}/report`);
     assert(report);
     fs.mkdirSync(path.resolve(__dirname, '../../.smoke'), { recursive: true });

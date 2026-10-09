@@ -2,6 +2,7 @@ export {
   appearanceSchema,
   legacyAppearance,
   plainAppearance,
+  holidayAppearance,
   builtinAssets,
   readAppearance,
   assetFileIds,

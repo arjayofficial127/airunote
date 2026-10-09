@@ -233,6 +233,7 @@ export function AppearanceFields({
           >
             <option value="autumn">Autumn</option>
             <option value="plain">Plain</option>
+            <option value="holiday">Holiday · Wrapped in Joy</option>
           </select>
         </label>
         {(
@@ -241,9 +242,18 @@ export function AppearanceFields({
           <div key={key}>
             {toggle(
               {
-                leaves: "Floating leaves",
-                backgroundBranches: "Background branches",
-                headerBranches: "Header branches",
+                leaves:
+                  v.renderer === "holiday"
+                    ? "Floating ornaments"
+                    : "Floating leaves",
+                backgroundBranches:
+                  v.renderer === "holiday"
+                    ? "Background gifts and ribbons"
+                    : "Background branches",
+                headerBranches:
+                  v.renderer === "holiday"
+                    ? "Header ribbon and ornaments"
+                    : "Header branches",
                 animated: "Animate decorations",
                 completion: "Completion celebration",
               }[key],
@@ -259,6 +269,18 @@ export function AppearanceFields({
       </section>
       <section className="space-y-3 rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Footer and sound</h3>
+        <label className="block text-sm">
+          Completion message
+          <textarea
+            className={inputClass}
+            maxLength={1000}
+            value={v.completionMessage || ""}
+            placeholder="Default completion message"
+            onChange={(e) =>
+              onChange({ ...v, completionMessage: e.target.value })
+            }
+          />
+        </label>
         {toggle("Show footer", v.footer.visible, (visible) =>
           onChange({ ...v, footer: { ...v.footer, visible } }),
         )}

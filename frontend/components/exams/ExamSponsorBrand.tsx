@@ -3,7 +3,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useExamAppearance, useExamAssetUrl } from "./ExamAppearanceProvider";
 export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
-  const { brand, colors } = useExamAppearance();
+  const { brand, colors, renderer } = useExamAppearance();
   const selectedUrl = useExamAssetUrl(brand.logo);
   const [failedUrl, setFailedUrl] = useState<string>();
   const url =
@@ -13,7 +13,7 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
     brand.logo?.source === "builtin" && brand.logo.assetId === "starbucks-logo";
   return (
     <div
-      className={`flex items-center ${compact ? "gap-3" : "gap-4"}`}
+      className={`flex items-center ${renderer === "holiday" ? "flex-wrap gap-y-2" : ""} ${compact ? "gap-3" : "gap-4"}`}
       aria-label={`airunote exams, ${brand.name} ${brand.badgeVisible ? brand.badge : ""}`}
     >
       <div className="shrink-0">
@@ -56,7 +56,7 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
       {brand.badgeVisible && brand.badge && (
         <>
           <span
-            className="h-9 w-px bg-[var(--exam-color-d8c4ac)]"
+            className={`h-9 w-px bg-[var(--exam-color-d8c4ac)] ${renderer === "holiday" ? "hidden sm:block" : ""}`}
             aria-hidden="true"
           />
           <div className="rounded-full border border-[var(--exam-color-d39a50)] bg-[var(--exam-color-fff8e7)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--exam-color-7b4a25)]">

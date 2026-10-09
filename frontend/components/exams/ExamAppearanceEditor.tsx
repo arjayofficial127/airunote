@@ -9,6 +9,7 @@ import {
 import {
   legacyAppearance,
   plainAppearance,
+  holidayAppearance,
   appearanceSchema,
 } from "@/lib/exam-appearance";
 import { useOrgSession } from "@/providers/OrgSessionProvider";
@@ -130,6 +131,12 @@ export function ExamAppearanceEditor({
                     templateId: null,
                     config: structuredClone(plainAppearance),
                   });
+                else if (e.target.value === "holiday")
+                  setDraft({
+                    ...draft,
+                    templateId: null,
+                    config: structuredClone(holidayAppearance),
+                  });
                 else if (e.target.value === "custom")
                   setDraft({ ...draft, templateId: null });
               }}
@@ -137,6 +144,7 @@ export function ExamAppearanceEditor({
               <option value="custom">Custom appearance</option>
               <option value="autumn">Built-in Autumn</option>
               <option value="plain">Built-in Plain</option>
+              <option value="holiday">Built-in Wrapped in Joy</option>
               {templates
                 .filter((t) => !t.archivedAt || t.id === draft.templateId)
                 .map((t) => (
