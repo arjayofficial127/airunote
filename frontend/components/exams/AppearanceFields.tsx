@@ -234,8 +234,10 @@ export function AppearanceFields({
             <option value="autumn">Autumn</option>
             <option value="plain">Plain</option>
             <option value="holiday">Holiday · Wrapped in Joy</option>
+            <option value="creator">Creator · Holiday atelier</option>
           </select>
         </label>
+        {v.renderer === "creator" && <p className="my-3 text-xs leading-5 text-slate-500">Code-drawn gifts use your selected brand logo on the cream box. Artwork controls visibility; floating ornaments add sparkles and falling gold. Turn off Animate decorations for a still composition.</p>}
         {(
           Object.keys(v.decorations) as (keyof Appearance["decorations"])[]
         ).map((key) => (
@@ -243,15 +245,15 @@ export function AppearanceFields({
             {toggle(
               {
                 leaves:
-                  v.renderer === "holiday"
+                  ["holiday", "creator"].includes(v.renderer)
                     ? "Floating ornaments"
                     : "Floating leaves",
                 backgroundBranches:
-                  v.renderer === "holiday"
+                  ["holiday", "creator"].includes(v.renderer)
                     ? "Background gifts and ribbons"
                     : "Background branches",
                 headerBranches:
-                  v.renderer === "holiday"
+                  ["holiday", "creator"].includes(v.renderer)
                     ? "Header ribbon and ornaments"
                     : "Header branches",
                 animated: "Animate decorations",

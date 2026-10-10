@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ExamAppearanceProvider } from "./ExamAppearanceProvider";
 import { ExamContent } from "./PublicExamPage";
@@ -156,7 +156,7 @@ export function AppearancePreview({
       <p className="text-xs text-slate-500">
         {examDraft ? "Entry uses your current exam settings; question screens use a sample question." : "Sample data only."} This preview creates no attempts.
       </p>
-      <div className="min-w-0 rounded-2xl border bg-slate-100">
+      <div className="min-w-0">
         <PreviewFrame mobile={mobile}>
           <fieldset disabled className="pointer-events-none m-0 min-w-0 border-0 p-0">
             <ExamAppearanceProvider
@@ -181,13 +181,25 @@ function PreviewFrame({
   children: ReactNode;
 }) {
   const [body, setBody] = useState<HTMLElement | null>(null);
+  const [height, setHeight] = useState(1);
+  useEffect(() => {
+    if (!body) return;
+    const content = body.firstElementChild;
+    if (!content) return;
+    let frame = 0;
+    const measure = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => setHeight(Math.ceil(content.getBoundingClientRect().height) + 2)); };
+    const observer = new ResizeObserver(measure);
+    observer.observe(content);
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [body]);
   return (
     <>
       <iframe
         title="Exam appearance preview"
         className="mx-auto block w-full max-w-full rounded-2xl border-0"
-        style={{ maxWidth: mobile ? 390 : "100%", height: 720 }}
-        srcDoc="<!doctype html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'></head><body style='margin:0'></body></html>"
+        style={{ maxWidth: mobile ? 390 : "100%", height }}
+        srcDoc="<!doctype html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'></head><body style='margin:0;overflow:hidden'></body></html>"
         onLoad={(event) => {
           const doc = event.currentTarget.contentDocument;
           if (!doc) return;

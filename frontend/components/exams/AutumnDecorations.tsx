@@ -13,7 +13,7 @@ function Leaf({ className = '' }: { className?: string }) {
 
 export function AutumnBackdrop() {
   const { decorations, renderer } = useExamAppearance();
-  if (renderer === 'holiday') return <HolidayBackdrop />;
+  if ((renderer === 'holiday' || renderer === 'creator')) return <HolidayBackdrop />;
   if (renderer !== 'autumn') return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
@@ -34,7 +34,7 @@ export function AutumnBackdrop() {
 
 export function AutumnHeroBranches() {
   const { decorations, renderer } = useExamAppearance();
-  if (renderer === 'holiday') return <HolidayHeader />;
+  if ((renderer === 'holiday' || renderer === 'creator')) return <HolidayHeader />;
   if (renderer !== 'autumn' || !decorations.headerBranches) return null;
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">

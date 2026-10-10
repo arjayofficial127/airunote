@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { CreatorGiftScene } from "./CreatorGiftScene";
 import { useState } from "react";
 import { useExamAppearance, useExamAssetUrl } from "./ExamAppearanceProvider";
 export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
@@ -68,9 +69,10 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
   );
 }
 export function StoreNineCats({ compact = false }: { compact?: boolean }) {
-  const { artwork } = useExamAppearance();
+  const { artwork, renderer } = useExamAppearance();
   const url = useExamAssetUrl(artwork.asset);
   const [failedUrl, setFailedUrl] = useState<string>();
+  if (renderer === "creator") return <CreatorGiftScene compact={compact} />;
   if (!artwork.visible || !url || url === failedUrl) return null;
   return (
     <figure

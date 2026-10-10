@@ -11,6 +11,7 @@ import {
   legacyAppearance,
   plainAppearance,
   holidayAppearance,
+  creatorAppearance,
   appearanceSchema,
 } from "@/lib/exam-appearance";
 import { useOrgSession } from "@/providers/OrgSessionProvider";
@@ -134,6 +135,8 @@ export function ExamAppearanceEditor({
                     templateId: null,
                     config: structuredClone(plainAppearance),
                   });
+                else if (e.target.value === "creator")
+                  setDraft({ ...draft, templateId: null, config: { ...draft.config, renderer: "creator", colors: { ...creatorAppearance.colors, logo: draft.config.colors.logo }, artwork: { ...creatorAppearance.artwork, caption: draft.config.artwork.caption || creatorAppearance.artwork.caption } } });
                 else if (e.target.value === "holiday")
                   setDraft({
                     ...draft,
@@ -148,6 +151,7 @@ export function ExamAppearanceEditor({
               <option value="autumn">Built-in Autumn</option>
               <option value="plain">Built-in Plain</option>
               <option value="holiday">Built-in Wrapped in Joy</option>
+              <option value="creator">Creator · Holiday atelier</option>
               {templates
                 .filter((t) => !t.archivedAt || t.id === draft.templateId)
                 .map((t) => (

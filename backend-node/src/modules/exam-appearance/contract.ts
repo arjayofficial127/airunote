@@ -37,7 +37,7 @@ const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Use a six-digit hex color')
 export const appearanceSchema = z
   .object({
     schemaVersion: z.literal(1),
-    renderer: z.enum(['autumn', 'plain', 'holiday']),
+    renderer: z.enum(['autumn', 'plain', 'holiday', 'creator']),
     headerLabel: z.string().max(120),
     completionMessage: z.string().max(1000).optional(),
     brand: z
@@ -220,6 +220,12 @@ export const holidayAppearance: Appearance = {
     text: '386 NEPO CENTER · WRAPPED IN JOY',
   },
   sound: { available: true, defaultEnabled: false },
+};
+export const creatorAppearance: Appearance = {
+  ...holidayAppearance,
+  renderer: 'creator',
+  colors: { ...holidayAppearance.colors, primary: '#164b3c', primaryText: '#ffffff' },
+  artwork: { ...holidayAppearance.artwork, alt: 'Sculpted holiday gifts with gold ribbons and your selected brand logo' },
 };
 export function readAppearance(value: unknown): Appearance {
   const parsed = appearanceSchema.safeParse(value);

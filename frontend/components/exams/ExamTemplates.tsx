@@ -10,6 +10,7 @@ import {
   plainAppearance,
   legacyAppearance,
   holidayAppearance,
+  creatorAppearance,
 } from "@/lib/exam-appearance";
 import { AppearanceFields } from "./AppearanceFields";
 import { AppearancePreview } from "./AppearancePreview";
@@ -69,18 +70,18 @@ export function ExamTemplates() {
     setSaved(JSON.stringify(next));
     setMessage("");
   };
-  const create = (style: "plain" | "autumn" | "holiday") => {
+  const create = (style: "plain" | "autumn" | "holiday" | "creator") => {
     if (dirty && !window.confirm("Discard unsaved template changes?")) return;
     setDraft({
       id: "",
       name:
-        style === "holiday"
+        style === "creator" ? "Creator · Holiday atelier" : style === "holiday"
           ? "Wrapped in Joy"
           : style === "autumn"
             ? "Autumn template"
             : "New template",
       config: structuredClone(
-        style === "holiday"
+        style === "creator" ? creatorAppearance : style === "holiday"
           ? holidayAppearance
           : style === "autumn"
             ? legacyAppearance
@@ -128,6 +129,7 @@ export function ExamTemplates() {
             >
               Start with Wrapped in Joy
             </button>
+            <button type="button" onClick={() => create("creator")} className="rounded-xl border px-4 py-2 text-sm font-medium">New Creator theme</button>
           </div>
         )}
       </header>

@@ -3,6 +3,7 @@ export {
   legacyAppearance,
   plainAppearance,
   holidayAppearance,
+  creatorAppearance,
   builtinAssets,
   readAppearance,
   assetFileIds,

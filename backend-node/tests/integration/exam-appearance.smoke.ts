@@ -13,6 +13,7 @@ import {
   legacyAppearance,
   plainAppearance,
   holidayAppearance,
+  creatorAppearance,
 } from '../../src/modules/exam-appearance/contract';
 
 async function main() {
@@ -300,6 +301,16 @@ async function main() {
     check(
       'Holiday template and exam round-trip independently while legacy appearance is unchanged'
     );
+    const creator = await post(`${base}/appearance/templates`, { name: 'Creator atelier', config: creatorAppearance });
+    assert.deepEqual(creator.config, creatorAppearance);
+    const creatorExam = await put(`${base}/appearance/exams/${another.id}`, { ...holidayExam, templateId: creator.id, config: creator.config });
+    assert.equal(creatorExam.config.renderer, 'creator');
+    assert.equal(creatorExam.config.brand.logo.assetId, 'starbucks-logo');
+    const still = { ...creatorExam.config, decorations: { ...creatorExam.config.decorations, animated: false }, brand: { ...creatorExam.config.brand, logo: null } };
+    await put(`${base}/appearance/exams/${another.id}`, { ...creatorExam, config: still });
+    assert.deepEqual((await get(`${base}/appearance/exams/${another.id}`)).config, still);
+    assert.deepEqual((await get(`${base}/appearance/exams/${fixtureIds[0]}`)).config, legacyAppearance);
+    check('Creator template, selected logo, and static mode round-trip without changing legacy exams');
     const report = await get(`${base}/exams/${exam.id}/report`);
     assert(report);
     fs.mkdirSync(path.resolve(__dirname, '../../.smoke'), { recursive: true });
