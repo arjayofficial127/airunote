@@ -44,8 +44,10 @@ export function CreatorEntryReveal({ title, children }: { title: string; childre
             ? <span style={{ maskImage: `url("${logo}")`, WebkitMaskImage: `url("${logo}")`, backgroundColor: appearance.colors.logo }} />
             : <img src={logo} alt="" onError={() => setFailedLogo(logo)} />}
         </div>}
-        <div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid.webp" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
-        <div className="gift-bow-layer"><img className="gift-bow-left" src="/exam-assets/creator/gift-bow.webp" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /><img className="gift-bow-right" src="/exam-assets/creator/gift-bow.webp" alt="" width="1536" height="1024" draggable={false} /></div>
+        <div className="gift-top-layer">
+          <div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid.webp" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
+          <div className="gift-bow-layer"><img src="/exam-assets/creator/gift-bow.webp" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
+        </div>
         {appearance.decorations.leaves && <div className="gift-dust">{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ '--x': `${5 + i * 37 % 90}%`, '--delay': `${-i * .73}s`, '--duration': `${4 + i % 4}s` } as CSSProperties} />)}</div>}
       </div>
       <p className="gift-caption">{appearance.artwork.caption || 'A little joy before you begin'}</p>
