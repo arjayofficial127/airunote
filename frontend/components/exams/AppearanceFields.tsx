@@ -237,7 +237,7 @@ export function AppearanceFields({
             <option value="creator">Creator · Holiday atelier</option>
           </select>
         </label>
-        {v.renderer === "creator" && <p className="my-3 text-xs leading-5 text-slate-500">Code-drawn gifts use your selected brand logo on the cream box. Artwork controls visibility; floating ornaments add sparkles and falling gold. Turn off Animate decorations for a still composition.</p>}
+        {v.renderer === "creator" && <p className="my-3 text-xs leading-5 text-slate-500">The entry gift opens to reveal your instructions and form, with your selected logo on the cream box. Hide artwork to show the form directly. Floating ornaments add sparkles and falling gold; turn off Animate decorations for an immediate reveal.</p>}
         {(
           Object.keys(v.decorations) as (keyof Appearance["decorations"])[]
         ).map((key) => (

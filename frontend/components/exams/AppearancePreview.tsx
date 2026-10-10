@@ -158,13 +158,13 @@ export function AppearancePreview({
       </p>
       <div className="min-w-0">
         <PreviewFrame mobile={mobile}>
-          <fieldset disabled className="pointer-events-none m-0 min-w-0 border-0 p-0">
+          <fieldset disabled={!(config.renderer === "creator" && screen === "entry")} className="m-0 min-w-0 border-0 p-0">
             <ExamAppearanceProvider
               config={config}
               preview
               previewOrgId={orgId}
             >
-              <ExamContent exam={model} />
+              <ExamContent key={`${screen}-${config.renderer}`} exam={model} />
             </ExamAppearanceProvider>
           </fieldset>
         </PreviewFrame>
