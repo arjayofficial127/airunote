@@ -40,6 +40,11 @@ export const appearanceSchema = z
     renderer: z.enum(['autumn', 'plain', 'holiday', 'creator']),
     headerLabel: z.string().max(120),
     completionMessage: z.string().max(1000).optional(),
+    giftOpening: z.object({
+      labelMode: z.enum(['unwrap', 'instructions', 'custom']),
+      customLabel: z.string().max(200),
+      showReplay: z.boolean(),
+    }).strict().optional(),
     brand: z
       .object({
         name: z.string().max(100),

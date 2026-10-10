@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ExamAppearanceProvider } from "./ExamAppearanceProvider";
 import { ExamContent } from "./PublicExamPage";
@@ -22,6 +22,32 @@ export function AppearancePreview({
 }) {
   const [screen, setScreen] = useState("entry");
   const [mobile, setMobile] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const previewRef = useRef<HTMLElement>(null);
+  const fullscreenButton = useRef<HTMLButtonElement>(null);
+  const exitFullscreen = () => {
+    if (document.fullscreenElement === previewRef.current) void document.exitFullscreen();
+    setFullscreen(false);
+    fullscreenButton.current?.focus();
+  };
+  useEffect(() => {
+    const changed = () => setFullscreen(document.fullscreenElement === previewRef.current);
+    document.addEventListener('fullscreenchange', changed);
+    return () => document.removeEventListener('fullscreenchange', changed);
+  }, []);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') exitFullscreen();
+    };
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener('keydown', escape);
+    };
+  }, [fullscreen]);
   const model = useMemo(() => {
     const overview: PublicExamOverview = {
       appearance: config,
@@ -120,10 +146,23 @@ export function AppearancePreview({
     } as ReturnType<typeof usePublicExam>;
   }, [config, title, description, screen, examDraft]);
   return (
-    <section className="min-w-0 space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <section ref={previewRef} className={fullscreen ? "fixed inset-0 z-[100] min-w-0 space-y-3 overflow-auto bg-slate-50 p-4 text-slate-900 md:p-6" : "min-w-0 space-y-3"}>
+      <div className={`flex flex-wrap items-center justify-between gap-2 ${fullscreen ? 'sticky top-0 z-10 bg-slate-50 py-2' : ''}`}>
         <h3 className="text-sm font-semibold">Live appearance preview</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            ref={fullscreenButton}
+            type="button"
+            className="rounded-lg border px-3 py-2 text-xs"
+            onClick={() => {
+              if (fullscreen) { exitFullscreen(); return; }
+              setFullscreen(true);
+              // Keep the expanded view when the browser does not support fullscreen.
+              void previewRef.current?.requestFullscreen?.().catch(() => {});
+            }}
+          >
+            {fullscreen ? 'Exit fullscreen' : 'Fullscreen preview'}
+          </button>
           <select
             aria-label="Preview screen"
             className="rounded-lg border p-2 text-xs"
@@ -149,7 +188,7 @@ export function AppearancePreview({
             className="rounded-lg border px-3 py-2 text-xs"
             onClick={() => setMobile(!mobile)}
           >
-            {mobile ? "Fit container" : "Mobile"}
+            {mobile ? "Desktop preview" : "iPhone 18 demo"}
           </button>
         </div>
       </div>
@@ -157,7 +196,7 @@ export function AppearancePreview({
         {examDraft ? "Entry uses your current exam settings; question screens use a sample question." : "Sample data only."} This preview creates no attempts.
       </p>
       <div className="min-w-0">
-        <PreviewFrame mobile={mobile}>
+        <PreviewFrame mobile={mobile} fullscreen={fullscreen} onEscape={exitFullscreen}>
           <fieldset disabled={!(config.renderer === "creator" && screen === "entry")} className="m-0 min-w-0 border-0 p-0">
             <ExamAppearanceProvider
               config={config}
@@ -175,13 +214,42 @@ export function AppearancePreview({
 
 function PreviewFrame({
   mobile,
+  fullscreen,
+  onEscape,
   children,
 }: {
   mobile: boolean;
+  fullscreen: boolean;
+  onEscape: () => void;
   children: ReactNode;
 }) {
   const [body, setBody] = useState<HTMLElement | null>(null);
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const mountFrame = () => {
+    const doc = frameRef.current?.contentDocument;
+    if (!doc?.body) return;
+    doc.head.querySelectorAll('link[rel="stylesheet"],style').forEach(node => node.remove());
+    document.querySelectorAll('link[rel="stylesheet"],style').forEach(node => doc.head.appendChild(node.cloneNode(true)));
+    doc.body.className = document.body.className;
+    setBody(doc.body);
+  };
+  useEffect(() => {
+    // srcDoc may finish loading before React hydrates and attaches onLoad.
+    if (frameRef.current?.contentDocument?.readyState === 'complete') mountFrame();
+  }, []);
+
   const [height, setHeight] = useState(1);
+  useEffect(() => {
+    if (body) body.style.overflow = fullscreen || mobile ? 'auto' : 'hidden';
+  }, [body, fullscreen, mobile]);
+  useEffect(() => {
+    if (!body) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onEscape();
+    };
+    body.ownerDocument.addEventListener('keydown', escape);
+    return () => body.ownerDocument.removeEventListener('keydown', escape);
+  }, [body, onEscape]);
   useEffect(() => {
     if (!body) return;
     const content = body.firstElementChild;
@@ -194,24 +262,18 @@ function PreviewFrame({
     return () => { observer.disconnect(); cancelAnimationFrame(frame); };
   }, [body]);
   return (
-    <>
+    <div className={mobile ? "exam-phone-demo" : "exam-desktop-demo"}>
+      {mobile && <div className="exam-phone-status" aria-hidden="true"><span>9:41</span><span className="exam-phone-island" /><span>▮▮▮ ▰</span></div>}
       <iframe
+        ref={frameRef}
         title="Exam appearance preview"
         className="mx-auto block w-full max-w-full rounded-2xl border-0"
-        style={{ maxWidth: mobile ? 390 : "100%", height }}
+        style={{ maxWidth: "100%", height: mobile ? 760 : fullscreen ? "calc(100dvh - 150px)" : height }}
         srcDoc="<!doctype html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'></head><body style='margin:0;overflow:hidden'></body></html>"
-        onLoad={(event) => {
-          const doc = event.currentTarget.contentDocument;
-          if (!doc) return;
-          doc.head.querySelectorAll('link[rel="stylesheet"],style').forEach((node) => node.remove());
-          document
-            .querySelectorAll('link[rel="stylesheet"],style')
-            .forEach((node) => doc.head.appendChild(node.cloneNode(true)));
-          doc.body.className = document.body.className;
-          setBody(doc.body);
-        }}
+        onLoad={mountFrame}
       />
+      {mobile && <><div className="exam-phone-home" aria-hidden="true"><span /></div><p className="exam-phone-caption">iPhone 18 · Demo mockup</p></>}
       {body && createPortal(children, body)}
-    </>
+    </div>
   );
 }

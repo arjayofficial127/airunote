@@ -15,6 +15,7 @@ export function AppearanceFields({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [picker, setPicker] = useState<"logo" | "artwork" | null>(null);
+  const giftOpening = v.giftOpening ?? { labelMode: 'unwrap' as const, customLabel: '', showReplay: true };
   useEffect(() => {
     if (!picker) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -85,6 +86,19 @@ export function AppearanceFields({
   );
   return (
     <fieldset disabled={disabled} className="space-y-6 disabled:opacity-70">
+      {v.renderer === 'creator' && <section className="space-y-3 rounded-2xl border bg-white p-5">
+        <h3 className="font-semibold">Gift opening</h3>
+        <label className="block text-sm font-medium">
+          Opening button
+          <select className={inputClass} value={giftOpening.labelMode} onChange={e => onChange({ ...v, giftOpening: { ...giftOpening, labelMode: e.target.value as 'unwrap' | 'instructions' | 'custom' } })}>
+            <option value="unwrap">Unwrap &amp; Begin</option>
+            <option value="instructions">Read Instructions</option>
+            <option value="custom">Free text</option>
+          </select>
+        </label>
+        {giftOpening.labelMode === 'custom' && text('Button text', giftOpening.customLabel, customLabel => onChange({ ...v, giftOpening: { ...giftOpening, customLabel } }))}
+        {toggle('Show Replay Gift Opening', giftOpening.showReplay, showReplay => onChange({ ...v, giftOpening: { ...giftOpening, showReplay } }))}
+      </section>}
       <section className="space-y-3 rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Branding</h3>
         {toggle("Show branding", v.brand.visible, (visible) =>

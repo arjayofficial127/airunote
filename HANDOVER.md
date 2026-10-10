@@ -265,3 +265,24 @@ Known non-blocking local warnings:
 Org-admin appearance editing, reusable templates/defaults, built-in asset selection, and native file management are implemented. The existing Autumn design is captured as migration data. Exams and attempts retain independent appearance snapshots; template changes are explicit. Built-ins include the existing Starbucks SVG and cats PNG, with no upload-storage dependency.
 
 See [docs/exam-appearance.md](./docs/exam-appearance.md) for migration order, storage configuration, validation, and rollout limits. Run the dedicated appearance migration before deploying the backend. Production appearance migration completed on 2026-10-10 after a Neon recovery snapshot; frontend and backend are live on commit `c413f95`. All 4 exams, 27 attempts, and 360 answers were retained. Production uploads default to disabled (`FILE_UPLOADS_ENABLED`); bundled assets remain available. Public production smoke checks and visual parity passed. The signed-in production admin check awaits user login. The Wrapped In Joy template/exam remains the next product step.
+
+
+## Local gift continuity work — 2026-10-11
+
+User requested fast local implementation without tests, smoke checks, pushes, or deployment.
+
+- Creator entry defaults to `Unwrap & Begin`; appearance settings offer `Read Instructions` and free text, plus a replay visibility toggle. The optional `giftOpening` contract field preserves old appearance documents.
+- Removed the creator instructions heading `Before you begin`.
+- Appearance preview offers fullscreen, mobile width, exit control, and Escape handling.
+- The real instructions/form now emerge from the box mouth and expand to the viewport before settling into a full-width page. Original gift assets and closed presentation are preserved. Reduced motion skips the transition; opening does not start an attempt or timer.
+- Development-only `/dev/appearance` provides an unsigned local editor. Its draft resets on refresh.
+- Local backend `.env` contains all 26 values exported from the user's Render environment, including the live database. Never commit or print these values. Startup uses local process overrides for `NODE_ENV=development`, `PORT=4000`, `API_PORT=4000`, `FRONTEND_URL=http://localhost:3000`, `APP_URL=http://localhost:3000`, and `IS_EMAIL_LOGIN=false`, followed by `pnpm dev` inside `backend-node`.
+- Local authenticated saves affect live data. No migrations or fixture writes were run against the live database for this work.
+- Changes are implemented but deliberately untested at the user's request. User will review locally.
+
+Gift follow-up: removed resize-triggered animation completion (preview iframe resize could skip the sequence). Lid, light, box, and real exam paper now share a 3.6-second opening timeline. The paper is clipped at the box mouth during its rise, clears the box, then expands into the page. Still untested per user instruction.
+
+
+## Commit and push request — 2026-10-11
+
+User authorized committing and pushing the accumulated local work. Sound is now an accessible speaker icon with a 44px target in a reserved trailing branding column; it no longer adds a text-pill row or overlaps the gift. Fullscreen and iPhone 18 demo mockup previews are available. Fixed local workspace redirection for signed-in users and initialized preview iframes that finish loading before hydration. Preview captures were requested and saved locally; generated output and environment credentials are excluded from the commit. Automated tests remain skipped at the user's request. Push does not by itself confirm production deployment.
