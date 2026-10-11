@@ -7,6 +7,7 @@ import * as dotenv from 'dotenv';
 import { container } from '../core/di/container';
 import { TYPES } from '../core/di/types';
 import { errorMiddleware } from './middleware/errorMiddleware';
+import { rateLimitIdentity } from './middleware/rateLimitIdentity';
 import { apiRateLimit, webhookRateLimit } from './middleware/rateLimitMiddleware';
 
 // Routes
@@ -219,6 +220,7 @@ export function createApp(): Express {
     express.raw({ type: 'application/json' }),
     lemonSqueezyWebhooksRoutes,
   );
+  app.use(rateLimitIdentity(token => container.resolve<ITokenService>(TYPES.ITokenService).verifyAccessToken(token)));
   app.use(apiRateLimit);
   app.use(express.json());
 

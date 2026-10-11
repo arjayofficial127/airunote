@@ -34,16 +34,16 @@ export const apiRateLimit = rateLimit({
   max: (req: Request) => {
     // Higher limit for authenticated users (account-based)
     // Lower limit for unauthenticated requests (IP-based)
-    return req.user?.userId ? 1000 : 100;
+    return req.rateLimitUserId ? 1000 : 100;
   },
-  message: 'Too many requests, please try again later',
+  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests. Please wait for the rate limit to reset and try again.' } },
   standardHeaders: true,
   legacyHeaders: false,
   // Use user ID for authenticated requests, IP for unauthenticated
   keyGenerator: (req: Request) => {
     // If user is authenticated, use their user ID (account-based)
-    if (req.user?.userId) {
-      return `user:${req.user.userId}`;
+    if (req.rateLimitUserId) {
+      return `user:${req.rateLimitUserId}`;
     }
     // Otherwise, use IP address (for unauthenticated requests)
     return req.ip || 'unknown';
