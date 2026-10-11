@@ -138,6 +138,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
           </div>
           <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-xs">
             <button type="button" onClick={copyPublicLink} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">Copy public link</button>
+            {orgId && <a href={`/exam/admin-preview?org=${encodeURIComponent(orgId)}&exam=${encodeURIComponent(examId)}`} target="_blank" rel="noopener noreferrer" title="Preview the saved exam in a new tab" className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-800 hover:bg-violet-100">Admin preview</a>}
             <Link href={`/orgs/${orgId}/exams/${examId}/reports`} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">View report</Link>
             <button type="button" onClick={save} disabled={saving} className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50">{saving ? 'Saving…' : 'Save exam'}</button>
           </div>
