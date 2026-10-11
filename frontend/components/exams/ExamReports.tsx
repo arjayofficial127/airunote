@@ -138,11 +138,9 @@ export function ExamReports({ examId }: ExamReportsProps) {
     catch (error) { console.error(error); setMessage('Could not void the attempt.'); }
   };
 
-  const openPreview = async () => {
+  const openPreview = () => {
     if (!orgId) return;
-    const popup = window.open('about:blank', '_blank');
-    try { const result = await examsApi.preview(orgId, examId); const url = `${window.location.origin}${result.path}`; if (popup) popup.location.href = url; else window.open(url, '_blank'); }
-    catch (error) { popup?.close(); console.error(error); setMessage('Could not start the admin preview.'); }
+    window.open(`/exam/admin-preview?org=${encodeURIComponent(orgId)}&exam=${encodeURIComponent(examId)}`, '_blank', 'noopener,noreferrer');
   };
 
   const exportRows = filtered.map((row) => ({ Name: row.respondentName, Email: row.respondentEmail ?? '', Identifier: row.respondentIdentifier ?? '', Attempt: row.attemptNumber, Status: statusLabel(row.classification), Started: formatDate(row.startedAt), Ended: formatDate(row.endedAt), 'Last seen': formatDate(row.lastActiveAt), 'Duration seconds': row.timeInExamSeconds, 'Earned points': row.earnedPoints, 'Possible points': row.possiblePoints, Percentage: row.percentage ?? '', 'Focus events': row.focusViolationCount, Preview: row.isPreview ? 'Yes' : 'No', 'Void reason': row.voidReason ?? '' }));

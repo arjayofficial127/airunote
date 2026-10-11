@@ -127,7 +127,7 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   return <ExamAppearanceProvider config={readAppearance(exam.attempt?.appearance ?? exam.overview?.appearance)}><ExamContent exam={exam} /></ExamAppearanceProvider>;
 }
 
-export function ExamContent({ exam, previewInstructions = false }: { exam: ReturnType<typeof usePublicExam>; previewInstructions?: boolean }) {
+export function ExamContent({ exam, previewInstructions = false, onPreviewStart }: { exam: ReturnType<typeof usePublicExam>; previewInstructions?: boolean; onPreviewStart?: () => void }) {
   const appearance = useExamAppearance();
   const preview = useExamPreview();
   const { activateQuestion, expireQuestion } = exam;
@@ -196,7 +196,7 @@ export function ExamContent({ exam, previewInstructions = false }: { exam: Retur
 
   const submitIdentity = (event: FormEvent) => {
     event.preventDefault();
-    if (preview) return;
+    if (preview) { onPreviewStart?.(); return; }
     primeSound();
     void exam.start({ respondentName: name, respondentEmail: email, respondentIdentifier: identifier });
   };
