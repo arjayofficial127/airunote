@@ -53,7 +53,11 @@ export function ExamSettingsEditor({ value, onChange }: ExamSettingsEditorProps)
           </label>
           <div className="grid min-w-0 gap-4 sm:grid-cols-3">
             <label className="text-sm font-medium text-slate-700">Duration (minutes)<input type="number" min={1} max={1440} value={value.durationMinutes ?? 20} onChange={(event) => update('durationMinutes', Number(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5" /></label>
-            <label className="text-sm font-medium text-slate-700">Maximum takes<input type="number" min={1} max={100} value={value.maxAttempts ?? 3} onChange={(event) => update('maxAttempts', Number(event.target.value))} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5" /></label>
+            <div className="text-sm font-medium text-slate-700">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={value.maxAttempts === 0} onChange={event => update('maxAttempts', event.target.checked ? 0 : 3)} />Unlimited attempts</label>
+              {value.maxAttempts !== 0 && <label className="mt-3 block">Maximum takes<input type="number" min={1} max={100} value={value.maxAttempts ?? 3} onChange={event => update('maxAttempts', Math.max(1, Number(event.target.value)))} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5" /></label>}
+              <p className="mt-2 text-xs font-normal text-slate-500">Per participant: Partner Number or student/employee ID, otherwise email, otherwise full name. Timers and exam rules still apply.</p>
+            </div>
             <label className="text-sm font-medium text-slate-700">Status<select value={value.status ?? 'draft'} onChange={(event) => update('status', event.target.value as ExamStatus)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="draft">Draft</option><option value="published">Published</option><option value="closed">Closed</option></select></label>
           </div>
           <label className="block text-sm font-medium text-slate-700">After submission<select value={value.reviewMode ?? 'respondent_answers'} onChange={(event) => update('reviewMode', event.target.value as ExamReviewMode)} className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"><option value="respondent_answers">Show their answers, hide correct answers</option><option value="with_correct_answers">Show answers and correct answers</option><option value="none">Show completion only</option></select></label>

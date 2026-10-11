@@ -319,7 +319,7 @@ export class ExamService {
     const identityKeyHash = this.hash(identityValue.trim().toLocaleLowerCase());
     const deviceHash = this.hash(input.deviceId);
     const priorAttempts = await this.repository.countAttempts(exam.id, { identityKeyHash });
-    if (priorAttempts >= exam.maxAttempts) {
+    if (exam.maxAttempts !== 0 && priorAttempts >= exam.maxAttempts) {
       throw new ExamServiceError(`Maximum of ${exam.maxAttempts} attempts reached`, 409, 'ATTEMPT_LIMIT_REACHED');
     }
 

@@ -164,7 +164,7 @@ export function ExamDashboard() {
               <p className="mt-2 line-clamp-2 min-h-10 text-sm text-slate-600">{exam.description || 'No instructions yet.'}</p>
               <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-500">
                 <span className="rounded-md bg-slate-100 px-2 py-1">{exam.durationMinutes} min</span>
-                <span className="rounded-md bg-slate-100 px-2 py-1">{exam.maxAttempts} takes</span>
+                <span className="rounded-md bg-slate-100 px-2 py-1">{exam.maxAttempts === 0 ? 'Unlimited attempts' : `${exam.maxAttempts} takes`}</span>
                 {exam.preventFocusLoss && <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">Focus lock</span>}
               </div>
               <div className="mt-6 flex items-center gap-2 border-t border-slate-100 pt-4">

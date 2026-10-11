@@ -243,7 +243,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
                 <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.durationMinutes} minutes</span>
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.questionCount} question{exam.overview.questionCount === 1 ? '' : 's'}</span>
-                  <span className="rounded-full bg-white/10 px-3 py-1.5">Up to {exam.overview.maxAttempts} takes</span>
+                  <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.maxAttempts === 0 ? 'Unlimited attempts' : `Up to ${exam.overview.maxAttempts} takes`}</span>
                   {exam.overview.preventFocusLoss && <span className="rounded-full bg-[color:var(--exam-color-d97706-25)] px-3 py-1.5 text-[var(--exam-color-ffd28c)]">Focus lock on</span>}
                 </div>
               </div>
@@ -251,7 +251,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
             </div>
           </div>}
           {(appearance.renderer === 'creator' || appearance.instructions) && <ExamInstructions description={exam.overview.description} />}
-          {appearance.renderer === 'creator' && <div className="entry-exam-facts" aria-label="Exam details"><span>{exam.overview.durationMinutes} minutes</span><span>{exam.overview.questionCount} question{exam.overview.questionCount === 1 ? '' : 's'}</span><span>Up to {exam.overview.maxAttempts} takes</span></div>}
+          {appearance.renderer === 'creator' && <div className="entry-exam-facts" aria-label="Exam details"><span>{exam.overview.durationMinutes} minutes</span><span>{exam.overview.questionCount} question{exam.overview.questionCount === 1 ? '' : 's'}</span><span>{exam.overview.maxAttempts === 0 ? 'Unlimited attempts' : `Up to ${exam.overview.maxAttempts} takes`}</span></div>}
           <form onSubmit={submitIdentity} className="entry-identity-form p-7 sm:p-10"><fieldset className="min-w-0 space-y-5">
             <div><h2 className="text-lg font-bold text-[var(--exam-color-33241b)]">Your details</h2><p className="mt-1 text-sm text-[var(--exam-color-705746)]">Your timer starts when you select Start exam.</p></div>
             {exam.overview.preventFocusLoss && <div className="rounded-2xl border border-[var(--exam-color-e9b95f)] bg-[var(--exam-color-fff6dc)] px-4 py-3 text-sm leading-6 text-[var(--exam-color-754116)]"><strong>Before you begin:</strong> moving to another tab, minimizing, or losing window focus will end the attempt. You will need to contact the administrator for a continue link.</div>}
@@ -321,7 +321,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
           </summary>
           <div className="space-y-3 border-t border-[var(--exam-color-ead8c2)] p-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[var(--exam-color-ead8c2)] bg-white p-5"><h2 className="font-medium text-[var(--exam-color-33241b)]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[var(--exam-color-624a3a)]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[var(--exam-color-00754a)]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[var(--exam-color-80634f)]">{question.explanation}</p>}</article>)}</div>
         </details>}
-        {(exam.attempt.isPreview || (availability === 'open' && exam.attempt.attemptNumber < exam.overview.maxAttempts)) && <div className="completion-retry"><button type="button" onClick={exam.startAnother} className="completion-retry-button">Take another attempt <span aria-hidden="true">→</span></button><p className="mt-2 text-center text-xs text-[var(--exam-color-705746)]">{exam.attempt.isPreview ? 'Unlimited preview attempts' : `${exam.overview.maxAttempts - exam.attempt.attemptNumber} attempts remaining`}</p></div>}
+        {(exam.attempt.isPreview || (availability === 'open' && (exam.overview.maxAttempts === 0 || exam.attempt.attemptNumber < exam.overview.maxAttempts))) && <div className="completion-retry"><button type="button" onClick={exam.startAnother} className="completion-retry-button">Take another attempt <span aria-hidden="true">→</span></button><p className="mt-2 text-center text-xs text-[var(--exam-color-705746)]">{exam.attempt.isPreview ? 'Unlimited preview attempts' : exam.overview.maxAttempts === 0 ? 'Unlimited attempts' : `${exam.overview.maxAttempts - exam.attempt.attemptNumber} attempts remaining`}</p></div>}
       </div>
     </main>
   );

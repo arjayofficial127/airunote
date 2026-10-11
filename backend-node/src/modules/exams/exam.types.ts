@@ -72,7 +72,7 @@ const createExamBaseSchema = z.object({
   durationMinutes: z.number().int().min(1).max(1440).optional(),
   oneQuestionAtATime: z.boolean().optional(),
   preventFocusLoss: z.boolean().optional(),
-  maxAttempts: z.number().int().min(1).max(100).optional(),
+  maxAttempts: z.number().int().min(0).max(100).optional(),
   reviewMode: examReviewModeSchema.optional(),
   shuffleQuestions: z.boolean().optional(),
   shuffleOptions: z.boolean().optional(),
