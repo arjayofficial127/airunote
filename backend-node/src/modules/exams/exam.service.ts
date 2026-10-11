@@ -259,6 +259,7 @@ export class ExamService {
     const exam = await this.repository.getByPublicId(publicId);
     if (!exam) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
     return {
+      requiresAccessCode: Boolean(await this.repository.getAccessCode(exam.id)),
       publicId: exam.publicId,
       appearance: readAppearance(exam.appearanceConfig),
       title: exam.title,
@@ -310,6 +311,7 @@ export class ExamService {
     const exam = await this.repository.getByPublicId(publicId);
     if (!exam) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
     this.assertAvailable(exam);
+    await this.assertEntryGrant(exam.id, input.entryGrant);
     if (exam.requireEmail && !input.respondentEmail) throw new ExamServiceError('Email is required', 400, 'EMAIL_REQUIRED');
     if (exam.requireIdentifier && !input.respondentIdentifier) throw new ExamServiceError('Student or employee ID is required', 400, 'IDENTIFIER_REQUIRED');
 
@@ -347,6 +349,36 @@ export class ExamService {
     // Keep preview grants cryptographically separate from account access tokens.
     return createHash('sha256').update(`airunote:exam-preview:${secret}`).digest('hex');
   }
+  async accessCodeStatus(orgId: string, examId: string) {
+    const exam = await this.get(orgId, examId);
+    return { enabled: Boolean(await this.repository.getAccessCode(exam.id)) };
+  }
+  async configureAccessCode(orgId: string, examId: string, enabled: boolean) {
+    const exam = await this.get(orgId, examId);
+    const code = enabled ? randomInt(0, 100_000_000).toString().padStart(8, '0') : null;
+    await this.repository.setAccessCode(exam.id, code ? this.hash(`entry-code:${exam.id}:${code}`) : null);
+    return { code, path: `/exam/${exam.publicId}` };
+  }
+  async unlockEntry(publicId: string, code: string) {
+    const exam = await this.repository.getByPublicId(publicId);
+    if (!exam) throw new ExamServiceError('Exam not found', 404, 'EXAM_NOT_FOUND');
+    this.assertAvailable(exam);
+    const hash = await this.repository.getAccessCode(exam.id);
+    const candidate = this.hash(`entry-code:${exam.id}:${code}`);
+    if (!hash || !/^\d{8}$/.test(code) || !timingSafeEqual(Buffer.from(hash), Buffer.from(candidate)))
+      throw new ExamServiceError('Incorrect examiner code. Please ask your examiner.', 403, 'INVALID_ENTRY_CODE');
+    return { grant: jwt.sign({ purpose: 'exam-entry', examId: exam.id, codeHash: hash }, this.previewSecret(), { expiresIn: '2h' }) };
+  }
+  private async assertEntryGrant(examId: string, grant?: string) {
+    const hash = await this.repository.getAccessCode(examId);
+    if (!hash) return;
+    try {
+      const payload = jwt.verify(grant || '', this.previewSecret()) as jwt.JwtPayload;
+      if (payload.purpose !== 'exam-entry' || payload.examId !== examId || payload.codeHash !== hash) throw new Error();
+    } catch {
+      throw new ExamServiceError('Enter the current examiner code again.', 403, 'ENTRY_CODE_REQUIRED');
+    }
+  }
   async configurePreviewCode(orgId: string, examId: string, enabled: boolean) {
     const exam = await this.get(orgId, examId);
     if (enabled) this.previewSecret();
@@ -361,7 +393,7 @@ export class ExamService {
     if (!exam || !hash || !/^\d{8}$/.test(code) || !timingSafeEqual(Buffer.from(hash), Buffer.from(candidate)))
       throw new ExamServiceError('Invalid preview code', 403, 'INVALID_PREVIEW_CODE');
     const grant = jwt.sign({ purpose: 'coded-preview', examId: exam.id, codeHash: hash }, this.previewSecret(), { expiresIn: '12h' });
-    return { grant, overview: { ...await this.getPublicOverview(publicId), availability: this.publicAvailability({ ...exam, status: 'published' }) } };
+    return { grant, overview: { ...await this.getPublicOverview(publicId), requiresAccessCode: false, availability: this.publicAvailability({ ...exam, status: 'published' }) } };
   }
   async authorizePreview(publicId: string, grant: string) {
     let payload: jwt.JwtPayload;
@@ -374,7 +406,7 @@ export class ExamService {
   }
   async codedPreviewOverview(publicId: string, grant: string) {
     const exam = await this.authorizePreview(publicId, grant);
-    return { ...await this.getPublicOverview(publicId), availability: this.publicAvailability({ ...exam, status: 'published' }) };
+    return { ...await this.getPublicOverview(publicId), requiresAccessCode: false, availability: this.publicAvailability({ ...exam, status: 'published' }) };
   }
   async startCodedPreview(publicId: string, grant: string, input: StartAttemptInput, signals: PublicRequestSignals) {
     const exam = await this.authorizePreview(publicId, grant);

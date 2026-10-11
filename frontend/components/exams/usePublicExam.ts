@@ -234,7 +234,7 @@ export function usePublicExam(publicId: string, codedGrant?: string) {
     return () => window.removeEventListener('online', online);
   }, [retrySync]);
 
-  const start = useCallback(async (identity: { entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string; respondentIdentifier?: string }) => {
+  const start = useCallback(async (identity: { entryGrant?: string; entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string; respondentIdentifier?: string }) => {
     setError(null);
     setLoading(true);
     try {

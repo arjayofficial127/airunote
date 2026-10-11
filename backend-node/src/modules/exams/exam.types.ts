@@ -105,6 +105,7 @@ export const examOrgSettingsSchema = z.object({
 });
 
 export const startAttemptSchema = z.object({
+  entryGrant: z.string().max(2000).optional(),
   respondentName: z.string().trim().min(1).max(255),
   respondentEmail: z.string().trim().email().max(255).nullable().optional(),
   respondentIdentifier: z.string().trim().min(1).max(255).nullable().optional(),

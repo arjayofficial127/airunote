@@ -938,3 +938,8 @@ export const examPreviewCodesTable = pgTable('exam_preview_codes', {
   examId: uuid('exam_id').primaryKey().references(() => examsTable.id, { onDelete: 'cascade' }),
   codeHash: text('code_hash').notNull(),
 });
+
+export const examAccessCodesTable = pgTable('exam_access_codes', {
+  examId: uuid('exam_id').primaryKey().references(() => examsTable.id, { onDelete: 'cascade' }),
+  codeHash: text('code_hash').notNull(),
+});

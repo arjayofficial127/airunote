@@ -12,6 +12,7 @@ import {
   examSectionsTable,
   examsTable,
   examPreviewCodesTable,
+  examAccessCodesTable,
 } from '../../infrastructure/db/drizzle/schema';
 import {
   CreateExamInput,
@@ -86,6 +87,14 @@ export class ExamRepository extends ExamAttemptRepository {
   }
   async getPreviewCode(examId: string) {
     const [row] = await db.select().from(examPreviewCodesTable).where(eq(examPreviewCodesTable.examId, examId));
+    return row?.codeHash ?? null;
+  }
+  async setAccessCode(examId: string, codeHash: string | null) {
+    if (codeHash === null) { await db.delete(examAccessCodesTable).where(eq(examAccessCodesTable.examId, examId)); return; }
+    await db.insert(examAccessCodesTable).values({ examId, codeHash }).onConflictDoUpdate({ target: examAccessCodesTable.examId, set: { codeHash } });
+  }
+  async getAccessCode(examId: string) {
+    const [row] = await db.select().from(examAccessCodesTable).where(eq(examAccessCodesTable.examId, examId));
     return row?.codeHash ?? null;
   }
   async list(orgId: string, archived = false): Promise<ExamListItem[]> {

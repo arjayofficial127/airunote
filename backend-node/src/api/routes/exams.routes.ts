@@ -118,6 +118,16 @@ router.post('/:examId/preview-code', async (req: Request, res: Response, next: N
     res.json({ success: true, data: await service.configurePreviewCode(req.params.orgId, req.params.examId, req.body.enabled) });
   } catch (error) { handleError(error, res, next); }
 });
+router.get('/:examId/access-code', async (req: Request, res: Response, next: NextFunction) => {
+  try { res.json({ success: true, data: await service.accessCodeStatus(req.params.orgId, req.params.examId) }); }
+  catch (error) { handleError(error, res, next); }
+});
+router.post('/:examId/access-code', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (typeof req.body.enabled !== 'boolean') throw new ExamServiceError('enabled must be boolean', 400, 'INVALID_INPUT');
+    res.json({ success: true, data: await service.configureAccessCode(req.params.orgId, req.params.examId, req.body.enabled) });
+  } catch (error) { handleError(error, res, next); }
+});
 
 router.post('/:examId/preview', async (req: Request, res: Response, next: NextFunction) => {
   try {

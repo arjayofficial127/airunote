@@ -138,7 +138,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
             <p className="mt-2 text-sm text-slate-500">{exam.attemptCount} saved attempt{exam.attemptCount === 1 ? '' : 's'} · {saving ? 'Saving…' : dirty ? 'Unsaved exam changes' : 'All exam changes saved'}</p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-xs">
-            {orgId && <PreviewCodeControl orgId={orgId} examId={examId} />}
+            {orgId && <><PreviewCodeControl orgId={orgId} examId={examId} /><PreviewCodeControl orgId={orgId} examId={examId} access /></>}
             <button type="button" onClick={copyPublicLink} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">Copy public link</button>
             {orgId && <a href={`/exam/admin-preview?org=${encodeURIComponent(orgId)}&exam=${encodeURIComponent(examId)}`} target="_blank" rel="noopener noreferrer" title="Preview the saved exam in a new tab" className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-800 hover:bg-violet-100">Admin preview</a>}
             <Link href={`/orgs/${orgId}/exams/${examId}/reports`} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">View report</Link>

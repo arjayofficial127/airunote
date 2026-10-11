@@ -35,6 +35,11 @@ router.post('/:publicId/preview-unlock', previewCodeLimit, async (req, res, next
   try { res.json({ success: true, data: await service.unlockPreview(req.params.publicId, typeof req.body.code === 'string' ? req.body.code : '') }); }
   catch (error) { handleError(error, res, next); }
 });
+const entryCodeLimit = rateLimit({ windowMs: 15 * 60_000, limit: 20, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false });
+router.post('/:publicId/entry-unlock', entryCodeLimit, async (req, res, next) => {
+  try { res.json({ success: true, data: await service.unlockEntry(req.params.publicId, typeof req.body.code === 'string' ? req.body.code : '') }); }
+  catch (error) { handleError(error, res, next); }
+});
 router.post('/:publicId/preview-overview', publicExamBrowseRateLimit, async (req, res, next) => {
   try { res.json({ success: true, data: await service.codedPreviewOverview(req.params.publicId, req.body.grant || '') }); }
   catch (error) { handleError(error, res, next); }

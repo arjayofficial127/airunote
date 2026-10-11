@@ -194,6 +194,7 @@ export interface ExamReport {
 }
 
 export interface PublicExamOverview {
+  requiresAccessCode?: boolean;
   appearance?: Appearance;
   publicId: string;
   title: string;
@@ -274,6 +275,8 @@ export const examsApi = {
   restore: async (orgId: string, examId: string): Promise<void> => { await apiClient.post(`/orgs/${orgId}/exams/${examId}/restore`); },
   duplicate: async (orgId: string, examId: string): Promise<ExamDefinition> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/duplicate`)),
   previewCode: async (orgId: string, examId: string, enabled: boolean): Promise<{ code: string | null; path: string }> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/preview-code`, { enabled })),
+  accessCodeStatus: async (orgId: string, examId: string): Promise<{ enabled: boolean }> => unwrap(await apiClient.get(`/orgs/${orgId}/exams/${examId}/access-code`)),
+  accessCode: async (orgId: string, examId: string, enabled: boolean): Promise<{ code: string | null; path: string }> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/access-code`, { enabled })),
   preview: async (orgId: string, examId: string): Promise<{ accessToken: string; publicId: string; path: string }> => unwrap(await apiClient.post(`/orgs/${orgId}/exams/${examId}/preview`)),
   getSettings: async (orgId: string): Promise<ExamOrgSettings> => unwrap(await apiClient.get(`/orgs/${orgId}/exams/settings`)),
   updateSettings: async (orgId: string, input: ExamOrgSettings): Promise<ExamOrgSettings> => unwrap(await apiClient.put(`/orgs/${orgId}/exams/settings`, input)),
@@ -292,11 +295,12 @@ function attemptHeaders(accessToken: string) {
 }
 
 export const publicExamsApi = {
+  unlockEntry: async (publicId: string, code: string): Promise<{ grant: string }> => unwrap(await apiClient.post(`/public/exams/${publicId}/entry-unlock`, { code })),
   unlockPreview: async (publicId: string, code: string): Promise<{ grant: string; overview: PublicExamOverview }> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-unlock`, { code })),
   previewOverview: async (publicId: string, grant: string): Promise<PublicExamOverview> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-overview`, { grant })),
-  previewStart: async (publicId: string, grant: string, input: { entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-start`, { ...input, grant })),
+  previewStart: async (publicId: string, grant: string, input: { entryGrant?: string; entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-start`, { ...input, grant })),
   overview: async (publicId: string): Promise<PublicExamOverview> => unwrap(await apiClient.get(`/public/exams/${publicId}`)),
-  start: async (publicId: string, input: { entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> =>
+  start: async (publicId: string, input: { entryGrant?: string; entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> =>
     unwrap(await apiClient.post(`/public/exams/${publicId}/start`, input)),
   current: async (accessToken: string): Promise<PublicAttempt> => unwrap(await apiClient.get('/public/exams/attempts/current', attemptHeaders(accessToken))),
   activateQuestion: async (accessToken: string, questionId: string): Promise<PublicAttempt> =>

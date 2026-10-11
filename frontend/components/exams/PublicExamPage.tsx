@@ -1,6 +1,7 @@
 'use client';
 
 import { ExamAppearanceProvider, useExamAppearance, useExamPreview, useExamAssetUrl } from './ExamAppearanceProvider';
+import { ExamEntryGate } from './ExamEntryGate';
 import { ExamTopBanner } from './ExamTopBanner';
 import { CreatorEntryReveal, CreatorCompletionGift, CreatorBotanicalFrame } from './CreatorEntryReveal';
 import { readAppearance } from '@/lib/exam-appearance';
@@ -132,6 +133,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
   const preview = useExamPreview();
   const { activateQuestion, expireQuestion } = exam;
   const { primeSound, playNext, playCelebration } = useExamSounds();
+  const [entryGrant, setEntryGrant] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -199,7 +201,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
     event.preventDefault();
     if (preview) { onPreviewStart?.(); return; }
     primeSound();
-    void exam.start({ entryAnswers, respondentName: name, respondentEmail: email, respondentIdentifier: identifier });
+    void exam.start({ entryGrant, entryAnswers, respondentName: name, respondentEmail: email, respondentIdentifier: identifier });
   };
 
   if (exam.loading && !exam.attempt) return <div className={`flex min-h-screen items-center justify-center ${autumnBackground} text-sm font-medium text-[var(--exam-color-7d5132)]`}>Preparing your exam…</div>;
@@ -229,6 +231,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
         <div className="exam-entry-brand exam-brand-bar mb-6"><ExamSponsorBrand /></div>
         <section className="exam-entry-card overflow-hidden rounded-[2rem] border border-[var(--exam-color-dcc3a5)] bg-[var(--exam-color-fffdf8)] shadow-[0_28px_80px_rgba(73,43,22,0.18)]">
           <CreatorEntryReveal title={exam.overview.title} initiallyOpen={preview && previewInstructions}>
+          <ExamEntryGate publicId={exam.overview.publicId} required={Boolean(exam.overview.requiresAccessCode) && !preview} grant={entryGrant} onGrant={setEntryGrant}>
           {appearance.renderer === 'creator' ? <ExamTopBanner title={exam.overview.title} /> : <div className="exam-entry-hero relative bg-[var(--exam-color-2c1d17)] px-7 py-8 text-[var(--exam-header-text)] sm:px-10 sm:py-10">
             <AutumnHeroBranches />
             <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_20%_30%,var(--exam-color-d97838)_0,transparent_25%),radial-gradient(circle_at_85%_10%,var(--exam-color-00754a)_0,transparent_24%)]" />
@@ -253,7 +256,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
             <div><h2 className="text-lg font-bold text-[var(--exam-color-33241b)]">Your details</h2><p className="mt-1 text-sm text-[var(--exam-color-705746)]">Your timer starts when you select Start exam.</p></div>
             {exam.overview.preventFocusLoss && <div className="rounded-2xl border border-[var(--exam-color-e9b95f)] bg-[var(--exam-color-fff6dc)] px-4 py-3 text-sm leading-6 text-[var(--exam-color-754116)]"><strong>Before you begin:</strong> moving to another tab, minimizing, or losing window focus will end the attempt. You will need to contact the administrator for a continue link.</div>}
             {secondsUntilEnd !== null && secondsUntilEnd > 0 && secondsUntilEnd <= 1_800 && <div className="rounded-2xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-900"><strong>The response window closes soon:</strong> {formatCountdown(secondsUntilEnd)} remaining, until {formatScheduleDate(exam.overview.endsAt!)}. Start only if you have enough time to finish.</div>}
-            {(exam.overview.entryFields ?? []).some(field => field.type === 'date') && <label className="block text-sm font-semibold">Date<input readOnly value={new Date(clockTick + serverClockOffset.current).toLocaleString('sv-SE', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white/60 px-4 py-3" /><span className="mt-1 block text-xs font-normal">Philippine time · Recorded automatically by the server when you start.</span></label>}
+            {(exam.overview.entryFields ?? []).some(field => field.type === 'date') && <div className="text-sm font-semibold">Date<time className="mt-2 block tabular-nums" dateTime={new Date(clockTick + serverClockOffset.current).toISOString()}>{new Date(clockTick + serverClockOffset.current).toLocaleString('sv-SE', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</time><span className="mt-1 block text-xs font-normal">Philippine time · Recorded automatically by the server when you start.</span></div>}
             <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Full name *<input required value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>
             <div className={(exam.overview.requireEmail || !exam.overview.entryFields?.length) ? "grid gap-3 sm:grid-cols-2" : "grid gap-3"}>
               {(exam.overview.requireEmail || !exam.overview.entryFields?.length) && <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Email {exam.overview.requireEmail ? '*' : '(optional)'}<input required={exam.overview.requireEmail} type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>}
@@ -264,6 +267,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
             <div className="entry-start-action"><button type="submit" disabled={exam.loading} className="w-full rounded-xl bg-[var(--exam-color-b95f2a)] px-5 py-3.5 text-sm font-bold text-[var(--exam-primary-text)] shadow-lg shadow-[color:var(--exam-color-b95f2a-20)] transition hover:bg-[var(--exam-color-99491f)] disabled:opacity-50">{exam.loading ? 'Starting…' : 'Start exam'}</button></div>
             <ExamFooter />
           </fieldset></form>
+          </ExamEntryGate>
           </CreatorEntryReveal>
         </section>
       </div>
