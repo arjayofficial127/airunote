@@ -333,9 +333,10 @@ export class ExamService {
   }
 
   private previewSecret(): string {
-    const secret = process.env.JWT_SECRET;
+    const secret = process.env.JWT_EXAM_PREVIEW_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
     if (!secret) throw new ExamServiceError('Preview access is unavailable', 503, 'PREVIEW_UNAVAILABLE');
-    return secret;
+    // Keep preview grants cryptographically separate from account access tokens.
+    return createHash('sha256').update(`airunote:exam-preview:${secret}`).digest('hex');
   }
   async configurePreviewCode(orgId: string, examId: string, enabled: boolean) {
     const exam = await this.get(orgId, examId);
