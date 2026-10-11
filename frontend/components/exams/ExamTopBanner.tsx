@@ -17,8 +17,8 @@ export function ExamTopBanner({ title }: { title: string }) {
     <img className="exam-top-banner-art" src={src} alt={appearance.banner?.alt || 'Wrapped in Joy'} onError={() => setFailed(src)} />
     {holidayBanner && src.endsWith('holiday-banner-clean.png') && <CreatorBotanicalFrame corners={['top']} />}
     {holidayBanner && appearance.decorations.leaves && <div className="exam-banner-right-art" aria-hidden="true" data-motion={appearance.decorations.animated}>
-      <img src="/exam-assets/creator/holiday-corner-right-red.png" alt="" width="1024" height="1536" />
-      {[[60, 4.5], [53, 9], [44, 13], [87, 10], [89, 16], [74, 20], [94, 26], [76, 29], [86, 39], [94, 43], [86, 67], [84, 74]].map(([x, y], i) => <i key={i} className="gift-fairy-light" style={{left: `${x}%`, top: `${y}%`, '--twinkle-delay': `${-i * .83}s`, '--twinkle-duration': `${2.8 + i * .31}s`} as CSSProperties} />)}
+      <img src="/exam-assets/creator/holiday-corner-right-wide-red.png" alt="" width="1024" height="1536" />
+      {[[82, 12.5], [73, 20.6], [92, 39.4], [81, 41.7], [71, 59], [74, 64], [83, 79.3]].map(([x, y], i) => <i key={i} className="gift-fairy-light" style={{left: `${x}%`, top: `${y}%`, '--twinkle-delay': `${-i * .83}s`, '--twinkle-duration': `${2.8 + i * .31}s`} as CSSProperties} />)}
     </div>}
     <div className="exam-top-banner-brand">
       <span>AIRUNOTE EXAMS</span>
