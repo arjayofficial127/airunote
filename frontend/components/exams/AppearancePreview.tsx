@@ -24,6 +24,10 @@ export function AppearancePreview({
   orgId: string;
 }) {
   const [screen, setScreen] = useState("entry");
+  const stepScreen = (direction: number) => setScreen(current => {
+    const index = previewScreens.findIndex(value => value === current);
+    return previewScreens[(index + direction + previewScreens.length) % previewScreens.length];
+  });
   const [mobile, setMobile] = useState(false);
   const [gallery, setGallery] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -50,9 +54,13 @@ export function AppearancePreview({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Live appearance preview</h3>
         <div className="flex flex-wrap items-center gap-2">
-          {!gallery && <select aria-label="Preview screen" className="h-11 rounded-lg border bg-white px-3 text-xs" value={screen} onChange={e => setScreen(e.target.value)}>
+          {!gallery && <div className="flex items-center gap-1" role="group" aria-label="Preview screen navigation">
+          <button type="button" className="h-11 rounded-lg border bg-white px-3 text-xs hover:bg-slate-100" aria-label="Previous preview screen" onClick={() => stepScreen(-1)}>← Back</button>
+          <select aria-label="Preview screen" className="h-11 rounded-lg border bg-white px-3 text-xs" value={screen} onChange={e => setScreen(e.target.value)}>
             {previewScreens.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-          </select>}
+          </select>
+          <button type="button" className="h-11 rounded-lg border bg-white px-3 text-xs hover:bg-slate-100" aria-label="Next preview screen" onClick={() => stepScreen(1)}>Next →</button>
+          </div>}
           <button ref={fullscreenButton} type="button" className="preview-tool" aria-label={fullscreen ? 'Exit fullscreen' : 'Expand preview in browser panel'} title={fullscreen ? 'Exit fullscreen' : 'Expand preview in browser panel'} onClick={() => {
             if (fullscreen) { exitFullscreen(); return; }
             setFullscreen(true);

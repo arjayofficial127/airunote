@@ -1,0 +1,2 @@
+Built-in image_gen edit. Source: gift-body-embossed.png
+Precisely recolor this existing animation layer only. Preserve exact silhouette, position, transparent margins, perspective, dimensions, shape, embossing, and all geometry. Change every gold/bronze satin ribbon to rich cranberry-red satin with burgundy shadows and realistic scarlet highlights. Preserve all ivory paper and botanical embossing; box interior if present should be warm ivory, not gold. True transparent background, no backdrop, no added objects, no logo, no text. Asset must align with existing layers.

@@ -14,7 +14,7 @@ export function AppearanceFields({
   disabled?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [picker, setPicker] = useState<"logo" | "artwork" | "intro" | null>(null);
+  const [picker, setPicker] = useState<"logo" | "artwork" | "intro" | "banner" | null>(null);
   const giftOpening = v.giftOpening ?? { labelMode: 'unwrap' as const, customLabel: '', showReplay: false };
   useEffect(() => {
     if (!picker) return;
@@ -118,6 +118,13 @@ export function AppearanceFields({
             <option value="text">Text</option><option value="image">Image lettering</option>
           </select>
         </label>
+        <div className="rounded-xl border p-3 space-y-2">
+          <h3 className="font-semibold">Top banner</h3>
+          <p className="text-xs text-slate-500">Used on instructions, questions and completion. Choose a wide image (3:1); branding and exam context appear over it.</p>
+          <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => setPicker('banner')}>Upload / choose banner</button>
+          <button type="button" className="ml-2 rounded-lg border px-3 py-2 text-sm" onClick={() => onChange({ ...v, banner: { ...v.banner, image: null, alt: 'Wrapped in Joy' } })}>Use holiday banner</button>
+          {text('Banner image description', v.banner?.alt ?? 'Wrapped in Joy', alt => onChange({ ...v, banner: { ...v.banner, alt } }))}
+        </div>
         {v.instructions?.introMode === 'image' && <div className="space-y-3">
           <button type="button" className="w-full rounded-xl border bg-[#fffdf8] p-3 text-left" onClick={() => onChange({ ...v, instructions: { ...v.instructions, introMode: 'image', introImage: { source: 'builtin', assetId: 'wrapped-in-joy-ribbon-text' }, introImageAlt: 'Wrapped in Joy' } })}>
             <img src="/exam-assets/creator/wrapped-in-joy-crafted.png" alt="Wrapped in Joy with a gold ribbon W" className="h-auto w-full" />
@@ -396,7 +403,7 @@ export function AppearanceFields({
             <NativeFileLibrary
               onSelect={(asset) => {
                 onChange(
-                  picker === "intro" ? { ...v, instructions: { ...v.instructions, introMode: 'image', introImage: asset, introImageAlt: v.instructions?.introImageAlt || v.instructions?.intro || 'Opening text' } } : picker === "logo"
+                  picker === "banner" ? { ...v, banner: { ...v.banner, image: asset } } : picker === "intro" ? { ...v, instructions: { ...v.instructions, introMode: 'image', introImage: asset, introImageAlt: v.instructions?.introImageAlt || v.instructions?.intro || 'Opening text' } } : picker === "logo"
                     ? {
                         ...v,
                         brand: { ...v.brand, logo: asset, logoVisible: true },

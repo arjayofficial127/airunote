@@ -1,0 +1,3 @@
+Built-in image_gen, transparent_background=true.
+
+Transparent PNG cutout, photorealistic arrangement of exactly THREE natural brown pinecones for a premium holiday gift scene. Three distinct cones: left lying on its side pointing diagonally left, center upright showing open layered scales, right tilted toward viewer showing its round rosette end. Compact low horizontal group with slight natural overlap, rich chocolate-brown woody scales, warm soft light, extremely realistic botanical detail. No branches, no ribbon, no lights, no snow, no text, no background or floor. Clean transparent alpha, complete silhouettes.

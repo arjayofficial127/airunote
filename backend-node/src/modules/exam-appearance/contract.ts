@@ -40,6 +40,7 @@ export const appearanceSchema = z
     schemaVersion: z.literal(1),
     renderer: z.enum(['autumn', 'plain', 'holiday', 'creator']),
     headerLabel: z.string().max(120),
+    banner: z.object({ image: assetSchema.nullable().optional(), alt: z.string().max(300).optional() }).strict().optional(),
     completionEyebrow: z.string().max(120).optional(),
     completionTitle: z.string().max(200).optional(),
     completionMessage: z.string().max(1000).optional(),
@@ -261,7 +262,7 @@ export function readAppearance(value: unknown): Appearance {
 export function assetFileIds(config: Appearance): string[] {
   return [
     ...new Set(
-      [config.brand.logo, config.artwork.asset, config.instructions?.introImage].flatMap((asset) =>
+      [config.brand.logo, config.artwork.asset, config.instructions?.introImage, config.banner?.image].flatMap((asset) =>
         asset?.source === 'org-file' ? [asset.fileId] : []
       )
     ),

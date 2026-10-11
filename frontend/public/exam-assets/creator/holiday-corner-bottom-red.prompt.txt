@@ -1,0 +1,2 @@
+Built-in image_gen edit. Source: holiday-corner-bottom.png
+Precisely recolor this existing animation layer only. Preserve exact silhouette, position, transparent margins, perspective, dimensions, shape, embossing, and all geometry. Change every gold/bronze satin ribbon to rich cranberry-red satin with burgundy shadows and realistic scarlet highlights. Preserve green pine needles and the existing light positions, make lights warm white. True transparent background, no backdrop, no added objects, no logo, no text. Asset must align with existing layers.

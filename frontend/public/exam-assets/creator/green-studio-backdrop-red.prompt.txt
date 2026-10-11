@@ -1,0 +1,2 @@
+Built-in image_gen edit. Source: green-studio-backdrop.png
+Edit this exact empty green studio background. Preserve composition, table horizon position, texture, camera, dimensions. Replace yellow/gold spotlight with soft neutral emerald/sage green illumination. Deep evergreen wall and tabletop. No objects, no text.

@@ -962,7 +962,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 }
 
 /* Creator entry: independent transparent artwork layers, one finite reveal. */
-.gift-invitation { position: relative; isolation: isolate; overflow: hidden; text-align: center; padding: clamp(1.5rem,5vw,3rem); color: #fff8e6; background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop.png") center bottom / 100% 125% no-repeat; }
+.gift-invitation { position: relative; isolation: isolate; overflow: hidden; text-align: center; padding: clamp(1.5rem,5vw,3rem); color: #fff8e6; background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center bottom / 100% 125% no-repeat; }
 .gift-eyebrow { color: #e8cd88; font-size: .68rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; overflow-wrap: anywhere; }
 .gift-invitation h1 { margin: .8rem auto 0; max-width: 24ch; font-size: clamp(1.4rem,4vw,2.25rem); font-weight: 700; line-height: 1.15; text-wrap: balance; overflow-wrap: anywhere; }
 .gift-stage { position: relative; width: min(100%,380px); aspect-ratio: 1 / 1.18; margin: 0 auto; }
@@ -1217,3 +1217,136 @@ tr:hover > .block-icon-wrapper .block-icon {
 .gift-contact-shadow::after { content: ''; position: absolute; left: 17%; right: 12%; top: 13%; height: 25%; border-radius: 45%; background: #010906d9; box-shadow: 0 2px 5px 2px #01090680; }
 .gift-invitation .gift-body-layer { filter: drop-shadow(-5px 6px 5px #02150d40); }
 .gift-reveal[data-phase="opening"] .gift-contact-shadow { animation: giftBodyFade 3.6s linear both; }
+
+/* Scheduled states share the invitation artwork, with a compact static status. */
+.gift-schedule-heading { position: relative; margin: 16px 0 8px; font-size: 1rem; font-weight: 650; color: #ead49e; }
+.gift-reveal[data-notice] .gift-stage { width: min(100%, 280px); margin-top: -10px; }
+.gift-schedule-details { position: relative; }
+.gift-schedule-label { width: fit-content; min-width: min(240px, 100%); max-width: 100%; margin: 0 auto; padding: 12px 24px; border-radius: 24px; background: linear-gradient(120deg,#f4dfa0,#ddba67); color: #173b2d; }
+.gift-schedule-label > span { display: block; font-size: 10px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
+.gift-schedule-label > strong { display: block; font-size: 1rem; }
+.gift-schedule-label [role="timer"] { margin-top: 4px; font-size: clamp(1rem, 4vw, 1.35rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.gift-reveal[data-notice="ended"] .gift-fairy-light { animation: none; opacity: .75; }
+.gift-reveal[data-notice="ended"] .gift-dust { display: none; }
+@media (max-width: 639px) {
+  .gift-reveal[data-notice] .gift-stage { width: min(100%, clamp(150px, calc((100svh - 440px) / 1.18), 240px)); }
+  .gift-reveal[data-notice] .gift-invitation { padding: 18px; }
+  .gift-schedule-heading { margin-top: 12px; font-size: .9rem; }
+  .gift-schedule-label { padding: 10px 16px; }
+}
+
+/* A quiet closing scene, using the same materials as the opening gift. */
+.completion-receipt[data-creator="true"] { background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center / cover no-repeat; color: #fff8e6; }
+.completion-receipt[data-creator="true"]::before { display: none; }
+.completion-receipt[data-creator="true"] .completion-celebration { background: radial-gradient(ellipse at 50% 27%, #efd18b2b, transparent 55%); padding: 22px 24px 28px; }
+.completion-receipt[data-creator="true"] .completion-art { width: min(100%, 250px); margin-bottom: 12px; }
+.completion-art .gift-completion { height: auto; overflow: visible; }
+.completion-art .gift-stage { width: 100%; margin-top: 0; }
+.completion-gift-lid { position: absolute; inset: 0; transform: translateY(-13%) rotate(-7deg); }
+.completion-thank-you { position: absolute; z-index: 1; top: 30%; left: 24%; width: 52%; height: 26%; padding-top: 9%; background: linear-gradient(125deg,#fffbed,#e9dcc1); border: 1px solid #d7bd81; border-radius: 3px; color: #294333; font: italic 600 clamp(16px, 4vw, 22px) Georgia, serif; text-align: center; transform: rotate(-3deg); box-shadow: 0 3px 12px #041b1633; }
+.gift-completion .gift-body-layer, .gift-completion .gift-brand-seal { z-index: 2; }
+.gift-completion .completion-gift-lid { z-index: 3; }
+.completion-receipt[data-creator="true"] .completion-eyebrow { color: #e8cd88; }
+.completion-receipt[data-creator="true"] .completion-message { color: #e0e5d7; max-width: 34ch; margin-top: 14px; }
+.completion-confirmation { margin-top: 12px; padding: 0; border: 0; background: transparent; }
+.completion-receipt[data-creator="true"] .completion-confirmation { color: #f2d998; }
+.completion-confirmation > span:first-child { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid currentColor; }
+.gift-completion .gift-dust { z-index: 4; }
+@media (max-width: 639px) {
+  .completion-receipt[data-creator="true"] .completion-art { width: clamp(145px, 24svh, 195px); }
+  .completion-receipt[data-creator="true"] .completion-celebration { padding: 16px 20px 24px; }
+  .completion-receipt[data-creator="true"] .completion-title { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) { .gift-completion .gift-dust { display: none; } }
+
+/* Bring the identity fields into view without shrinking instruction copy. */
+.gift-revealed-content > .creator-instructions { padding-top: 12px; }
+.gift-revealed-content > .creator-instructions > :not([hidden]) ~ :not([hidden]) { margin-top: 10px; }
+.gift-revealed-content > .creator-instructions h2 { margin-bottom: 8px; }
+.gift-revealed-content > .creator-instructions p { line-height: 1.6; }
+.gift-revealed-content > .creator-instructions > .border-t { padding-top: 12px; }
+.gift-revealed-content > form { padding-top: 18px; }
+@media (max-width: 639px) {
+  .gift-revealed-content > .exam-entry-hero { padding-top: 16px; padding-bottom: 16px; }
+  .gift-revealed-content > .exam-entry-hero h1 { font-size: 1.35rem; line-height: 1.15; margin-top: 6px; }
+  .gift-revealed-content > .exam-entry-hero .mt-6 { margin-top: 10px; }
+  .gift-revealed-content > .creator-instructions { padding-top: 8px; }
+  .gift-revealed-content > form { padding-top: 14px; }
+}
+
+/* Compact entry with progressive disclosure and a reachable start action. */
+.entry-instructions-disclosure summary, .entry-optional-details summary { cursor: pointer; min-height: 44px; padding-block: 12px; font-size: .875rem; font-weight: 650; }
+.entry-instructions-disclosure summary:focus-visible, .entry-optional-details summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.entry-instructions-body { padding-top: 8px; }
+.entry-optional-details summary span { font-weight: 400; }
+.entry-identity-form .entry-start-action { position: sticky; bottom: 0; z-index: 5; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); background: var(--exam-color-fffdf8); }
+.gift-reveal[data-phase="open"] .gift-revealed-content { min-height: 100dvh; }
+@media (max-width: 639px) {
+  .gift-revealed-content > .exam-entry-hero h1 { font-size: 1.15rem; }
+  .gift-revealed-content > .exam-entry-hero { padding: 12px 20px; }
+  .gift-revealed-content > .exam-entry-hero .flex.flex-wrap { gap: 4px; font-size: 10px; }
+  .gift-revealed-content > .creator-instructions { padding-inline: 20px; padding-top: 4px; }
+  .gift-revealed-content .instruction-image { max-height: 65px; object-position: left center; }
+  .gift-revealed-content > .entry-identity-form { padding: 4px 20px 12px; }
+  .entry-identity-form fieldset > :not([hidden]) ~ :not([hidden]) { margin-top: 10px; }
+  .entry-identity-form input { margin-top: 4px; padding-block: 10px; font-size: 16px; }
+  .entry-identity-form fieldset > .grid:empty { display: none; }
+}
+
+/* Cranberry satin and evergreen: gold remains a small decorative accent. */
+.gift-open-button, .gift-schedule-label { background: linear-gradient(120deg,#bd233a,#860e27); color: #fff8e6; border-color: #d95b68; }
+.gift-open-button:hover:not(:disabled) { box-shadow: 0 8px 30px #b51b3533; }
+.gift-eyebrow, .gift-schedule-heading { color: #c5d5ac; }
+.gift-caption { color: #efe8d4; }
+.gift-halo { background: radial-gradient(ellipse,#bad6b026,transparent 67%); }
+.gift-light { background: radial-gradient(ellipse,#f3f6de,#aac9a670 30%,transparent 67%); }
+.completion-receipt[data-creator="true"] .completion-celebration { background: radial-gradient(ellipse at 50% 27%,#b9d5ab26,transparent 55%); }
+.completion-receipt[data-creator="true"] .completion-eyebrow, .completion-receipt[data-creator="true"] .completion-confirmation { color: #d4e1c4; }
+.exam-theme[data-renderer="creator"] .entry-start-action button { background: #a51c33; color: #fff8e6; }
+.exam-theme[data-renderer="creator"] .entry-start-action button:hover { background: #86142a; }
+
+/* Shared compact holiday banner: artwork plus editable live identity. */
+.exam-top-banner { position: relative; isolation: isolate; container-type: inline-size; width: 100%; background: #0b2b20; color: #fff8e6; overflow: hidden; }
+.exam-top-banner-art { display: block; width: 100%; height: auto; aspect-ratio: 3 / 1; object-fit: cover; }
+.exam-top-banner-brand { position: absolute; top: 5%; left: 8%; right: 8%; display: flex; align-items: center; justify-content: center; gap: 2cqw; font-size: clamp(7px, 1.8cqw, 12px); line-height: 1.2; letter-spacing: .08em; }
+.exam-top-banner-brand strong { display: flex; align-items: center; gap: 1cqw; font-size: clamp(9px, 2.5cqw, 18px); }
+.exam-top-banner-brand img { width: 5cqw; height: 5cqw; max-width: 35px; }
+.exam-top-banner-badge { padding: .6cqw 1.4cqw; border: 1px solid #c8c9a3; border-radius: 30px; }
+.exam-top-banner-context { position: absolute; bottom: 4%; left: 12%; right: 12%; text-align: center; text-shadow: 0 1px 3px #001b15; }
+.exam-top-banner-context p { font-size: clamp(7px, 1.8cqw, 12px); font-weight: 700; letter-spacing: .09em; }
+.exam-top-banner-context h1 { margin-top: 2px; font-size: clamp(8px, 2cqw, 14px); font-weight: 500; line-height: 1.2; text-wrap: balance; }
+.entry-exam-facts { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px 6px; max-width: 1040px; margin-inline: auto; font-size: 11px; color: #254537; }
+.entry-exam-facts span { padding: 4px 9px; border-radius: 20px; background: #edf0e6; }
+
+.exam-banner-logo { display: block; flex: 0 0 auto; width: clamp(24px, 5cqw, 38px); height: clamp(24px, 5cqw, 38px); border-radius: 50%; background: #fff8e6; overflow: hidden; }
+.exam-banner-logo > span { display: block; width: 100%; height: 100%; background: #006241; mask-size: contain; mask-position: center; mask-repeat: no-repeat; }
+
+/* One shared reading/form grid beneath the full-width Creator banner. */
+.exam-theme[data-renderer="creator"] .gift-revealed-content > :is(.creator-instructions, .entry-exam-facts, .entry-identity-form) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 880px;
+  margin-inline: auto;
+  padding-inline: clamp(20px, 4%, 32px);
+}
+.exam-theme[data-renderer="creator"] .gift-revealed-content > .creator-instructions { padding-top: 24px; }
+.exam-theme[data-renderer="creator"] .entry-instructions-body { padding-top: 0; }
+.exam-theme[data-renderer="creator"] .creator-instructions p { max-width: none; }
+.exam-theme[data-renderer="creator"] .gift-revealed-content > .entry-exam-facts { padding-top: 16px; padding-bottom: 0; gap: 8px; }
+.exam-theme[data-renderer="creator"] .gift-revealed-content > .entry-identity-form { padding-top: 24px; padding-bottom: 24px; }
+.exam-theme[data-renderer="creator"] .entry-identity-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.exam-theme[data-renderer="creator"] .entry-identity-form fieldset > :not([hidden]) ~ :not([hidden]) { margin-top: 16px; }
+.exam-theme[data-renderer="creator"] .entry-identity-form input { min-width: 0; min-height: 44px; }
+.exam-theme[data-renderer="creator"] .entry-identity-form .entry-start-action { padding-top: 8px; }
+
+/* A quiet continuation of the banner keeps exam status close to the task. */
+.exam-top-banner-context { color: #e8cd88; }
+.exam-theme[data-renderer="creator"] .exam-question-header { background: #123b2d; border-bottom-color: #295343; }
+.exam-theme[data-renderer="creator"] .exam-status-strip { padding-block: 10px 12px; }
+.exam-theme[data-renderer="creator"] .exam-status-strip > .mt-2.flex { margin-top: 0; }
+.exam-theme[data-renderer="creator"] .exam-status-counts { color: #c5d5c9; }
+.exam-theme[data-renderer="creator"] .exam-status-counts > p:first-child { color: #fff8e6; font-size: 13px; }
+.exam-theme[data-renderer="creator"] .exam-status-timer { background: #ffffff0d; color: #e8cd88; border: 1px solid #ffffff26; border-radius: 10px; }
+.exam-theme[data-renderer="creator"] .exam-status-timer[data-urgent="true"] { background: #fff0ee; color: #a51c33; border-color: #ed9da8; }
+.exam-theme[data-renderer="creator"] .exam-status-progress { height: 3px; margin-top: 10px; background: #ffffff26; }
+.exam-theme[data-renderer="creator"] .exam-status-progress > div { background: #c5d5ac; }
