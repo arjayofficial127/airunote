@@ -274,8 +274,8 @@ export function ExamContent({ exam, previewInstructions = false }: { exam: Retur
   if (exam.attempt.status === 'completed') return (
     <main className={`exam-completion-page relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 ${autumnBackground}`}>
       <AutumnBackdrop />
-      <div className="relative z-[1] mx-auto max-w-2xl">
-        {appearance.renderer === 'creator' ? <div className="mb-4"><ExamTopBanner title={exam.attempt.title} /></div> : <><div className="mb-5"><ExamSponsorBrand /></div><div className="mb-5 px-1"><ExamContext title={exam.attempt.title} /></div></>}
+      <div className="completion-layout relative z-[1] mx-auto max-w-2xl">
+        {appearance.renderer === 'creator' ? <div className="completion-banner"><ExamTopBanner title={exam.attempt.title} /></div> : <><div className="mb-5"><ExamSponsorBrand /></div><div className="mb-5 px-1"><ExamContext title={exam.attempt.title} /></div></>}
         <section className="completion-receipt" data-creator={appearance.renderer === 'creator'}>
           {exam.attempt.isPreview && <div className="border-b border-violet-200 bg-violet-50 px-5 py-3 text-xs font-semibold text-violet-800">Admin preview · {exam.attempt.previewedByEmail} · excluded from respondent statistics</div>}
           <div className="completion-celebration">

@@ -145,7 +145,7 @@ export function CreatorCompletionGift() {
   return <div className="gift-completion" aria-hidden="true" data-motion={appearance.decorations.animated}>
     {appearance.artwork.visible && <div className="gift-stage">
       <div className="gift-contact-shadow" />
-      <div className="completion-thank-you">Thank you</div>
+      <div className="completion-thank-you" />
       <div className="gift-body-layer"><img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
       <div className="completion-gift-lid"><div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" /></div>
       <div className="gift-bow-layer"><img src="/exam-assets/creator/gift-bow-embossed-red.png" alt="" /></div></div>

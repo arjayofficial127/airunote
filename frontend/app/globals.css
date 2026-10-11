@@ -1350,3 +1350,23 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-theme[data-renderer="creator"] .exam-status-timer[data-urgent="true"] { background: #fff0ee; color: #a51c33; border-color: #ed9da8; }
 .exam-theme[data-renderer="creator"] .exam-status-progress { height: 3px; margin-top: 10px; background: #ffffff26; }
 .exam-theme[data-renderer="creator"] .exam-status-progress > div { background: #c5d5ac; }
+
+/* Completion is one continuous holiday keepsake, with a quiet review footer. */
+.exam-theme[data-renderer="creator"] .exam-completion-page { padding: 16px; }
+.exam-theme[data-renderer="creator"] .completion-layout { overflow: hidden; border: 1px solid #214c3933; border-radius: 24px; background: #fffdf8; box-shadow: 0 16px 48px #18392b18; }
+.exam-theme[data-renderer="creator"] .completion-banner { margin: 0; }
+.exam-theme[data-renderer="creator"] .completion-receipt { border: 0; border-radius: 0; box-shadow: none; background: radial-gradient(ellipse at 50% 15%,#2e573d88,transparent 65%),linear-gradient(#0c2b2000,#0c2b20 72%),#0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center top / cover no-repeat; }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { padding: 12px 24px 28px; background: none; }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-art { width: min(56%, 220px); margin-bottom: 4px; }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-title { margin-top: 8px; font-size: clamp(28px, 5vw, 36px); }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-confirmation { width: fit-content; margin: 14px auto 0; padding: 7px 12px; border: 1px solid #c5d5ac44; border-radius: 99px; background: #c5d5ac0d; }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-message { max-width: 44ch; margin-top: 20px; padding-top: 18px; border-top: 1px solid #c5d5ac33; font-size: 14px; line-height: 1.65; }
+.exam-theme[data-renderer="creator"] .completion-review { margin: 0; border: 0; border-radius: 0; }
+.exam-theme[data-renderer="creator"] .completion-review summary { padding: 20px 24px; }
+.exam-theme[data-renderer="creator"] .completion-layout > .text-center { margin: 0; padding: 0 20px 16px; }
+.exam-theme[data-renderer="creator"] .completion-layout > .text-center button { color: #a51c33; }
+@media (min-width: 640px) {
+  .exam-theme[data-renderer="creator"] .exam-completion-page { padding: 32px 24px; }
+  .exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { padding-inline: 40px; }
+  .exam-theme[data-renderer="creator"] .completion-review summary { padding-inline: 40px; }
+}
