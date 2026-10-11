@@ -1136,7 +1136,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 
 /* Entry polish: connect the title to the gift and give the action more presence. */
 .gift-invitation > .gift-stage { margin-top: -12px; }
-.gift-invitation > .gift-open-button { width: 70%; min-width: min(220px, 100%); }
+.gift-invitation > .gift-open-button { width: fit-content; min-width: min(260px, 100%); padding-inline: 16px; }
 .gift-invitation > .gift-reassurance { font-size: .8125rem; }
 
 /* Botanical holiday frame stays behind content and never intercepts input. */
@@ -1295,6 +1295,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 
 /* Cranberry satin and evergreen: gold remains a small decorative accent. */
 .gift-open-button, .gift-schedule-label { background: linear-gradient(120deg,#bd233a,#860e27); color: #fff8e6; border-color: #d95b68; }
+.gift-reveal[data-notice="ended"] .gift-schedule-label { border-radius: 0; background: #fff; color: #a51c33; }
 .gift-open-button:hover:not(:disabled) { box-shadow: 0 8px 30px #b51b3533; }
 .gift-eyebrow, .gift-schedule-heading { color: #c5d5ac; }
 .gift-caption { color: #efe8d4; }
