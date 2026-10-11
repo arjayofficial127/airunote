@@ -100,7 +100,7 @@ function PreviewScreen({ config, title = 'Your exam title', description, orgId, 
       preventFocusLoss: false,
       maxAttempts: examDraft?.maxAttempts ?? 3,
       requireEmail: examDraft?.requireEmail ?? false,
-      requireIdentifier: examDraft?.requireIdentifier ?? false,
+      requireIdentifier: examDraft?.requireIdentifier ?? true,
       availability:
         screen === "upcoming"
           ? "upcoming"
@@ -113,7 +113,8 @@ function PreviewScreen({ config, title = 'Your exam title', description, orgId, 
           : null,
       endsAt: null,
       serverTime: new Date().toISOString(),
-      questionCount: examDraft?.questions?.length ?? 1,
+      entryFields: examDraft ? (examDraft.questions ?? []).filter(q => q.entryField).map(q => ({ id: q.id ?? q.prompt, prompt: q.prompt, type: q.type as 'date' | 'short_text', required: q.required ?? true })) : [{ id: 'preview-date', prompt: 'Date', type: 'date', required: true }, { id: 'preview-pc', prompt: 'PC on Duty', type: 'short_text', required: true }],
+      questionCount: examDraft?.questions?.filter(q => !q.entryField).length ?? 20,
       totalPoints: 1,
     };
     const attempt: PublicAttempt = {

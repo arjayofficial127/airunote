@@ -1244,8 +1244,10 @@ tr:hover > .block-icon-wrapper .block-icon {
 .completion-art .gift-stage { width: 100%; margin-top: 0; }
 .completion-gift-lid { position: absolute; inset: 0; transform: translateY(-13%) rotate(-7deg); }
 .completion-thank-you { position: absolute; z-index: 1; top: 30%; left: 24%; width: 52%; height: 26%; padding-top: 9%; background: linear-gradient(125deg,#fffbed,#e9dcc1); border: 1px solid #d7bd81; border-radius: 3px; color: #294333; font: italic 600 clamp(16px, 4vw, 22px) Georgia, serif; text-align: center; transform: rotate(-3deg); box-shadow: 0 3px 12px #041b1633; }
-.gift-completion .gift-body-layer, .gift-completion .gift-brand-seal { z-index: 2; }
-.gift-completion .completion-gift-lid { z-index: 3; }
+.gift-completion .gift-body-layer { z-index: 1; }
+.gift-completion .completion-thank-you { z-index: 2; }
+.gift-completion .completion-box-front { z-index: 3; clip-path: inset(20.6% 0 0); }
+.gift-completion .gift-brand-seal, .gift-completion .completion-gift-lid { z-index: 4; }
 .completion-sprig, .completion-pinecone { position: absolute; height: auto; pointer-events: none; user-select: none; filter: drop-shadow(0 4px 4px #031a1660); }
 .completion-sprig { z-index: 0; width: 48%; }
 .completion-sprig-left { left: -25%; bottom: 16%; transform: rotate(66deg); }

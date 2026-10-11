@@ -6,7 +6,7 @@ import { AppearanceFields } from './AppearanceFields';
 import { AppearancePreview } from './AppearancePreview';
 
 export function LocalAppearanceWorkspace() {
-  const [config, setConfig] = useState<Appearance>({ ...creatorAppearance, headerLabel: 'PARTNER KNOWLEDGE CHECK EXAM', instructions: { ...creatorAppearance.instructions, intro: 'WRAPPED IN JOY', title: 'INSTRUCTIONS', introFont: 'inherit' as const, secondaryTitle: '', secondaryBody: 'Enter your full name and Partner Number in the identity fields.' } });
+  const [config, setConfig] = useState<Appearance>({ ...creatorAppearance, headerLabel: 'PARTNER KNOWLEDGE CHECK EXAM', instructions: { ...creatorAppearance.instructions, intro: 'WRAPPED IN JOY', title: 'INSTRUCTIONS', introFont: 'inherit' as const, secondaryTitle: '', secondaryBody: 'Enter your Full Name, Partner Number, and PC on Duty below. The date and time are recorded automatically when you start.' } });
   const [title, setTitle] = useState('386 - FY27 HOLIDAY PROMOTION');
   const [description, setDescription] = useState('This is a Partner Knowledge Check Exam designed to assess your knowledge of the FY27 Holiday Promotion. Please read each question carefully and select the letter of the correct answer.');
   return <main className="min-h-screen bg-slate-50 p-4 text-slate-900 md:p-8">

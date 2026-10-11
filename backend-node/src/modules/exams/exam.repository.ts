@@ -65,6 +65,7 @@ function mapQuestion(
     prompt: row.prompt,
     explanation: row.explanation,
     position: row.position,
+    entryField: row.entryField,
     required: row.required,
     graded: row.graded,
     points: row.points,
@@ -252,6 +253,7 @@ export class ExamRepository extends ExamAttemptRepository {
           prompt: question.prompt,
           explanation: question.explanation ?? null,
           position: question.position ?? index,
+          entryField: question.entryField ?? false,
           required: question.required ?? true,
           graded: question.graded ?? true,
           points: question.points ?? 1,
@@ -340,6 +342,7 @@ export class ExamRepository extends ExamAttemptRepository {
           prompt: question.prompt,
           explanation: question.explanation ?? null,
           position: question.position ?? index,
+          entryField: question.entryField ?? false,
           required: question.required ?? true,
           graded: question.graded ?? true,
           points: question.points ?? 1,
@@ -355,12 +358,13 @@ export class ExamRepository extends ExamAttemptRepository {
 
   async updateQuestionGrading(orgId: string, examId: string, questionId: string, input: UpdateQuestionGradingInput): Promise<ExamDefinitionView | null> {
     const [ownedQuestion] = await db
-      .select({ id: examQuestionsTable.id })
+      .select({ id: examQuestionsTable.id, entryField: examQuestionsTable.entryField })
       .from(examQuestionsTable)
       .innerJoin(examsTable, eq(examsTable.id, examQuestionsTable.examId))
       .where(and(eq(examsTable.orgId, orgId), eq(examQuestionsTable.examId, examId), eq(examQuestionsTable.id, questionId)))
       .limit(1);
     if (!ownedQuestion) return null;
+    if (ownedQuestion.entryField && (input.graded || input.points > 0)) throw new ExamServiceError('Entry fields cannot be graded', 400, 'ENTRY_FIELD_UNGRADED');
 
     await db.update(examQuestionsTable).set({
       graded: input.graded,

@@ -62,7 +62,7 @@ export function buildExamReport(exam: ExamDefinitionView, data: ExamReportData) 
 
   const respondentRows = attempts.map((attempt) => {
     const attemptAnswers = answersByAttempt.get(attempt.id) ?? new Map<string, string[]>();
-    const gradedQuestions = exam.questions.filter((question) => question.graded && question.correctAnswers.length > 0);
+    const gradedQuestions = exam.questions.filter((question) => !question.entryField && question.graded && question.correctAnswers.length > 0);
     const possiblePoints = gradedQuestions.reduce((total, question) => total + question.points, 0);
     const earnedPoints = gradedQuestions.reduce(
       (total, question) => total + (isCorrect(question, attemptAnswers.get(question.id) ?? []) ? question.points : 0),
@@ -113,9 +113,9 @@ export function buildExamReport(exam: ExamDefinitionView, data: ExamReportData) 
   const attemptById = new Map(attempts.map((attempt) => [attempt.id, attempt]));
   const questionPerformance = exam.questions.map((question) => {
     const answered = includedRows.filter((row) => (row.answers[question.id]?.length ?? 0) > 0);
-    const correct = question.graded && question.correctAnswers.length > 0
+    const correct = !question.entryField && question.graded && question.correctAnswers.length > 0
       ? answered.filter((row) => isCorrect(question, row.answers[question.id] ?? [])) : [];
-    const incorrect = question.graded && question.correctAnswers.length > 0
+    const incorrect = !question.entryField && question.graded && question.correctAnswers.length > 0
       ? answered.filter((row) => !isCorrect(question, row.answers[question.id] ?? [])) : [];
     const responseTimes = includedRows.flatMap((row) => {
       const timing = readTiming(attemptById.get(row.id)?.questionTiming);
@@ -150,7 +150,7 @@ export function buildExamReport(exam: ExamDefinitionView, data: ExamReportData) 
       correctCount: correct.length,
       incorrectCount: incorrect.length,
       averageResponseSeconds: responseTimes.length ? round(responseTimes.reduce((sum, value) => sum + value, 0) / responseTimes.length) : null,
-      correctPercentage: answered.length > 0 && question.graded && question.correctAnswers.length > 0
+      correctPercentage: answered.length > 0 && !question.entryField && question.graded && question.correctAnswers.length > 0
         ? round((correct.length / answered.length) * 100) : null,
       correctRespondents: correct.map((row) => ({ id: row.id, name: row.respondentName })),
       incorrectRespondents: incorrect.map((row) => ({ id: row.id, name: row.respondentName })),

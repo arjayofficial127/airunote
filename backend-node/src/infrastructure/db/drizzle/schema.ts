@@ -831,6 +831,7 @@ export const examQuestionsTable = pgTable('exam_questions', {
     .notNull()
     .references(() => examsTable.id, { onDelete: 'cascade' }),
   sectionId: uuid('section_id').references(() => examSectionsTable.id, { onDelete: 'set null' }),
+  entryField: boolean('entry_field').notNull().default(false),
   type: varchar('type', { length: 30 }).notNull(),
   prompt: text('prompt').notNull(),
   explanation: text('explanation'),

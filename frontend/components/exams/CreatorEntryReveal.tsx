@@ -158,6 +158,8 @@ export function CreatorCompletionGift() {
       </>}
       <div className="completion-thank-you" />
       <div className="gift-body-layer"><img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
+      {/* The paper sits between the rear wall and the front lip of the box. */}
+      <div className="gift-body-layer completion-box-front"><img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
       <div className="completion-gift-lid"><div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" /></div>
       <div className="gift-bow-layer"><img src="/exam-assets/creator/gift-bow-embossed-red.png" alt="" /></div></div>
       {appearance.brand.visible && appearance.brand.logoVisible && logo && <div className="gift-brand-seal" data-builtin={appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo'} style={{ '--gift-seal-color': appearance.colors.logo } as CSSProperties}>{appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo' ? <span style={{maskImage:`url("${logo}")`,WebkitMaskImage:`url("${logo}")`,backgroundColor:'color-mix(in srgb, var(--gift-seal-color) 55%, #102c21)'}} /> : <img src={logo} alt="" />}</div>}

@@ -1,3 +1,4 @@
+import { collectEntryAnswers } from './entry-fields';
 import jwt from 'jsonwebtoken';
 import { isDateAnswer } from './date-answer';
 import { readAppearance } from '../exam-appearance/contract';
@@ -226,6 +227,7 @@ export class ExamService {
       questions: source.questions.map((question) => {
         const optionKeys = new Map(question.options.map((option, index) => [option.id, `option-${index + 1}`]));
         return {
+          entryField: question.entryField,
           type: question.type,
           prompt: question.prompt,
           explanation: question.explanation,
@@ -271,8 +273,9 @@ export class ExamService {
       startsAt: exam.startsAt,
       endsAt: exam.endsAt,
       serverTime: new Date(),
-      questionCount: exam.questions.length,
-      totalPoints: exam.questions.filter((question) => question.graded && question.correctAnswers.length > 0).reduce((total, question) => total + question.points, 0),
+      entryFields: exam.questions.filter(q => q.entryField).map(q => ({ id: q.id, prompt: q.prompt, type: q.type, required: q.required })),
+      questionCount: exam.questions.filter(q => !q.entryField).length,
+      totalPoints: exam.questions.filter((question) => !question.entryField && question.graded && question.correctAnswers.length > 0).reduce((total, question) => total + question.points, 0),
     };
   }
 
@@ -289,7 +292,11 @@ export class ExamService {
         exam.shuffleQuestions,
       ));
     }
-    return ordered.map((question) => question.id);
+    return ordered.filter(question => !question.entryField).map((question) => question.id);
+  }
+
+  private entryAnswers(exam: ExamDefinitionView, input: StartAttemptInput) {
+    return collectEntryAnswers(exam.questions, input);
   }
 
   private createOptionOrder(exam: ExamDefinitionView): Record<string, string[]> {
@@ -319,6 +326,7 @@ export class ExamService {
       examId: exam.id,
       expectedUpdatedAt: exam.updatedAt,
       accessTokenHash: this.tokenHash(token),
+      entryAnswers: this.entryAnswers(exam, input),
       respondentName: input.respondentName,
       respondentEmail: input.respondentEmail ?? null,
       respondentIdentifier: input.respondentIdentifier ?? null,
@@ -376,7 +384,7 @@ export class ExamService {
     if (exam.requireIdentifier && !input.respondentIdentifier) throw new ExamServiceError('Partner number is required', 400, 'IDENTIFIER_REQUIRED');
     const token = this.createToken();
     const attempt = await this.repository.createAttempt({ examId: exam.id, expectedUpdatedAt: exam.updatedAt,
-      accessTokenHash: this.tokenHash(token), respondentName: input.respondentName, respondentEmail: input.respondentEmail ?? null,
+      accessTokenHash: this.tokenHash(token), entryAnswers: this.entryAnswers(exam, input), respondentName: input.respondentName, respondentEmail: input.respondentEmail ?? null,
       respondentIdentifier: input.respondentIdentifier ?? null, identityKeyHash: this.hash(`coded:${token}`),
       deviceHash: this.hash(input.deviceId), ipHash: this.hash(signals.ipAddress), userAgentHash: this.hash(signals.userAgent),
       attemptNumber: 1, questionOrder: this.createQuestionOrder(exam), optionOrder: this.createOptionOrder(exam),
@@ -453,7 +461,7 @@ export class ExamService {
     const questionsById = new Map(exam.questions.map((question) => [question.id, question]));
     return readStringArray(attempt.questionOrder).flatMap((questionId) => {
       const question = questionsById.get(questionId);
-      if (!question) return [];
+      if (!question || question.entryField) return [];
       const optionsById = new Map(question.options.map((option) => [option.id, option]));
       const orderedOptions = (optionOrder[question.id] ?? question.options.map((option) => option.id))
         .flatMap((optionId) => optionsById.get(optionId) ?? []);
@@ -539,7 +547,7 @@ export class ExamService {
     const { exam, attempt } = await this.loadAttempt(accessToken);
     if (attempt.status !== 'in_progress') throw new ExamServiceError('This attempt is already finished', 409, 'ATTEMPT_FINISHED');
     const question = exam.questions.find((candidate) => candidate.id === questionId);
-    if (!question) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
+    if (!question || question.entryField) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
     const cleaned = this.cleanAnswer(question, answer);
     const questionTiming = readQuestionTiming(attempt.questionTiming);
     let timing = questionTiming[question.id];
@@ -560,7 +568,7 @@ export class ExamService {
     const { exam, attempt, answers } = await this.loadAttempt(accessToken);
     if (attempt.status !== 'in_progress') return this.buildAttemptPayload(exam, attempt, answers, false);
     const question = exam.questions.find((candidate) => candidate.id === questionId);
-    if (!question) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
+    if (!question || question.entryField) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
     if (question.maxTimeSeconds === null) return this.buildAttemptPayload(exam, attempt, answers, true);
 
     const questionTiming = readQuestionTiming(attempt.questionTiming);
@@ -586,7 +594,7 @@ export class ExamService {
       return this.buildAttemptPayload(exam, attempt, answers, false);
     }
     const question = exam.questions.find((candidate) => candidate.id === questionId);
-    if (!question) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
+    if (!question || question.entryField) throw new ExamServiceError('Question not found', 404, 'QUESTION_NOT_FOUND');
     if (question.maxTimeSeconds === null) throw new ExamServiceError('This question does not have a time limit', 409, 'QUESTION_NOT_TIMED');
     const questionTiming = readQuestionTiming(attempt.questionTiming);
     const existing = questionTiming[question.id];
@@ -637,7 +645,7 @@ export class ExamService {
     const timedOutQuestionIds = new Set(Object.entries(readQuestionTiming(attempt.questionTiming))
       .filter(([, timing]) => Boolean(timing.timedOutAt))
       .map(([questionId]) => questionId));
-    const missingRequired = exam.questions.filter((question) => question.required
+    const missingRequired = exam.questions.filter((question) => !question.entryField && question.required
       && !answeredQuestionIds.has(question.id)
       && !timedOutQuestionIds.has(question.id));
     if (missingRequired.length > 0) {

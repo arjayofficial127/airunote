@@ -26,6 +26,7 @@ export interface CreateAttemptRecordInput {
   ipHash: string;
   userAgentHash: string;
   attemptNumber: number;
+  entryAnswers?: Array<{ questionId: string; answer: string[] }>;
   questionOrder: string[];
   optionOrder: Record<string, string[]>;
   isPreview?: boolean;
@@ -56,9 +57,10 @@ export class ExamAttemptRepository {
       if (input.expectedUpdatedAt && exam.updatedAt.getTime() !== input.expectedUpdatedAt.getTime()) {
         throw new ExamServiceError('The exam changed while you were starting. Refresh and try again.', 409, 'EXAM_CHANGED');
       }
-      const { expectedUpdatedAt: _version, ...values } = input;
+      const { expectedUpdatedAt: _version, entryAnswers = [], ...values } = input;
       const config = readAppearance(exam.appearanceConfig);
       const [created] = await tx.insert(examAttemptsTable).values({ ...values, appearanceConfig: config }).returning();
+      if (entryAnswers.length) await tx.insert(examAnswersTable).values(entryAnswers.map(answer => ({ ...answer, attemptId: created.id, savedAt: created.startedAt })));
       await recordAssetUsage(tx, exam.orgId, 'attempt', created.id, config);
       return created;
     });

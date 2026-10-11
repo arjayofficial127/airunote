@@ -11,6 +11,7 @@ const questionSchema = z.object({
   id: z.string().uuid().optional(), sectionId: z.string().uuid().nullable().optional(), sectionKey: z.string().nullable().optional(),
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_text', 'date']), prompt: z.string().min(1),
   explanation: z.string().nullable().optional(), position: z.number().int().min(0).optional(), required: z.boolean().optional(),
+  entryField: z.boolean().optional(),
   graded: z.boolean().optional(), points: z.number().int().min(0).optional(), pinned: z.boolean().optional(),
   maxTimeSeconds: z.number().int().min(5).max(3600).nullable().optional(),
   correctAnswers: z.array(z.string()).optional(), options: z.array(optionSchema).optional(),

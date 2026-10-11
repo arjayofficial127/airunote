@@ -135,6 +135,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
+  const [entryAnswers, setEntryAnswers] = useState<Record<string, string>>({});
   const [questionIndex, setQuestionIndex] = useState(0);
   const [shortAnswers, setShortAnswers] = useState<Record<string, string>>({});
   const [confirmingSubmit, setConfirmingSubmit] = useState(false);
@@ -156,7 +157,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
   }, [exam.overview?.serverTime]);
 
   useEffect(() => {
-    if (!exam.overview || (!exam.overview.startsAt && !exam.overview.endsAt)) return;
+    if (!exam.overview) return;
     const timer = window.setInterval(() => setClockTick(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [exam.overview]);
@@ -198,7 +199,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
     event.preventDefault();
     if (preview) { onPreviewStart?.(); return; }
     primeSound();
-    void exam.start({ respondentName: name, respondentEmail: email, respondentIdentifier: identifier });
+    void exam.start({ entryAnswers, respondentName: name, respondentEmail: email, respondentIdentifier: identifier });
   };
 
   if (exam.loading && !exam.attempt) return <div className={`flex min-h-screen items-center justify-center ${autumnBackground} text-sm font-medium text-[var(--exam-color-7d5132)]`}>Preparing your exam…</div>;
@@ -252,11 +253,13 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
             <div><h2 className="text-lg font-bold text-[var(--exam-color-33241b)]">Your details</h2><p className="mt-1 text-sm text-[var(--exam-color-705746)]">Your timer starts when you select Start exam.</p></div>
             {exam.overview.preventFocusLoss && <div className="rounded-2xl border border-[var(--exam-color-e9b95f)] bg-[var(--exam-color-fff6dc)] px-4 py-3 text-sm leading-6 text-[var(--exam-color-754116)]"><strong>Before you begin:</strong> moving to another tab, minimizing, or losing window focus will end the attempt. You will need to contact the administrator for a continue link.</div>}
             {secondsUntilEnd !== null && secondsUntilEnd > 0 && secondsUntilEnd <= 1_800 && <div className="rounded-2xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-900"><strong>The response window closes soon:</strong> {formatCountdown(secondsUntilEnd)} remaining, until {formatScheduleDate(exam.overview.endsAt!)}. Start only if you have enough time to finish.</div>}
+            {(exam.overview.entryFields ?? []).some(field => field.type === 'date') && <label className="block text-sm font-semibold">Date<input readOnly value={new Date(clockTick + serverClockOffset.current).toLocaleString('sv-SE', { timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white/60 px-4 py-3" /><span className="mt-1 block text-xs font-normal">Philippine time · Recorded automatically by the server when you start.</span></label>}
             <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Full name *<input required value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Email {exam.overview.requireEmail ? '*' : '(optional)'}<input required={exam.overview.requireEmail} type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>
-              <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Student / employee ID {exam.overview.requireIdentifier ? '*' : '(optional)'}<input required={exam.overview.requireIdentifier} value={identifier} onChange={(event) => setIdentifier(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>
+            <div className={(exam.overview.requireEmail || !exam.overview.entryFields?.length) ? "grid gap-3 sm:grid-cols-2" : "grid gap-3"}>
+              {(exam.overview.requireEmail || !exam.overview.entryFields?.length) && <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Email {exam.overview.requireEmail ? '*' : '(optional)'}<input required={exam.overview.requireEmail} type="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>}
+              <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">{exam.overview.entryFields?.length ? 'Partner Number' : 'Student / employee ID'} {exam.overview.requireIdentifier ? '*' : '(optional)'}<input required={exam.overview.requireIdentifier} value={identifier} onChange={(event) => setIdentifier(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>
             </div>
+            {(exam.overview.entryFields ?? []).filter(field => field.type !== 'date').map(field => <label key={field.id} className="block text-sm font-semibold">{field.prompt}{field.required ? ' *' : ''}<input required={field.required} maxLength={2000} value={entryAnswers[field.id] ?? ''} onChange={event => setEntryAnswers(previous => ({ ...previous, [field.id]: event.target.value }))} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:ring-2" /></label>)}
             {exam.error && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</p>}
             <div className="entry-start-action"><button type="submit" disabled={exam.loading} className="w-full rounded-xl bg-[var(--exam-color-b95f2a)] px-5 py-3.5 text-sm font-bold text-[var(--exam-primary-text)] shadow-lg shadow-[color:var(--exam-color-b95f2a-20)] transition hover:bg-[var(--exam-color-99491f)] disabled:opacity-50">{exam.loading ? 'Starting…' : 'Start exam'}</button></div>
             <ExamFooter />

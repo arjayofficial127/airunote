@@ -119,7 +119,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
   const locked = exam.attemptCount > 0;
   const tabs: Array<{ id: BuilderTab; label: string }> = [
     { id: 'setup', label: 'Setup' },
-    { id: 'questions', label: `Questions (${draft.questions?.length ?? 0})` },
+    { id: 'questions', label: `Questions (${draft.questions?.filter(q => !q.entryField).length ?? 0})` },
     { id: 'json', label: 'JSON pro' },
     { id: 'appearance', label: 'Appearance' },
   ];

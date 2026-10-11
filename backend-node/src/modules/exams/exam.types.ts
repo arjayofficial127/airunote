@@ -37,6 +37,7 @@ export const examQuestionInputSchema = z.object({
   id: z.string().uuid().optional(),
   sectionId: z.string().uuid().nullable().optional(),
   sectionKey: z.string().min(1).max(100).nullable().optional(),
+  entryField: z.boolean().optional(),
   type: examQuestionTypeSchema,
   prompt: z.string().trim().min(1).max(20000),
   explanation: z.string().max(20000).nullable().optional(),
@@ -52,6 +53,7 @@ export const examQuestionInputSchema = z.object({
   if (question.type === 'date' && (question.correctAnswers ?? []).some(value => !isDateAnswer(value))) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['correctAnswers'], message: 'Use a valid date in YYYY-MM-DD format' });
   }
+  if (question.entryField && (!['date', 'short_text'].includes(question.type) || question.graded !== false || question.points !== 0 || question.maxTimeSeconds)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['entryField'], message: 'Entry fields must be ungraded date or short text fields without a timer' });
   const isChoice = question.type === 'single_choice' || question.type === 'multiple_choice';
   if (isChoice && (!question.options || question.options.length < 2)) {
     context.addIssue({
@@ -106,6 +108,7 @@ export const startAttemptSchema = z.object({
   respondentName: z.string().trim().min(1).max(255),
   respondentEmail: z.string().trim().email().max(255).nullable().optional(),
   respondentIdentifier: z.string().trim().min(1).max(255).nullable().optional(),
+  entryAnswers: z.record(z.string().uuid(), z.string().trim().max(2000)).optional(),
   deviceId: z.string().trim().min(8).max(255),
 });
 
@@ -149,6 +152,7 @@ export interface ExamQuestionView {
   prompt: string;
   explanation: string | null;
   position: number;
+  entryField?: boolean;
   required: boolean;
   graded: boolean;
   points: number;

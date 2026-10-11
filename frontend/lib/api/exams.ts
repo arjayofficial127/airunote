@@ -29,6 +29,7 @@ export interface ExamQuestion {
   id: string;
   examId: string;
   sectionId: string | null;
+  entryField?: boolean;
   type: ExamQuestionType;
   prompt: string;
   explanation: string | null;
@@ -93,6 +94,7 @@ export interface ExamQuestionInput {
   id?: string;
   sectionId?: string | null;
   sectionKey?: string | null;
+  entryField?: boolean;
   type: ExamQuestionType;
   prompt: string;
   explanation?: string | null;
@@ -205,6 +207,7 @@ export interface PublicExamOverview {
   availability: 'open' | 'upcoming' | 'ended' | 'unavailable';
   startsAt: string | null;
   endsAt: string | null;
+  entryFields?: Array<{ id: string; prompt: string; type: 'date' | 'short_text'; required: boolean }>;
   serverTime: string;
   questionCount: number;
   totalPoints: number;
@@ -213,6 +216,7 @@ export interface PublicExamOverview {
 export interface PublicAttemptQuestion {
   id: string;
   sectionId: string | null;
+  entryField?: boolean;
   type: ExamQuestionType;
   prompt: string;
   position: number;
@@ -290,9 +294,9 @@ function attemptHeaders(accessToken: string) {
 export const publicExamsApi = {
   unlockPreview: async (publicId: string, code: string): Promise<{ grant: string; overview: PublicExamOverview }> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-unlock`, { code })),
   previewOverview: async (publicId: string, grant: string): Promise<PublicExamOverview> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-overview`, { grant })),
-  previewStart: async (publicId: string, grant: string, input: { respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-start`, { ...input, grant })),
+  previewStart: async (publicId: string, grant: string, input: { entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> => unwrap(await apiClient.post(`/public/exams/${publicId}/preview-start`, { ...input, grant })),
   overview: async (publicId: string): Promise<PublicExamOverview> => unwrap(await apiClient.get(`/public/exams/${publicId}`)),
-  start: async (publicId: string, input: { respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> =>
+  start: async (publicId: string, input: { entryAnswers?: Record<string, string>; respondentName: string; respondentEmail?: string | null; respondentIdentifier?: string | null; deviceId: string }): Promise<{ accessToken: string; attempt: PublicAttempt }> =>
     unwrap(await apiClient.post(`/public/exams/${publicId}/start`, input)),
   current: async (accessToken: string): Promise<PublicAttempt> => unwrap(await apiClient.get('/public/exams/attempts/current', attemptHeaders(accessToken))),
   activateQuestion: async (accessToken: string, questionId: string): Promise<PublicAttempt> =>
