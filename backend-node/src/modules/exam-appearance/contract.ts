@@ -39,10 +39,20 @@ export const appearanceSchema = z
     schemaVersion: z.literal(1),
     renderer: z.enum(['autumn', 'plain', 'holiday', 'creator']),
     headerLabel: z.string().max(120),
+    completionEyebrow: z.string().max(120).optional(),
+    completionTitle: z.string().max(200).optional(),
     completionMessage: z.string().max(1000).optional(),
+    instructions: z.object({
+      intro: z.string().max(200).optional(),
+      introFont: z.enum(['inherit', 'sans', 'serif', 'mono', 'script']).optional(),
+      title: z.string().max(200).optional(),
+      secondaryTitle: z.string().max(200).optional(),
+      secondaryBody: z.string().max(3000).optional(),
+    }).strict().optional(),
     giftOpening: z.object({
       labelMode: z.enum(['unwrap', 'instructions', 'custom']),
       customLabel: z.string().max(200),
+      helperText: z.string().max(300).optional(),
       showReplay: z.boolean(),
     }).strict().optional(),
     brand: z

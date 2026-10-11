@@ -15,7 +15,7 @@ export function AppearanceFields({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [picker, setPicker] = useState<"logo" | "artwork" | null>(null);
-  const giftOpening = v.giftOpening ?? { labelMode: 'unwrap' as const, customLabel: '', showReplay: true };
+  const giftOpening = v.giftOpening ?? { labelMode: 'unwrap' as const, customLabel: '', showReplay: false };
   useEffect(() => {
     if (!picker) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -97,8 +97,40 @@ export function AppearanceFields({
           </select>
         </label>
         {giftOpening.labelMode === 'custom' && text('Button text', giftOpening.customLabel, customLabel => onChange({ ...v, giftOpening: { ...giftOpening, customLabel } }))}
+        <label className="block text-sm font-medium">
+          Text below the button
+          <textarea
+            className={inputClass}
+            rows={3}
+            maxLength={300}
+            value={v.giftOpening?.helperText ?? 'Your timer hasn’t started.'}
+            onChange={e => onChange({ ...v, giftOpening: { ...giftOpening, helperText: e.target.value } })}
+            aria-describedby="gift-helper-hint"
+          />
+        </label>
+        <p id="gift-helper-hint" className="text-xs text-slate-500">Leave blank to hide this text.</p>
         {toggle('Show Replay Gift Opening', giftOpening.showReplay, showReplay => onChange({ ...v, giftOpening: { ...giftOpening, showReplay } }))}
       </section>}
+      <section className="space-y-3 rounded-2xl border bg-white p-5">
+        <h3 className="font-semibold">Instructions</h3>
+        {text('Opening text (optional)', v.instructions?.intro ?? '', intro => onChange({ ...v, instructions: { ...v.instructions, intro } }))}
+        <label className="block text-sm">Opening text font
+          <select className={inputClass} value={v.instructions?.introFont ?? 'inherit'} onChange={e => onChange({ ...v, instructions: { ...v.instructions, introFont: e.target.value as NonNullable<Appearance['instructions']>['introFont'] } })}>
+            <option value="inherit">Match exam</option><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option><option value="script">Script</option>
+          </select>
+        </label>
+        {text('Instructions heading (optional)', v.instructions?.title ?? '', title => onChange({ ...v, instructions: { ...v.instructions, title } }))}
+        <p className="text-xs text-slate-500">The main instructions use the exam’s Instructions field. If it already includes these headings, move them here to avoid repeats.</p>
+        <details className="rounded-xl border p-3">
+          <summary className="cursor-pointer text-sm font-medium">Second instruction block (optional)</summary>
+          <div className="mt-3 space-y-3">
+            {text('Second heading (optional)', v.instructions?.secondaryTitle ?? '', secondaryTitle => onChange({ ...v, instructions: { ...v.instructions, secondaryTitle } }))}
+            <label className="block text-sm">Additional instructions
+              <textarea rows={4} maxLength={3000} className={inputClass} value={v.instructions?.secondaryBody ?? ''} onChange={e => onChange({ ...v, instructions: { ...v.instructions, secondaryBody: e.target.value } })} />
+            </label>
+          </div>
+        </details>
+      </section>
       <section className="space-y-3 rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Branding</h3>
         {toggle("Show branding", v.brand.visible, (visible) =>
@@ -284,7 +316,15 @@ export function AppearanceFields({
         ))}
       </section>
       <section className="space-y-3 rounded-2xl border bg-white p-5">
-        <h3 className="font-semibold">Footer and sound</h3>
+        <h3 className="font-semibold">Completion</h3>
+        <label className="block text-sm">
+          Celebration text
+          <input className={inputClass} maxLength={120} value={v.completionEyebrow ?? 'A little moment to celebrate'} onChange={e => onChange({ ...v, completionEyebrow: e.target.value })} />
+        </label>
+        <label className="block text-sm">
+          Completion headline
+          <input className={inputClass} maxLength={200} value={v.completionTitle ?? 'Beautifully done.'} onChange={e => onChange({ ...v, completionTitle: e.target.value })} />
+        </label>
         <label className="block text-sm">
           Completion message
           <textarea
@@ -297,20 +337,17 @@ export function AppearanceFields({
             }
           />
         </label>
+      </section>
+      <section className="space-y-3 rounded-2xl border bg-white p-5">
+        <h3 className="font-semibold">Footer and sound</h3>
         {toggle("Show footer", v.footer.visible, (visible) =>
           onChange({ ...v, footer: { ...v.footer, visible } }),
         )}
         {text("Footer text", v.footer.text, (text) =>
           onChange({ ...v, footer: { ...v.footer, text } }),
         )}
-        {toggle("Offer exam sounds", v.sound.available, (available) =>
+        {toggle("Enable exam sounds", v.sound.available, (available) =>
           onChange({ ...v, sound: { ...v.sound, available } }),
-        )}
-        {toggle(
-          "Sound on by default",
-          v.sound.defaultEnabled,
-          (defaultEnabled) =>
-            onChange({ ...v, sound: { ...v.sound, defaultEnabled } }),
         )}
       </section>
       {picker && (

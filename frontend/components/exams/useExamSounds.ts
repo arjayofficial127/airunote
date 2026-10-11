@@ -1,19 +1,14 @@
 'use client';
 
 import { useExamAppearance, useExamPreview } from './ExamAppearanceProvider';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 export function useExamSounds() {
   const config = useExamAppearance();
   const preview = useExamPreview();
-  const [preferred, setSoundEnabled] = useState(config.sound.defaultEnabled);
-  const soundEnabled = config.sound.available && preferred;
+  const soundEnabled = config.sound.available;
   const contextRef = useRef<AudioContext | null>(null);
 
-  useEffect(() => {
-    const saved = preview ? null : window.localStorage.getItem('airunote_exam_sounds');
-    setSoundEnabled(saved !== null ? saved !== 'off' : config.sound.defaultEnabled);
-  }, [config.sound.defaultEnabled, preview]);
   useEffect(() => () => { void contextRef.current?.close(); contextRef.current = null; }, []);
 
   const audioContext = useCallback(() => {
@@ -78,15 +73,5 @@ export function useExamSounds() {
     });
   }, [audioContext, soundEnabled, preview]);
 
-  const toggleSound = useCallback(() => {
-    if (preview) return;
-    setSoundEnabled((enabled) => {
-      const next = !enabled;
-      window.localStorage.setItem('airunote_exam_sounds', next ? 'on' : 'off');
-      if (next) audioContext();
-      return next;
-    });
-  }, [audioContext, preview]);
-
-  return { soundEnabled, toggleSound, primeSound, playNext, playCelebration };
+  return { primeSound, playNext, playCelebration };
 }

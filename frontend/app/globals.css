@@ -887,7 +887,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-theme[data-rounding="soft"] section { border-radius: 1rem; }
 .exam-theme[data-rounding="square"] section { border-radius: 0; }
 .exam-preview { position: relative; isolation: isolate; transform: translateZ(0); }
-.exam-preview main { min-height: 0 !important; }
+.exam-preview main { min-height: var(--exam-preview-page-height, 0px) !important; }
 .exam-theme [hidden] { display: none; }
 
 @keyframes holidayOrnamentSway { 0%, 100% { transform: rotate(-5deg) translateY(0); } 50% { transform: rotate(5deg) translateY(7px); } }
@@ -1040,6 +1040,110 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-phone-home span { width: 116px; height: 5px; border-radius: 10px; background: #182821; }
 .exam-phone-caption { position: absolute; top: calc(100% + 14px); left: 0; width: 100%; text-align: center; color: #64748b; font-size: 12px; }
 
-/* Reserve a quiet trailing slot: the sound icon never overlays the gift or wraps below the brand. */
-.exam-brand-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 12px; }
-.exam-brand-bar > .exam-sound-toggle { grid-column: 2; margin-top: 12px; }
+/* Branding uses the full width now that volume is controlled on the device. */
+.exam-brand-bar { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px; }
+
+/* Fixed phone/fullscreen frames use their own viewport; auto-height previews
+   use a stable canvas height to avoid iframe measurement feedback. */
+.exam-terminal-page { min-height: 100dvh; }
+.exam-preview main.exam-terminal-page { min-height: var(--exam-terminal-height, 100dvh) !important; }
+
+.preview-tool { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border: 1px solid #dbe2ea; border-radius: 10px; background: white; color: #475569; }
+.preview-tool:hover { background: #f1f5f9; }
+.preview-tool:focus-visible { outline: 2px solid #3158a5; outline-offset: 2px; }
+.preview-tool[aria-pressed="true"] { color: #234b86; border-color: #8ba8d7; background: #eaf1fc; }
+.preview-gallery { min-width: 0; overflow: hidden; border: 1px solid #dbe2ea; border-radius: 16px; background: #f1f3f6; }
+.preview-gallery-canvas { overflow: auto; overscroll-behavior: contain; touch-action: none; cursor: grab; background-image: radial-gradient(#c5ceda 1px, transparent 1px); background-size: 20px 20px; }
+.preview-gallery-canvas:active { cursor: grabbing; }
+.preview-gallery-track { position: absolute; top: 32px; left: 32px; display: flex; align-items: start; gap: 64px; transform-origin: top left; pointer-events: none; user-select: none; }
+.preview-gallery-screen { pointer-events: none; }
+.preview-gallery-screen .exam-phone-demo { margin-top: 0; }
+.preview-gallery-screen .exam-desktop-demo { width: 1920px; height: 1080px; overflow: hidden; border-radius: 16px; box-shadow: 0 12px 36px #0f172a20; }
+
+/* A quiet celebration, with the submitted answers one deliberate step away. */
+.completion-receipt {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--exam-color-e4c7a3);
+  border-radius: 28px;
+  background: var(--exam-color-fffdf8);
+  color: var(--exam-color-33241b);
+  box-shadow: 0 18px 48px rgb(45 40 25 / .09);
+}
+.completion-receipt::before {
+  content: '';
+  display: block;
+  height: 4px;
+  background: var(--exam-color-e5c08a);
+}
+.completion-celebration { padding: 24px 24px 28px; text-align: center; }
+.completion-art { position: relative; width: 180px; margin: 0 auto 20px; }
+.completion-art .gift-completion { height: 140px; }
+.completion-art .gift-stage { width: 140px; margin-top: -18px; }
+.completion-seal {
+  display: flex;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #15803d;
+  color: #ffffff;
+}
+.completion-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--exam-color-8a6951); }
+.completion-title { margin-top: 10px; font-size: clamp(30px, 6vw, 42px); font-weight: 750; line-height: 1.12; letter-spacing: -.04em; text-wrap: balance; }
+.completion-message { max-width: 440px; margin: 16px auto 0; font-size: 14px; line-height: 1.75; color: var(--exam-color-705746); white-space: pre-wrap; text-wrap: pretty; }
+.completion-confirmation { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 15px 20px; border-top: 1px dashed var(--exam-color-e4c7a3); background: var(--exam-color-fffaf1); font-size: 12px; font-weight: 600; }
+.completion-review { margin-top: 16px; overflow: hidden; border: 1px solid var(--exam-color-e4c7a3); border-radius: 20px; background: var(--exam-color-fffdf8); color: var(--exam-color-33241b); }
+.completion-review summary::-webkit-details-marker { display: none; }
+.completion-review summary:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; border-radius: 20px; }
+@media (min-width: 640px) { .completion-celebration { padding: 32px 40px; } }
+
+.exam-context { color: var(--exam-color-33241b); overflow-wrap: anywhere; }
+.exam-context-label { font-size: 9px; line-height: 1.5; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--exam-color-8a6951); }
+.exam-context-title { margin-top: 6px; font-size: 17px; font-weight: 750; line-height: 1.35; text-wrap: balance; }
+
+/* Keep the closed invitation compact enough for phone viewports. */
+@media (max-width: 639px) {
+  .exam-entry-page:has(.gift-reveal:not([data-phase="open"])) { padding-top: 16px; padding-bottom: 16px; }
+  .exam-entry-shell:has(.gift-reveal:not([data-phase="open"])) > .exam-entry-brand { margin-bottom: 16px; }
+  .gift-invitation { padding: 20px; }
+  .gift-invitation > .gift-stage { width: min(100%, clamp(180px, calc((100svh - 370px) / 1.18), 300px)); }
+  .gift-invitation .gift-caption { margin-bottom: 12px; }
+  .gift-invitation .gift-reassurance { min-height: 0; margin-top: 10px; }
+}
+
+/* Closed entry ends at the card; fill the viewport with background, not extra content height. */
+.exam-theme:has(.gift-reveal[data-phase="closed"]) {
+  min-height: 100dvh;
+  background: var(--exam-background);
+}
+.exam-entry-page:has(.gift-reveal[data-phase="closed"]),
+.exam-preview main.exam-entry-page:has(.gift-reveal[data-phase="closed"]) {
+  min-height: 0 !important;
+  padding-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.exam-entry-page .holiday-background-gift { opacity: .08; }
+
+/* Entry polish: connect the title to the gift and give the action more presence. */
+.gift-invitation > .gift-stage { margin-top: -12px; }
+.gift-invitation > .gift-open-button { width: 70%; min-width: min(220px, 100%); }
+.gift-invitation > .gift-reassurance { font-size: .8125rem; }
+
+.preview-gallery[data-interactive="true"] .preview-gallery-track,
+.preview-gallery[data-interactive="true"] .preview-gallery-screen { pointer-events: auto; }
+.preview-gallery[data-interactive="true"] .preview-gallery-canvas { cursor: auto; touch-action: auto; }
+
+/* Instructions remain readable while leaving more room for the actual content. */
+.gift-revealed-content > .exam-entry-hero { padding-block: 24px; }
+.gift-revealed-content > .exam-entry-hero h1 { font-size: clamp(1.4rem, 3.2vw, 2rem); margin-top: 8px; }
+.gift-revealed-content > .exam-entry-hero .mt-6 { margin-top: 16px; }
+.creator-instructions .instruction-intro { font-size: 1.25rem; line-height: 1.4; font-weight: 600; }
+.exam-question-page .holiday-background-gift { opacity: .08; }
+.exam-question-navigation > button:last-child { margin-left: auto; }

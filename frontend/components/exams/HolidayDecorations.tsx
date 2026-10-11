@@ -64,7 +64,7 @@ export function HolidayBackdrop() {
     >
       {decorations.backgroundBranches && (
         <>
-          <Gift className="absolute -bottom-8 -left-10 h-64 w-64 -rotate-12 opacity-20" />
+          <Gift className="holiday-background-gift absolute -bottom-8 -left-10 h-64 w-64 -rotate-12 opacity-20" />
           <svg
             className="absolute -right-24 -top-16 h-96 w-96 opacity-15"
             style={{ color: colors.accent }}

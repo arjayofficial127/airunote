@@ -39,19 +39,6 @@ function formatScheduleDate(value: string): string {
 
 const autumnBackground = 'exam-page-background';
 
-function SoundChip({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
-  const config = useExamAppearance();
-  const preview = useExamPreview();
-  if (!config.sound.available) return null;
-  const label = enabled ? 'Mute exam sounds' : 'Enable exam sounds';
-  return <button type="button" disabled={preview} onClick={onToggle} aria-pressed={enabled} aria-label={label} title={label} className="exam-sound-toggle inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--exam-color-704a31)] transition-colors hover:bg-[var(--exam-color-fffaf1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--exam-color-d97838)] focus-visible:ring-offset-2">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M11 5 6 9H3v6h3l5 4V5Z" />
-      {enabled ? <><path d="M15.5 8.5a5 5 0 0 1 0 7" /><path d="M19 5a10 10 0 0 1 0 14" /></> : <><path d="m16 9 5 6" /><path d="m21 9-5 6" /></>}
-    </svg>
-  </button>;
-}
-
 function SyncChip({ status, count, onRetry }: { status: ExamSyncStatus; count: number; onRetry: () => void }) {
   const synced = status === 'synced' && count === 0;
   const label = synced
@@ -66,8 +53,34 @@ function SyncChip({ status, count, onRetry }: { status: ExamSyncStatus; count: n
   return <button type="button" onClick={onRetry} disabled={synced || status === 'saving'} title={synced ? 'Every answer is saved on the server' : 'Answers are safe on this device. Select to retry server synchronization.'} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] shadow-sm disabled:cursor-default ${synced ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : status === 'error' || status === 'offline' ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-sky-200 bg-sky-50 text-sky-800'}`}><span aria-hidden="true">{synced ? '✓' : status === 'offline' ? '↯' : '↻'}</span>{label}</button>;
 }
 
+function ExamInstructions({ description }: { description: string | null }) {
+  const { instructions } = useExamAppearance();
+  const fonts = { inherit: 'inherit', sans: 'Arial, sans-serif', serif: 'Georgia, serif', mono: 'ui-monospace, monospace', script: '"Brush Script MT", "Segoe Script", cursive' };
+  if (!description && !instructions?.intro && !instructions?.title && !instructions?.secondaryTitle && !instructions?.secondaryBody) return null;
+  return <div className="creator-instructions space-y-5">
+    {instructions?.intro && <p className="instruction-intro" style={{ fontFamily: fonts[instructions.introFont ?? 'inherit'] }}>{instructions.intro}</p>}
+    <div>
+      {instructions?.title && <h2 className="mb-3 text-lg font-bold">{instructions.title}</h2>}
+      {description && <p>{description}</p>}
+    </div>
+    {(instructions?.secondaryTitle || instructions?.secondaryBody) && <div className="border-t border-[var(--exam-color-e4c7a3)] pt-5">
+      {instructions.secondaryTitle && <h2 className="mb-3 text-base font-bold">{instructions.secondaryTitle}</h2>}
+      {instructions.secondaryBody && <p>{instructions.secondaryBody}</p>}
+    </div>}
+  </div>;
+}
+
+function ExamContext({ title }: { title: string }) {
+  const appearance = useExamAppearance();
+  return <div className="exam-context">
+    {appearance.headerLabel && <p className="exam-context-label text-[9px] font-bold leading-normal tracking-[0.06em]">{appearance.headerLabel}</p>}
+    <p className="exam-context-title">{title}</p>
+  </div>;
+}
+
 function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExamOverview; state: 'upcoming' | 'ended' | 'unavailable'; seconds?: number }) {
   const upcoming = state === 'upcoming';
+  const appearance = useExamAppearance();
   return (
     <main className={`min-h-screen px-5 py-10 ${autumnBackground}`}>
       <AutumnBackdrop />
@@ -76,9 +89,9 @@ function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExa
         <section className="exam-entry-card overflow-hidden rounded-[2rem] border border-[var(--exam-color-dcc3a5)] bg-[var(--exam-color-fffdf8)] shadow-[0_28px_80px_rgba(73,43,22,0.16)]">
           <div className="relative overflow-hidden bg-[var(--exam-color-2c1d17)] px-7 py-8 text-[var(--exam-header-text)] sm:px-10">
             <AutumnHeroBranches />
-            <div className="relative"><div className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--exam-color-f4b36f)]">Scheduled graded exam</div>
+            <div className="relative"><div className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--exam-color-f4b36f)]">{appearance.headerLabel}</div>
             <h1 className="mt-3 text-3xl font-bold tracking-tight">{overview.title}</h1>
-            {overview.description && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--exam-color-ead8c7)]">{overview.description}</p>}</div>
+            </div>
           </div>
           <div className="p-7 text-center sm:p-10">
             <div className={`mx-auto grid h-14 w-14 place-items-center rounded-full text-2xl ${upcoming ? 'bg-[var(--exam-color-fff0d5)] text-[var(--exam-color-a94e21)]' : 'bg-[var(--exam-color-eee4d9)] text-[var(--exam-color-725441)]'}`}>{upcoming ? '◷' : '—'}</div>
@@ -97,11 +110,11 @@ export function PublicExamPage({ publicId }: PublicExamPageProps) {
   return <ExamAppearanceProvider config={readAppearance(exam.attempt?.appearance ?? exam.overview?.appearance)}><ExamContent exam={exam} /></ExamAppearanceProvider>;
 }
 
-export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }) {
+export function ExamContent({ exam, previewInstructions = false }: { exam: ReturnType<typeof usePublicExam>; previewInstructions?: boolean }) {
   const appearance = useExamAppearance();
   const preview = useExamPreview();
   const { activateQuestion, expireQuestion } = exam;
-  const { soundEnabled, toggleSound, primeSound, playNext, playCelebration } = useExamSounds();
+  const { primeSound, playNext, playCelebration } = useExamSounds();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -195,9 +208,9 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
       <div className="pointer-events-none absolute -left-16 top-36 h-44 w-44 rounded-full border-[34px] border-[color:var(--exam-color-d97736-10)]" />
       <div className="pointer-events-none absolute -right-12 bottom-12 h-56 w-56 rotate-12 rounded-[45%] bg-[color:var(--exam-color-1e3932-5)]" />
       <div className="exam-entry-shell relative z-[1] mx-auto max-w-4xl">
-        <div className="exam-entry-brand exam-brand-bar mb-6"><ExamSponsorBrand /><SoundChip enabled={soundEnabled} onToggle={toggleSound} /></div>
-        <section className="overflow-hidden rounded-[2rem] border border-[var(--exam-color-dcc3a5)] bg-[var(--exam-color-fffdf8)] shadow-[0_28px_80px_rgba(73,43,22,0.18)]">
-          <CreatorEntryReveal title={exam.overview.title}>
+        <div className="exam-entry-brand exam-brand-bar mb-6"><ExamSponsorBrand /></div>
+        <section className="exam-entry-card overflow-hidden rounded-[2rem] border border-[var(--exam-color-dcc3a5)] bg-[var(--exam-color-fffdf8)] shadow-[0_28px_80px_rgba(73,43,22,0.18)]">
+          <CreatorEntryReveal title={exam.overview.title} initiallyOpen={preview && previewInstructions}>
           <div className="exam-entry-hero relative bg-[var(--exam-color-2c1d17)] px-7 py-8 text-[var(--exam-header-text)] sm:px-10 sm:py-10">
             <AutumnHeroBranches />
             <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:radial-gradient(circle_at_20%_30%,var(--exam-color-d97838)_0,transparent_25%),radial-gradient(circle_at_85%_10%,var(--exam-color-00754a)_0,transparent_24%)]" />
@@ -205,7 +218,7 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
               <div className="min-w-0 flex-1 max-w-xl">
                 <div className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--exam-color-f4b36f)]">{appearance.headerLabel}</div>
                 <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{exam.overview.title}</h1>
-                {appearance.renderer !== 'creator' && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--exam-color-ead8c7)]">{exam.overview.description}</p>}
+                {appearance.renderer !== 'creator' && !appearance.instructions && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--exam-color-ead8c7)]">{exam.overview.description}</p>}
                 <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.durationMinutes} minutes</span>
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.questionCount} question{exam.overview.questionCount === 1 ? '' : 's'}</span>
@@ -216,8 +229,9 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
               {appearance.renderer !== 'creator' && <StoreNineCats />}
             </div>
           </div>
-          {appearance.renderer === 'creator' && exam.overview.description && <div className="creator-instructions"><p>{exam.overview.description}</p></div>}
-          <form onSubmit={submitIdentity} className="p-7 sm:p-10"><fieldset disabled={preview} className="min-w-0 space-y-5">
+          {(appearance.renderer === 'creator' || appearance.instructions) && <ExamInstructions description={exam.overview.description} />}
+          <form onSubmit={submitIdentity} className="p-7 sm:p-10"><fieldset className="min-w-0 space-y-5">
+            <div><h2 className="text-lg font-bold text-[var(--exam-color-33241b)]">Your details</h2><p className="mt-1 text-sm text-[var(--exam-color-705746)]">Your timer starts when you select Start exam.</p></div>
             {exam.overview.preventFocusLoss && <div className="rounded-2xl border border-[var(--exam-color-e9b95f)] bg-[var(--exam-color-fff6dc)] px-4 py-3 text-sm leading-6 text-[var(--exam-color-754116)]"><strong>Before you begin:</strong> moving to another tab, minimizing, or losing window focus will end the attempt. You will need to contact the administrator for a continue link.</div>}
             {secondsUntilEnd !== null && secondsUntilEnd > 0 && secondsUntilEnd <= 1_800 && <div className="rounded-2xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm leading-6 text-orange-900"><strong>The response window closes soon:</strong> {formatCountdown(secondsUntilEnd)} remaining, until {formatScheduleDate(exam.overview.endsAt!)}. Start only if you have enough time to finish.</div>}
             <label className="block text-sm font-semibold text-[var(--exam-color-49372b)]">Full name *<input required value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)]" /></label>
@@ -235,12 +249,41 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
     </main>
   );
 
-  if (exam.attempt.status === 'terminated') return <main className={`relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 text-center shadow-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-2xl text-amber-900">!</div><h1 className="mt-5 text-2xl font-semibold text-[var(--exam-color-2f2118)]">Attempt paused by focus protection</h1><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">The exam detected that this window lost focus. Your answers and end time were saved. Contact your administrator if you need a continue link.</p><p className="mt-5 rounded-xl bg-[var(--exam-color-f4eadf)] px-4 py-3 text-xs text-[var(--exam-color-876650)]">Attempt #{exam.attempt.attemptNumber} · reason: {exam.attempt.terminationReason || 'focus policy'}</p>{!exam.attempt.isPreview && <button type="button" onClick={exam.startAnother} className="mt-5 rounded-xl border border-[var(--exam-color-d3b18a)] px-4 py-2.5 text-sm font-semibold text-[var(--exam-color-68452d)] hover:bg-[var(--exam-color-fff5e8)]">Different respondent</button>}<p className="mt-2 text-xs text-[var(--exam-color-947056)]">The interrupted attempt stays visible in the administrator’s audit report.</p></section></main>;
+  if (exam.attempt.status === 'terminated') return <main className={`exam-terminal-page relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 text-center shadow-2xl"><div className="mb-6 border-b border-[var(--exam-color-e4c7a3)] pb-5"><ExamContext title={exam.attempt.title} /></div><div className="mx-auto flex h-14 w-14 items-center justify-center text-red-600" aria-hidden="true"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 2.1 18a2 2 0 0 0 1.7 3h16.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="#fef2f2"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><h1 className="mt-5 text-2xl font-semibold text-[var(--exam-color-2f2118)]">Attempt paused by focus protection</h1><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">The exam detected that this window lost focus. Your answers and end time were saved. Contact your administrator if you need a continue link.</p><p className="mt-5 rounded-xl bg-[var(--exam-color-f4eadf)] px-4 py-3 text-xs text-[var(--exam-color-876650)]">Attempt #{exam.attempt.attemptNumber} · reason: {exam.attempt.terminationReason || 'focus policy'}</p>{!exam.attempt.isPreview && <button type="button" onClick={exam.startAnother} className="mt-5 rounded-xl border border-[var(--exam-color-d3b18a)] px-4 py-2.5 text-sm font-semibold text-[var(--exam-color-68452d)] hover:bg-[var(--exam-color-fff5e8)]">Different respondent</button>}<p className="mt-2 text-xs text-[var(--exam-color-947056)]">The interrupted attempt stays visible in the administrator’s audit report.</p></section></main>;
 
-  if (exam.attempt.status === 'timed_out' || exam.attempt.status === 'abandoned' || exam.attempt.status === 'void') return <main className={`relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 text-center shadow-2xl"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--exam-color-eee4d9)] text-2xl text-[var(--exam-color-725441)]">◷</div><h1 className="mt-5 text-2xl font-semibold text-[var(--exam-color-2f2118)]">{exam.attempt.status === 'timed_out' ? 'Time has ended for this attempt' : exam.attempt.status === 'void' ? 'This attempt was marked void' : 'This attempt is no longer active'}</h1><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">Your saved answers remain on record. Contact the exam administrator if you need help or permission to retake.</p></section></main>;
+  if (exam.attempt.status === 'timed_out' || exam.attempt.status === 'abandoned' || exam.attempt.status === 'void') return <main className={`exam-terminal-page relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 text-center shadow-2xl"><div className="mb-6 border-b border-[var(--exam-color-e4c7a3)] pb-5"><ExamContext title={exam.attempt.title} /></div><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--exam-color-eee4d9)] text-2xl text-[var(--exam-color-725441)]">◷</div><h1 className="mt-5 text-2xl font-semibold text-[var(--exam-color-2f2118)]">{exam.attempt.status === 'timed_out' ? 'Time has ended for this attempt' : exam.attempt.status === 'void' ? 'This attempt was marked void' : 'This attempt is no longer active'}</h1><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">Your saved answers remain on record. Contact the exam administrator if you need help or permission to retake.</p></section></main>;
 
   if (exam.attempt.status === 'completed') return (
-    <main className={`relative min-h-screen overflow-hidden px-5 py-10 ${autumnBackground}`}><AutumnBackdrop /><div className="relative z-[1] mx-auto max-w-3xl"><div className="exam-brand-bar mb-6"><ExamSponsorBrand /><SoundChip enabled={soundEnabled} onToggle={toggleSound} /></div><section className="relative overflow-hidden rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 shadow-xl">{exam.attempt.isPreview && <div className="mb-5 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-800">Admin preview · test only · {exam.attempt.previewedByEmail} · excluded from respondent statistics</div>}<CreatorCompletionGift />{appearance.renderer !== 'creator' && appearance.decorations.completion && <div className="pointer-events-none absolute right-6 top-5 text-5xl">{['holiday', 'creator'].includes(appearance.renderer) ? '🎁' : '🍂'}</div>}<div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--exam-color-fff0d5)] text-2xl text-[var(--exam-color-b95f2a)]">✓</div><div className="mt-5 text-xs font-black uppercase tracking-[0.22em] text-[var(--exam-color-d06426)]">Hooray!</div><h1 className="mt-2 text-3xl font-bold text-[var(--exam-color-2f2118)]">{exam.attempt.isPreview ? 'Preview completed' : 'You completed the exam 🎉'}</h1><p className="mt-2 text-sm leading-6 text-[var(--exam-color-705746)]">{exam.attempt.isPreview ? 'This authenticated preview is retained as an audit record and does not use an attempt allowance.' : (appearance.completionMessage || 'Great work! Your answers are safely saved and available to the administrator.')}</p>{exam.attempt.questions.length > 0 && <div className="mt-8 space-y-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[var(--exam-color-ead8c2)] bg-white p-5"><h2 className="font-medium text-[var(--exam-color-33241b)]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[var(--exam-color-624a3a)]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[var(--exam-color-00754a)]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[var(--exam-color-80634f)]">{question.explanation}</p>}</article>)}</div>}{!exam.attempt.isPreview && <button type="button" onClick={exam.startAnother} className="mt-8 rounded-xl border border-[var(--exam-color-d3b18a)] px-4 py-2.5 text-sm font-semibold text-[var(--exam-color-68452d)]">Start another allowed attempt</button>}</section></div></main>
+    <main className={`exam-completion-page relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 ${autumnBackground}`}>
+      <AutumnBackdrop />
+      <div className="relative z-[1] mx-auto max-w-2xl">
+        <div className="mb-5"><ExamSponsorBrand /></div>
+        <div className="mb-5 px-1"><ExamContext title={exam.attempt.title} /></div>
+        <section className="completion-receipt">
+          <span className="completion-seal" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg></span>
+          {exam.attempt.isPreview && <div className="border-b border-violet-200 bg-violet-50 px-5 py-3 text-xs font-semibold text-violet-800">Admin preview · {exam.attempt.previewedByEmail} · excluded from respondent statistics</div>}
+          <div className="completion-celebration">
+            <div className="completion-art">
+              <CreatorCompletionGift />
+              {appearance.renderer !== 'creator' && appearance.decorations.completion && <div aria-hidden="true" className="mb-4 text-5xl">{appearance.renderer === 'holiday' ? '🎁' : '🍂'}</div>}
+
+            </div>
+            {(appearance.completionEyebrow ?? 'A little moment to celebrate') && <p className="completion-eyebrow">{appearance.completionEyebrow ?? 'A little moment to celebrate'}</p>}
+            <h1 className="completion-title">{appearance.completionTitle ?? 'Beautifully done.'}</h1>
+            <p className="completion-message">{exam.attempt.isPreview ? 'This authenticated preview is retained as an audit record and does not use an attempt allowance.' : (appearance.completionMessage || 'Thank you for giving it your best. Your answers are safely saved.')}</p>
+          </div>
+          <div className="completion-confirmation"><span aria-hidden="true">✓</span><span>{exam.attempt.isPreview ? 'Preview recorded' : 'Answers submitted'}</span></div>
+        </section>
+        {exam.attempt.questions.length > 0 && <details className="completion-review group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold">
+            <span>Review your answers<span className="mt-1 block text-xs font-normal opacity-70">{exam.attempt.questions.length} question{exam.attempt.questions.length === 1 ? '' : 's'} · Your submitted responses</span></span>
+            <svg className="shrink-0 transition-transform group-open:rotate-180" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div className="space-y-3 border-t border-[var(--exam-color-ead8c2)] p-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[var(--exam-color-ead8c2)] bg-white p-5"><h2 className="font-medium text-[var(--exam-color-33241b)]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[var(--exam-color-624a3a)]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[var(--exam-color-00754a)]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[var(--exam-color-80634f)]">{question.explanation}</p>}</article>)}</div>
+        </details>}
+        {!exam.attempt.isPreview && availability === 'open' && exam.attempt.attemptNumber < exam.overview.maxAttempts && <div className="mt-5 text-center"><button type="button" onClick={exam.startAnother} className="min-h-11 rounded-xl px-4 py-2 text-sm font-semibold text-[var(--exam-color-68452d)] underline decoration-current/30 underline-offset-4 hover:bg-[var(--exam-color-fffdf8)]">Take another attempt <span aria-hidden="true">→</span></button></div>}
+      </div>
+    </main>
   );
 
   if (!current) return null;
@@ -279,23 +322,37 @@ export function ExamContent({ exam }: { exam: ReturnType<typeof usePublicExam> }
   };
 
   return (
-    <main className={`relative min-h-screen overflow-hidden ${autumnBackground}`}>
+    <main className={`exam-question-page relative min-h-screen overflow-hidden ${autumnBackground}`}>
       <AutumnBackdrop />
-      <header className="sticky top-0 z-20 border-b border-[var(--exam-color-ddc6aa)] bg-[color:var(--exam-color-fffaf1-95)] px-5 py-3 backdrop-blur"><div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3"><div className="hidden lg:block max-w-[40%]"><ExamSponsorBrand compact /></div><div className="min-w-0 basis-full sm:basis-0 sm:flex-1 sm:text-center"><h1 className="truncate text-sm font-bold text-[var(--exam-color-33241b)]">{exam.attempt.title}</h1><p className="mt-0.5 text-xs text-[var(--exam-color-8a6951)]">{exam.attempt.isPreview ? `Admin preview · ${exam.attempt.previewedByEmail}` : exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : 'All questions'} · {answeredCount} answered</p></div><div className="hidden md:block"><SyncChip status={exam.syncStatus} count={exam.unsyncedCount} onRetry={exam.retrySync} /></div><SoundChip enabled={soundEnabled} onToggle={toggleSound} /><div className={`ml-auto shrink-0 rounded-xl px-3 py-2 font-mono text-base font-bold sm:px-4 sm:text-lg ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[var(--exam-color-2c1d17)] text-[var(--exam-color-fff5e7)]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div></div></header>
-      <div className="relative z-[1] mx-auto max-w-4xl px-5 py-7">
-        <section className="relative mb-5 overflow-hidden rounded-[1.6rem] border border-[var(--exam-color-7c3a14)] bg-[linear-gradient(110deg,var(--exam-color-1d0d08)_0%,var(--exam-color-32170d)_58%,var(--exam-color-28160e)_100%)] px-6 py-5 text-[var(--exam-header-text)] shadow-[0_16px_36px_rgba(66,33,15,.16)] sm:px-8">
-          <AutumnHeroBranches />
-          <div className="relative flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-6">
-            <div className="min-w-0 w-full flex-1 max-w-2xl"><div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--exam-color-ef8a35)]">Graded exam</div><h2 className="mt-2 text-xl font-bold sm:text-2xl">{exam.attempt.title}</h2>{exam.attempt.description && <p className="mt-1 truncate text-xs text-[var(--exam-color-ead1bf)]">{exam.attempt.description}</p>}<div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold"><span className="rounded-full bg-white/10 px-2.5 py-1">{exam.attempt.durationMinutes} minutes</span><span className="rounded-full bg-white/10 px-2.5 py-1">{questions.length} question{questions.length === 1 ? '' : 's'}</span>{exam.attempt.preventFocusLoss && <span className="rounded-full bg-[color:var(--exam-color-d97706-25)] px-2.5 py-1 text-[var(--exam-color-ffd28c)]">Focus lock on</span>}</div></div>
-            <StoreNineCats compact />
+      <div className="relative z-[1]">
+        <header className="overflow-hidden border-b border-[var(--exam-color-ddc6aa)] bg-[var(--exam-color-fffdf8)] text-[var(--exam-color-33241b)] shadow-sm">
+          <div className="mx-auto max-w-4xl px-4 py-3 sm:px-5">
+          {appearance.headerLabel && <p className="exam-context-label mb-1">{appearance.headerLabel}</p>}
+          <h1 className="text-base font-bold leading-snug sm:text-lg">{exam.attempt.title}</h1>
+          {exam.attempt.isPreview && <p className="mt-1 text-xs text-[var(--exam-color-8a6951)]">Admin preview · {exam.attempt.previewedByEmail}</p>}
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <div className="min-w-0 flex-1 text-xs leading-5 text-[var(--exam-color-8a6951)]">
+              <p className="font-semibold">{exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : `${questions.length} questions`}</p>
+              <p>{answeredCount} answered{exam.attempt.preventFocusLoss ? ' · Focus lock on' : ''}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              
+              <div aria-label={`Time remaining: ${formatTime(exam.attempt.remainingSeconds)}`} className={`rounded-xl px-3 py-2 font-mono text-base font-bold tabular-nums ${exam.attempt.remainingSeconds < 120 ? 'bg-red-50 text-red-700' : 'bg-[var(--exam-color-2c1d17)] text-[var(--exam-color-fff5e7)]'}`}>{formatTime(exam.attempt.remainingSeconds)}</div>
+            </div>
           </div>
-        </section>
+          <div role="progressbar" aria-label="Questions answered" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answeredCount} aria-valuetext={`${answeredCount} of ${questions.length} answered`} className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--exam-color-eadac7)]">
+            <div className="h-full rounded-full bg-[var(--exam-color-2c1d17)] transition-[width] duration-200" style={{ width: `${(answeredCount / questions.length) * 100}%` }} />
+          </div>
+          {exam.unsyncedCount > 0 && <div className="mt-2"><SyncChip status={exam.syncStatus} count={exam.unsyncedCount} onRetry={exam.retrySync} /></div>}
+          </div>
+        </header>
+        <div className="mx-auto max-w-4xl px-4 py-4 sm:px-5 sm:py-5">
         {secondsUntilEnd !== null && secondsUntilEnd <= 1_800 && <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm font-medium ${secondsUntilEnd > 0 ? 'border-orange-300 bg-orange-50 text-orange-900' : 'border-red-300 bg-red-50 text-red-800'}`}>{secondsUntilEnd > 0 ? <>The public response window closes in <strong className="font-mono">{formatCountdown(secondsUntilEnd)}</strong>. Your current attempt remains saved as you work.</> : <>The public response window has closed to new attempts. Finish and submit this in-progress attempt now.</>}</div>}
         {exam.unsyncedCount > 0 && <div className={`mb-5 flex flex-col gap-3 rounded-2xl border px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${exam.syncStatus === 'error' || exam.syncStatus === 'offline' ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-sky-200 bg-sky-50 text-sky-950'}`} role="status" aria-live="polite"><div><strong>{exam.unsyncedCount} answer{exam.unsyncedCount === 1 ? '' : 's'} saved on this device.</strong> {exam.syncStatus === 'saving' ? 'Sending to the server now.' : exam.syncStatus === 'offline' ? 'You can keep answering; synchronization resumes when you reconnect.' : exam.syncStatus === 'error' ? 'The server has not accepted the answer yet.' : 'The server is temporarily unavailable; retrying automatically.'} Final submission stays locked until all answers are confirmed by the server.</div><button type="button" onClick={exam.retrySync} className="shrink-0 rounded-xl border border-current px-3 py-2 text-xs font-bold">Retry now</button></div>}
-        <div className="mb-5 h-2 overflow-hidden rounded-full bg-[var(--exam-color-eadac7)]"><div className="h-full rounded-full bg-gradient-to-r from-[var(--exam-color-b95f2a)] to-[var(--exam-color-e49b45)] transition-all" style={{ width: `${exam.attempt.oneQuestionAtATime ? ((safeQuestionIndex + 1) / questions.length) * 100 : (answeredCount / questions.length) * 100}%` }} /></div>
         <div className="space-y-5">{displayedQuestions.map(({ question, index }) => <PublicQuestionCard key={question.id} question={question} number={index + 1} shortValue={shortAnswers[question.id] ?? ''} saving={exam.savingQuestionId === question.id} onShortChange={(value) => { setShortAnswers((answers) => ({ ...answers, [question.id]: value })); if (!question.timedOut) void exam.saveAnswer(question.id, value.trim() ? [value.trim()] : []); }} onSaveShort={() => { if (!question.timedOut) void exam.saveAnswer(question.id, (shortAnswers[question.id] ?? '').trim() ? [(shortAnswers[question.id] ?? '').trim()] : []); }} onChoice={(value) => setChoice(question, value)} />)}</div>
         {exam.error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</div>}
-        {exam.attempt.oneQuestionAtATime ? <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><button type="button" onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} disabled={safeQuestionIndex === 0} className="rounded-xl border border-[var(--exam-color-d76c32)] bg-[var(--exam-color-fffdf8)] px-5 py-2.5 text-sm font-semibold text-[var(--exam-color-b55224)] disabled:opacity-40">Previous</button>{safeQuestionIndex < questions.length - 1 ? <button type="button" onClick={() => void goToNextQuestion()} className="rounded-xl bg-[var(--exam-color-d64e00)] px-6 py-2.5 text-sm font-bold text-[var(--exam-primary-text)] shadow-md shadow-[color:var(--exam-color-b84a18-20)]">Save &amp; next</button> : <button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[var(--exam-color-00754a)] px-6 py-2.5 text-sm font-bold text-[var(--exam-primary-text)] disabled:opacity-50">Submit exam</button>}</div> : <div className="mt-6 flex justify-end"><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[var(--exam-color-00754a)] px-6 py-3 text-sm font-bold text-[var(--exam-primary-text)] disabled:opacity-50">Submit exam</button></div>}
+        {exam.attempt.oneQuestionAtATime ? <div className="exam-question-navigation mt-5 flex flex-wrap items-center justify-between gap-3">{safeQuestionIndex > 0 && <button type="button" onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))} className="rounded-xl border border-[var(--exam-color-d76c32)] bg-[var(--exam-color-fffdf8)] px-5 py-2.5 text-sm font-semibold text-[var(--exam-color-b55224)] disabled:opacity-40">Previous</button>}{safeQuestionIndex < questions.length - 1 ? <button type="button" onClick={() => void goToNextQuestion()} className="rounded-xl bg-[var(--exam-color-d64e00)] px-6 py-2.5 text-sm font-bold text-[var(--exam-primary-text)] shadow-md shadow-[color:var(--exam-color-b84a18-20)]">Save &amp; next</button> : <button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[var(--exam-color-00754a)] px-6 py-2.5 text-sm font-bold text-[var(--exam-primary-text)] disabled:opacity-50">Submit exam</button>}</div> : <div className="mt-6 flex justify-end"><button type="button" onClick={() => { primeSound(); setConfirmingSubmit(true); }} disabled={exam.loading} className="rounded-xl bg-[var(--exam-color-00754a)] px-6 py-3 text-sm font-bold text-[var(--exam-primary-text)] disabled:opacity-50">Submit exam</button></div>}
+        </div>
       </div>
       {confirmingSubmit && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--exam-color-21140f-70)] p-5" role="dialog" aria-modal="true" aria-labelledby="submit-exam-title"><section className="w-full max-w-md rounded-3xl border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-7 shadow-2xl"><h2 id="submit-exam-title" className="text-xl font-semibold text-[var(--exam-color-2f2118)]">Submit this exam?</h2><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">The exam will complete only after your latest answers are successfully saved on the server.</p>{exam.unsyncedCount > 0 && <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"><strong>{exam.unsyncedCount} answer{exam.unsyncedCount === 1 ? '' : 's'} still syncing.</strong> Your work is safe on this device. This dialog will stay open if synchronization cannot finish.</div>}{exam.error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{exam.error}</div>}<div className="mt-6 flex flex-wrap justify-end gap-3"><button type="button" onClick={() => setConfirmingSubmit(false)} disabled={exam.loading} className="rounded-xl border border-[var(--exam-color-d3b18a)] px-4 py-2.5 text-sm font-semibold text-[var(--exam-color-68452d)] disabled:opacity-50">Keep reviewing</button><button type="button" onClick={() => void submitFinal()} disabled={exam.loading} className="rounded-xl bg-[var(--exam-color-00754a)] px-4 py-2.5 text-sm font-bold text-[var(--exam-primary-text)] disabled:opacity-50">{exam.loading ? (exam.unsyncedCount > 0 ? 'Syncing answers…' : 'Submitting…') : exam.unsyncedCount > 0 ? `Sync ${exam.unsyncedCount} & submit` : 'Submit exam'}</button></div></section></div>}
     </main>

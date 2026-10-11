@@ -14,10 +14,10 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
     brand.logo?.source === "builtin" && brand.logo.assetId === "starbucks-logo";
   return (
     <div
-      className={`flex min-w-0 max-w-full flex-wrap items-center gap-y-2 ${compact ? "gap-3" : "gap-4"}`}
+      className={`flex w-full min-w-0 max-w-full items-center ${compact ? "gap-2" : "gap-2 sm:gap-4"}`}
       aria-label={`airunote exams, ${brand.name} ${brand.badgeVisible ? brand.badge : ""}`}
     >
-      <div className="min-w-0 max-w-full">
+      <div className="min-w-0 flex-1">
         <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-[var(--exam-color-9a6b45)]">
           airunote exams
         </div>
@@ -27,7 +27,7 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
               <span
                 role="img"
                 aria-label={brand.logoAlt}
-                className={compact ? "h-8 w-8 shrink-0" : "h-11 w-11 shrink-0"}
+                className={compact ? "h-8 w-8 shrink-0" : "h-12 w-12 shrink-0"}
                 style={{
                   backgroundColor: colors.logo,
                   WebkitMask: `url(${url}) center / contain no-repeat`,
@@ -42,12 +42,12 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
                 height={compact ? 32 : 44}
                 unoptimized
                 onError={() => setFailedUrl(url)}
-                className="shrink-0 object-contain"
+                className={compact ? "h-8 w-8 shrink-0 object-contain" : "h-12 w-12 shrink-0 object-contain"}
               />
             ))}
           {brand.name && (
             <span
-              className={`${compact ? "text-sm" : "text-lg"} min-w-0 [overflow-wrap:anywhere] font-black tracking-[0.12em] text-[var(--exam-color-1e3932)]`}
+              className={`${compact ? "text-sm" : "text-xl"} min-w-0 [overflow-wrap:anywhere] font-black tracking-[0.02em] sm:tracking-[0.12em] text-[var(--exam-color-1e3932)]`}
             >
               {brand.name}
             </span>
@@ -56,11 +56,7 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
       </div>
       {brand.badgeVisible && brand.badge && (
         <>
-          <span
-            className={`h-9 w-px bg-[var(--exam-color-d8c4ac)] hidden sm:block`}
-            aria-hidden="true"
-          />
-          <div className="max-w-full [overflow-wrap:anywhere] rounded-full border border-[var(--exam-color-d39a50)] bg-[var(--exam-color-fff8e7)] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--exam-color-7b4a25)]">
+          <div className="ml-auto max-w-[44%] shrink-0 text-right [overflow-wrap:anywhere] rounded-full border border-[var(--exam-color-d39a50)] bg-[var(--exam-color-fff8e7)] px-2 py-1 text-xs sm:px-3 font-bold uppercase tracking-[0.04em] sm:tracking-[0.16em] text-[var(--exam-color-7b4a25)]">
             {brand.badge}
           </div>
         </>

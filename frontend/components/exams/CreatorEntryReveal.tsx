@@ -4,13 +4,14 @@ import { useEffect, useLayoutEffect, useId, useRef, useState, type CSSProperties
 import { useExamAppearance, useExamAssetUrl } from './ExamAppearanceProvider';
 
 /** Presentation only: opening a gift never starts an attempt or its timer. */
-export function CreatorEntryReveal({ title, children }: { title: string; children: ReactNode }) {
+export function CreatorEntryReveal({ title, children, initiallyOpen = false }: { title: string; children: ReactNode; initiallyOpen?: boolean }) {
   const appearance = useExamAppearance();
   const opening = appearance.giftOpening;
+  const helperText = opening?.helperText ?? 'Your timer hasn’t started.';
   const buttonLabel = opening?.labelMode === 'instructions' ? 'Read Instructions'
     : opening?.labelMode === 'custom' ? opening.customLabel.trim() || 'Unwrap & Begin'
     : 'Unwrap & Begin';
-  const [phase, setPhase] = useState<'closed' | 'opening' | 'open'>('closed');
+  const [phase, setPhase] = useState<'closed' | 'opening' | 'open'>(initiallyOpen ? 'open' : 'closed');
   const [failedLogo, setFailedLogo] = useState<string>();
   const [failedArt, setFailedArt] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
@@ -70,7 +71,7 @@ export function CreatorEntryReveal({ title, children }: { title: string; childre
       panel.current?.focus({ preventScroll: true });
     }
   }, [phase]);
-  useEffect(() => { setPhase('closed'); }, [enabled]);
+  useEffect(() => { setPhase(initiallyOpen ? 'open' : 'closed'); }, [enabled, initiallyOpen]);
   const replay = () => {
     setPhase('closed');
     panel.current?.ownerDocument.defaultView?.requestAnimationFrame(() => {
@@ -103,10 +104,10 @@ export function CreatorEntryReveal({ title, children }: { title: string; childre
       </div>
       <p className="gift-caption">{appearance.artwork.caption || 'A little joy before you begin'}</p>
       <button ref={button} type="button" className="gift-open-button" disabled={phase === 'opening'} onClick={beginOpening} aria-controls={id} aria-expanded={false}>{phase === 'opening' ? 'Opening your gift…' : buttonLabel}<span aria-hidden="true"> ✦</span></button>
-      <p className="gift-reassurance" role="status">{phase === 'opening' ? 'Your instructions are on their way.' : 'Read the instructions next. Your timer hasn’t started.'}</p>
+      {helperText.trim() && <p className="gift-reassurance whitespace-pre-wrap" role="status">{helperText}</p>}
     </div>}
     <div id={id} ref={panel} tabIndex={-1} hidden={phase === 'closed'} aria-hidden={phase === 'opening'} className="gift-revealed-content" aria-label="Exam instructions and entry form">
-      {phase !== 'closed' && <>{(opening?.showReplay ?? true) && <button type="button" disabled={phase !== 'open'} className="gift-replay" onClick={replay}>Replay Gift Opening</button>}{children}</>}
+      {phase !== 'closed' && <>{(opening?.showReplay ?? false) && <button type="button" disabled={phase !== 'open'} className="gift-replay" onClick={replay}>Replay Gift Opening</button>}{children}</>}
     </div>
   </div>;
 }

@@ -1,11 +1,14 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { ExamAppearanceProvider } from "./ExamAppearanceProvider";
 import { ExamContent } from "./PublicExamPage";
 import type { usePublicExam } from "./usePublicExam";
 import type { Appearance } from "@/lib/exam-appearance";
 import type { PublicExamOverview, PublicAttempt, ExamInput } from "@/lib/api/exams";
+import { PreviewGallery } from "./PreviewGallery";
+export const previewScreens = ["entry", "instructions", "questions", "completed", "upcoming", "ended", "terminated", "timed_out"] as const;
+export interface PreviewProps { config: Appearance; title?: string; description?: string | null; orgId: string; examDraft?: ExamInput; }
 const noop = async () => undefined;
 export function AppearancePreview({
   config,
@@ -22,32 +25,62 @@ export function AppearancePreview({
 }) {
   const [screen, setScreen] = useState("entry");
   const [mobile, setMobile] = useState(false);
+  const [gallery, setGallery] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const previewRef = useRef<HTMLElement>(null);
   const fullscreenButton = useRef<HTMLButtonElement>(null);
-  const exitFullscreen = () => {
-    if (document.fullscreenElement === previewRef.current) void document.exitFullscreen();
+  const exitFullscreen = useCallback(() => {
     setFullscreen(false);
     fullscreenButton.current?.focus();
-  };
-  useEffect(() => {
-    const changed = () => setFullscreen(document.fullscreenElement === previewRef.current);
-    document.addEventListener('fullscreenchange', changed);
-    return () => document.removeEventListener('fullscreenchange', changed);
   }, []);
   useEffect(() => {
     if (!fullscreen) return;
-    const overflow = document.body.style.overflow;
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const escape = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') exitFullscreen();
     };
-    document.addEventListener('keydown', escape);
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.body.style.overflow = overflow;
-      document.removeEventListener('keydown', escape);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
     };
-  }, [fullscreen]);
+  }, [fullscreen, exitFullscreen]);
+  return (
+    <section className={fullscreen ? "fixed inset-0 z-[100] min-w-0 space-y-3 overflow-auto bg-slate-50 p-4 text-slate-900" : "min-w-0 space-y-3"}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">Live appearance preview</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          {!gallery && <select aria-label="Preview screen" className="h-11 rounded-lg border bg-white px-3 text-xs" value={screen} onChange={e => setScreen(e.target.value)}>
+            {previewScreens.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+          </select>}
+          <button ref={fullscreenButton} type="button" className="preview-tool" aria-label={fullscreen ? 'Exit fullscreen' : 'Expand preview in browser panel'} title={fullscreen ? 'Exit fullscreen' : 'Expand preview in browser panel'} onClick={() => {
+            if (fullscreen) { exitFullscreen(); return; }
+            setFullscreen(true);
+          }}><PreviewIcon kind={fullscreen ? 'collapse' : 'expand'} /></button>
+          <button type="button" className="preview-tool" aria-label={mobile ? 'Switch to desktop preview' : 'Switch to iPhone preview'} title={mobile ? 'Switch to desktop preview' : 'Switch to iPhone preview'} onClick={() => setMobile(!mobile)}><PreviewIcon kind={mobile ? 'desktop' : 'phone'} /></button>
+          <button type="button" className="preview-tool" aria-label={gallery ? 'Single screen view' : 'Gallery view'} title={gallery ? 'Single screen view' : 'Gallery view'} aria-pressed={gallery} onClick={() => setGallery(!gallery)}><PreviewIcon kind="gallery" /></button>
+        </div>
+      </div>
+      <p className="text-xs text-slate-500">
+        {examDraft ? "Entry uses your current exam settings; question screens use a sample question." : "Sample data only."} This preview creates no attempts.
+      </p>
+      {gallery ? <PreviewGallery key={mobile ? 'phone' : 'desktop'} mobile={mobile} fullscreen={fullscreen} renderScreen={state => <PreviewScreen config={config} title={title} description={description} orgId={orgId} examDraft={examDraft} screen={state} mobile={mobile} fullscreen={false} gallery onEscape={exitFullscreen} />} />
+        : <PreviewScreen config={config} title={title} description={description} orgId={orgId} examDraft={examDraft} screen={screen} mobile={mobile} fullscreen={fullscreen} onEscape={exitFullscreen} />}
+    </section>
+  );
+}
+
+function PreviewIcon({ kind }: { kind: 'expand' | 'collapse' | 'phone' | 'desktop' | 'gallery' }) {
+  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {kind === 'expand' && <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />}
+    {kind === 'collapse' && <path d="M3 8h5V3m13 5h-5V3M8 21v-5H3m13 5v-5h5" />}
+    {kind === 'phone' && <><rect x="6" y="2" width="12" height="20" rx="3" /><path d="M10 5h4m-3 14h2" /></>}
+    {kind === 'desktop' && <><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M12 17v4m-4 0h8" /></>}
+    {kind === 'gallery' && <><rect x="2" y="4" width="5" height="16" rx="1" /><rect x="10" y="4" width="5" height="16" rx="1" /><path d="M19 4h3v16h-3" /></>}
+  </svg>;
+}
+
+function PreviewScreen({ config, title = 'Your exam title', description, orgId, examDraft, screen, mobile, fullscreen, gallery = false, onEscape }: PreviewProps & { screen: string; mobile: boolean; fullscreen: boolean; gallery?: boolean; onEscape: () => void }) {
   const model = useMemo(() => {
     const overview: PublicExamOverview = {
       appearance: config,
@@ -128,7 +161,7 @@ export function AppearancePreview({
     };
     return {
       overview,
-      attempt: ["entry", "upcoming", "ended"].includes(screen) ? null : attempt,
+      attempt: ["entry", "instructions", "upcoming", "ended"].includes(screen) ? null : attempt,
       loading: false,
       error: null,
       savingQuestionId: null,
@@ -145,80 +178,24 @@ export function AppearancePreview({
       startAnother: () => {},
     } as ReturnType<typeof usePublicExam>;
   }, [config, title, description, screen, examDraft]);
-  return (
-    <section ref={previewRef} className={fullscreen ? "fixed inset-0 z-[100] min-w-0 space-y-3 overflow-auto bg-slate-50 p-4 text-slate-900 md:p-6" : "min-w-0 space-y-3"}>
-      <div className={`flex flex-wrap items-center justify-between gap-2 ${fullscreen ? 'sticky top-0 z-10 bg-slate-50 py-2' : ''}`}>
-        <h3 className="text-sm font-semibold">Live appearance preview</h3>
-        <div className="flex flex-wrap gap-2">
-          <button
-            ref={fullscreenButton}
-            type="button"
-            className="rounded-lg border px-3 py-2 text-xs"
-            onClick={() => {
-              if (fullscreen) { exitFullscreen(); return; }
-              setFullscreen(true);
-              // Keep the expanded view when the browser does not support fullscreen.
-              void previewRef.current?.requestFullscreen?.().catch(() => {});
-            }}
-          >
-            {fullscreen ? 'Exit fullscreen' : 'Fullscreen preview'}
-          </button>
-          <select
-            aria-label="Preview screen"
-            className="rounded-lg border p-2 text-xs"
-            value={screen}
-            onChange={(e) => setScreen(e.target.value)}
-          >
-            {[
-              "entry",
-              "questions",
-              "completed",
-              "upcoming",
-              "ended",
-              "terminated",
-              "timed_out",
-            ].map((s) => (
-              <option key={s} value={s}>
-                {s.replace("_", " ")}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="rounded-lg border px-3 py-2 text-xs"
-            onClick={() => setMobile(!mobile)}
-          >
-            {mobile ? "Desktop preview" : "iPhone 18 demo"}
-          </button>
-        </div>
-      </div>
-      <p className="text-xs text-slate-500">
-        {examDraft ? "Entry uses your current exam settings; question screens use a sample question." : "Sample data only."} This preview creates no attempts.
-      </p>
-      <div className="min-w-0">
-        <PreviewFrame mobile={mobile} fullscreen={fullscreen} onEscape={exitFullscreen}>
-          <fieldset disabled={!(config.renderer === "creator" && screen === "entry")} className="m-0 min-w-0 border-0 p-0">
-            <ExamAppearanceProvider
-              config={config}
-              preview
-              previewOrgId={orgId}
-            >
-              <ExamContent key={`${screen}-${config.renderer}`} exam={model} />
-            </ExamAppearanceProvider>
-          </fieldset>
-        </PreviewFrame>
-      </div>
-    </section>
-  );
+  return <PreviewFrame mobile={mobile} fullscreen={fullscreen} gallery={gallery} onEscape={onEscape}>
+    <fieldset  style={{ '--exam-preview-page-height': gallery ? '100dvh' : '0px', '--exam-terminal-height': mobile || fullscreen || gallery ? '100dvh' : '720px' } as CSSProperties} className="m-0 min-w-0 border-0 p-0">
+      <ExamAppearanceProvider config={config} preview previewOrgId={orgId}>
+        <ExamContent key={`${screen}-${config.renderer}`} exam={model} previewInstructions={screen === "instructions"} />
+      </ExamAppearanceProvider>
+    </fieldset>
+  </PreviewFrame>;
 }
 
 function PreviewFrame({
   mobile,
+  gallery,
   fullscreen,
   onEscape,
   children,
 }: {
   mobile: boolean;
+  gallery: boolean;
   fullscreen: boolean;
   onEscape: () => void;
   children: ReactNode;
@@ -240,8 +217,8 @@ function PreviewFrame({
 
   const [height, setHeight] = useState(1);
   useEffect(() => {
-    if (body) body.style.overflow = fullscreen || mobile ? 'auto' : 'hidden';
-  }, [body, fullscreen, mobile]);
+    if (body) body.style.overflow = fullscreen || mobile || gallery ? 'auto' : 'hidden';
+  }, [body, fullscreen, mobile, gallery]);
   useEffect(() => {
     if (!body) return;
     const escape = (event: KeyboardEvent) => {
@@ -267,8 +244,9 @@ function PreviewFrame({
       <iframe
         ref={frameRef}
         title="Exam appearance preview"
+        tabIndex={0}
         className="mx-auto block w-full max-w-full rounded-2xl border-0"
-        style={{ maxWidth: "100%", height: mobile ? 760 : fullscreen ? "calc(100dvh - 150px)" : height }}
+        style={{ maxWidth: "100%", height: mobile ? 760 : gallery ? 1080 : fullscreen ? "calc(100dvh - 150px)" : height }}
         srcDoc="<!doctype html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'></head><body style='margin:0;overflow:hidden'></body></html>"
         onLoad={mountFrame}
       />

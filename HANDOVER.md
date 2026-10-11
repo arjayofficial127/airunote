@@ -286,3 +286,48 @@ Gift follow-up: removed resize-triggered animation completion (preview iframe re
 ## Commit and push request — 2026-10-11
 
 User authorized committing and pushing the accumulated local work. Sound is now an accessible speaker icon with a 44px target in a reserved trailing branding column; it no longer adds a text-pill row or overlaps the gift. Fullscreen and iPhone 18 demo mockup previews are available. Fixed local workspace redirection for signed-in users and initialized preview iframes that finish loading before hydration. Preview captures were requested and saved locally; generated output and environment credentials are excluded from the commit. Automated tests remain skipped at the user's request. Push does not by itself confirm production deployment.
+
+
+## Schedule pages and gift helper copy — 2026-10-11
+
+Local follow-up: upcoming/ended availability pages omit the exam description/instructions while retaining title, branding, schedule, countdown, and status. Gift opening now offers `Text below the button` (300 characters; blank hides it), stored in optional `giftOpening.helperText`. Default helper is `Your timer hasn’t started.` to avoid repeating the button label. Existing configuration remains compatible. No tests, production data edits, push, or deployment performed for this follow-up.
+
+
+## Preview gallery — 2026-10-11
+
+Local toolbar now orders the screen dropdown, fullscreen icon, phone/desktop toggle, and gallery toggle. Gallery hides the dropdown and renders all seven states horizontally in isolated frames. Phone mode uses the existing demo shell; desktop frames render at 1920 × 1080 before scaling. Controlled canvas supports drag pan, touch pinch, control/trackpad wheel zoom, keyboard +/-/0, zoom buttons, and Fit all. Gallery is a presentation canvas; use single-screen mode to interact with entry animation. No tests, push, or deployment for this local follow-up.
+
+Gallery follow-up: added Fit one, centered on the nearest screen. A gesture capture surface now keeps pointer/wheel events out of embedded previews; touch pinch, WebKit gesture events, and wheel zoom are handled. Shift-wheel remains available for panning. Zoom scroll anchoring is applied with layout updates instead of queued stale offsets. Applied locally without tests.
+
+
+Laptop gallery gesture follow-up: replaced scroll-offset positioning with a freely translated/scaled canvas. Gesture updates use refs and one animation frame, avoiding React/iframe rerenders. A fixed capture surface and document capture listeners handle Ctrl-wheel laptop pinch and WebKit gesture events; ordinary two-finger scrolling pans in both axes. Mouse left/middle drag and touch pinch share the same camera. Fit one and Fit all remain available. This supersedes the earlier scroll-anchoring implementation. Applied locally without tests; physical laptop gesture behavior remains unverified.
+
+
+Question screen compact header — 2026-10-11: consolidated the duplicate title/status toolbar, decorative hero, timer, sound control, and progress into one compact card above the questions. Removed the repeated instructions and tall artwork from this active-question header. The solid progress fill reports answered questions against a contrasting track, with accessible progress values. Existing sync and schedule warnings remain available. Shared live/preview renderer updated locally; no tests run per user instruction.
+
+
+Device volume follow-up: removed respondent mute controls from entry, questions, completion, and shared previews. Exam audio follows the admin availability setting and no longer reads the old local mute preference. Removed the obsolete default-mute editor setting; existing stored contracts remain compatible. Preview audio remains suppressed. Local changes only, no tests run.
+
+Question header edge-to-edge follow-up: removed the outer top/side gutters and rounded card border from the active exam header. Its background now spans the full viewport width at the top; inner text retains readable padding, and the question section retains its gutters. Applied locally without tests.
+
+Completion celebration follow-up: replaced the tall left-aligned completion card with a centered gift, inset success seal, “Beautifully done” headline, existing administrator thank-you copy, and a submission confirmation strip. Submitted answers are preserved inside an accessible native disclosure below the celebration. Retry remains secondary. Theme colors and decoration preferences retained; local implementation only, no tests run.
+
+Completion copy follow-up: removed redundant “All done”; renamed retry to “Take another attempt” and show it only for non-preview attempts below the configured limit while availability is open. No tests run.
+
+Completion text controls: optional completionEyebrow and completionTitle now persist through the shared appearance contract and have editable fields in the Completion editor section. Existing appearances default to “A little moment to celebrate” and “Beautifully done.” Removed the redundant completion subtitle. Existing message field retained. Applied locally without tests.
+
+Exam context across screens: shared configured header label and exam title now appear on completion and terminal status cards, with the label added to the compact question header and replacing the generic scheduled-page label. Entry already carries both. No instructions added back to status pages. Applied locally without tests.
+
+Terminal visual refinement: focus-protection warning now uses a red outlined triangle. Compact exam context labels use smaller type and tighter tracking, allowing the configured label to fit on one line where space permits while retaining wrapping for longer text. No tests run.
+
+Mobile entry height refinement: reduced outer/card spacing and helper minimum height; gift stage scales with viewport height to reduce unnecessary vertical scrolling while retaining enlarged branding. Long custom text can still scroll naturally. No tests run.
+
+Fullscreen behavior: toolbar now requests native fullscreen on the browser document, preserving the current editor/preview/gallery layout instead of expanding the preview into an overlay. Fullscreen state follows browser events. No tests run.
+
+Fullscreen clarification: user wants the chat to remain visible. Replaced native browser fullscreen with an in-page expanded preview confined to the browser panel; Escape restores the embedded layout. This supersedes the native fullscreen change. No tests run.
+
+Instructions preview: added a separate Instructions dropdown/gallery state that opens directly on the revealed instructions form without starting an attempt. Gallery now includes eight screens. Actual entry still uses the gift animation. No tests run.
+
+## Instruction editing and production release — 2026-10-11
+
+User explicitly approved publishing all accumulated changes to production. Added optional opening text/font, instruction heading, and a second instruction block with optional heading. Existing descriptions remain untouched; the local sample separates its headings/body into the new fields. Reduced instructions header height, added Your details/timer guidance, hid Previous on the first question, and softened question background artwork. Gallery supports separate Instructions state and Pan/Interact modes. All accumulated visual refinements are included. Production build passed (backend TypeScript and Next production compilation), with existing import/image warnings. No tests or browser smoke tests run per user instruction. No database migration is needed for the optional JSON appearance fields.
