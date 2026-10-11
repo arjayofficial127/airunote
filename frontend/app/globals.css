@@ -962,7 +962,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 }
 
 /* Creator entry: independent transparent artwork layers, one finite reveal. */
-.gift-invitation { position: relative; isolation: isolate; overflow: hidden; text-align: center; padding: clamp(1.5rem,5vw,3rem); color: #fff8e6; background: radial-gradient(ellipse at 50% 48%,#31634b 0,transparent 56%),repeating-linear-gradient(120deg,#ffffff03 0 1px,transparent 1px 5px),linear-gradient(145deg,#153f33,#082b23); }
+.gift-invitation { position: relative; isolation: isolate; overflow: hidden; text-align: center; padding: clamp(1.5rem,5vw,3rem); color: #fff8e6; background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop.png") center bottom / 100% 125% no-repeat; }
 .gift-eyebrow { color: #e8cd88; font-size: .68rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; overflow-wrap: anywhere; }
 .gift-invitation h1 { margin: .8rem auto 0; max-width: 24ch; font-size: clamp(1.4rem,4vw,2.25rem); font-weight: 700; line-height: 1.15; text-wrap: balance; overflow-wrap: anywhere; }
 .gift-stage { position: relative; width: min(100%,380px); aspect-ratio: 1 / 1.18; margin: 0 auto; }
@@ -972,6 +972,9 @@ tr:hover > .block-icon-wrapper .block-icon {
 .gift-lid-layer { position: absolute; top: 7%; left: 4%; width: 92%; transform-origin: 50% 75%; filter: drop-shadow(0 3px 2px #28190726); }
 .gift-brand-seal { position: absolute; left: 40%; top: 62%; width: 20%; aspect-ratio: 1; padding: 10px; display: grid; place-items: center; border-radius: 50%; background: #fffdf1; box-shadow: 0 2px 5px #734e232a,0 0 0 1px #d9bc7d; }
 .gift-brand-seal img,.gift-brand-seal span { display: block; width: 100%; height: 100%; object-fit: contain; mask-size: contain; mask-position: center; mask-repeat: no-repeat; }
+.gift-brand-seal[data-builtin="true"] { padding: 0; overflow: hidden; background: #eee0bc; box-shadow: inset 0 1px 1px #ffffff38, 0 2px 2px #34250f66, 0 0 0 1px #b7954f; }
+.gift-body-layer img { aspect-ratio: 1475 / 1066; object-fit: fill; }
+.gift-lid-layer img, .gift-bow-layer img { aspect-ratio: 1536 / 1024; object-fit: fill; }
 .gift-light { position: absolute; inset: 32% 15% 20%; border-radius: 50%; background: radial-gradient(ellipse,#fff9c5, #edd07970 30%,transparent 67%); opacity: 0; }
 .gift-caption { color: #ead49e; letter-spacing: .18em; text-transform: uppercase; font-size: .65rem; margin: -.25rem 0 1.25rem; }
 .gift-open-button { min-height: 48px; border-radius: 999px; padding: .85rem 1.75rem; background: linear-gradient(120deg,#f4dfa0,#ddba67); color: #173b2d; font-size: .95rem; font-weight: 750; border: 1px solid #fff1c3; box-shadow: 0 6px 26px #050f1033; transition: box-shadow .2s,transform .2s; }
@@ -1136,6 +1139,33 @@ tr:hover > .block-icon-wrapper .block-icon {
 .gift-invitation > .gift-open-button { width: 70%; min-width: min(220px, 100%); }
 .gift-invitation > .gift-reassurance { font-size: .8125rem; }
 
+/* Botanical holiday frame stays behind content and never intercepts input. */
+.gift-botanical-frame { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.gift-botanical-corner { position: absolute; width: 34%; max-width: 240px; height: auto; user-select: none; }
+.gift-botanical-top { top: 0; left: 0; }
+.gift-botanical-bottom { right: 4px; bottom: 4px; width: 30%; max-width: 210px; opacity: .95; }
+.gift-botanical-corner > img { display: block; width: 100%; height: auto; }
+.gift-fairy-light { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff5d4; box-shadow: 0 0 6px 2px #ffdc8ddd, 0 0 15px 5px #f5b54b66; transform: translate(-50%, -50%); animation: giftTwinkle var(--twinkle-duration) var(--twinkle-delay) ease-in-out infinite; }
+@keyframes giftTwinkle { 0%, 100% { opacity: .25; } 45%, 60% { opacity: 1; } }
+.gift-invitation .gift-halo { inset: 18% -10% 0; background: radial-gradient(ellipse, #edc67438 0, #d9ae4f12 40%, transparent 70%); }
+.gift-coffee-sprig { position: absolute; width: 46%; height: auto; bottom: 12%; opacity: .9; pointer-events: none; filter: drop-shadow(0 3px 5px #061c2440); }
+.gift-coffee-right { right: -9%; bottom: 22%; width: 49%; transform: rotate(-13deg); }
+.gift-coffee-left { left: -11%; bottom: 10%; width: 38%; transform: rotate(58deg); opacity: .85; }
+.gift-pinecone-trio { position: absolute; right: -3%; bottom: 5%; width: 40%; aspect-ratio: 1.7; pointer-events: none; filter: drop-shadow(0 4px 5px #031a1660); }
+.gift-pinecone { position: absolute; height: auto; }
+.gift-pinecone-1 { width: 66%; left: -15%; bottom: -2%; transform: rotate(-5deg); z-index: 2; }
+.gift-pinecone-2 { width: 42%; right: 5%; bottom: 22%; transform: rotate(24deg); }
+.gift-pinecone-3 { width: 42%; right: -9%; bottom: -8%; transform: rotate(42deg); z-index: 3; }
+.gift-reveal[data-phase="opening"] .gift-pinecone-trio { animation: giftBodyFade 3.6s linear both; }
+.gift-reveal[data-phase="opening"] .gift-coffee-sprig { animation: giftBodyFade 3.6s linear both; }
+.gift-invitation .gift-caption { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.gift-invitation .gift-caption::before, .gift-invitation .gift-caption::after { content: ''; height: 1px; width: clamp(16px, 5vw, 48px); flex-shrink: 0; background: linear-gradient(90deg, transparent, #d9b76a); }
+.gift-invitation .gift-caption::after { transform: rotate(180deg); }
+@media (max-width: 639px) {
+  .gift-botanical-top { top: 0; left: 0; width: 34%; }
+  .gift-botanical-bottom { right: 3px; bottom: 3px; width: 29%; }
+}
+
 .preview-gallery[data-interactive="true"] .preview-gallery-track,
 .preview-gallery[data-interactive="true"] .preview-gallery-screen { pointer-events: auto; }
 .preview-gallery[data-interactive="true"] .preview-gallery-canvas { cursor: auto; touch-action: auto; }
@@ -1147,3 +1177,43 @@ tr:hover > .block-icon-wrapper .block-icon {
 .creator-instructions .instruction-intro { font-size: 1.25rem; line-height: 1.4; font-weight: 600; }
 .exam-question-page .holiday-background-gift { opacity: .08; }
 .exam-question-navigation > button:last-child { margin-left: auto; }
+
+@font-face {
+  font-family: 'Great Vibes';
+  src: url('/fonts/great-vibes/GreatVibes-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+/* Only the initial gets the calligraphic treatment. */
+.creator-instructions .instruction-intro[data-font="flourish"] {
+  padding-block: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.7;
+  overflow: visible;
+}
+.creator-instructions .instruction-wild-initial {
+  font-family: 'Great Vibes', cursive;
+  display: inline-block;
+  position: relative;
+  font-size: 4.5em;
+  font-weight: 400;
+  line-height: .65;
+  margin-left: -8px;
+  margin-right: 4px;
+  padding-top: 12px;
+  transform: rotate(-9deg) skewX(-7deg);
+  transform-origin: 55% 75%;
+  color: var(--exam-color-2c1d17);
+}
+
+.creator-instructions .instruction-image[data-ribbon="true"] {
+  margin-left: calc(-1 * clamp(1.5rem, 4vw, 2.5rem) - 12px);
+}
+
+/* Ground the independent animated gift layers on the studio tabletop. */
+.gift-contact-shadow { position: absolute; left: -12%; right: -5%; top: 86%; height: 14%; border-radius: 50%; background: radial-gradient(ellipse, #010b08a6 0, #010b0873 30%, #010b0833 53%, transparent 73%); filter: blur(6px); transform: skewX(-18deg); pointer-events: none; }
+.gift-contact-shadow::after { content: ''; position: absolute; left: 17%; right: 12%; top: 13%; height: 25%; border-radius: 45%; background: #010906d9; box-shadow: 0 2px 5px 2px #01090680; }
+.gift-invitation .gift-body-layer { filter: drop-shadow(-5px 6px 5px #02150d40); }
+.gift-reveal[data-phase="opening"] .gift-contact-shadow { animation: giftBodyFade 3.6s linear both; }

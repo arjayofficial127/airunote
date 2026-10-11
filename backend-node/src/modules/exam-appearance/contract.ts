@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 export const builtinAssets = [
+  { id: 'wrapped-in-joy-ribbon-text', name: 'Wrapped in Joy — ribbon W', path: '/exam-assets/creator/wrapped-in-joy-crafted.png', mimeType: 'image/png', mask: false },
   {
     id: 'starbucks-logo',
     name: 'Starbucks logo',
@@ -28,7 +29,7 @@ export const assetSchema = z.discriminatedUnion('source', [
   z
     .object({
       source: z.literal('builtin'),
-      assetId: z.enum(['starbucks-logo', 'marry-furrmily-cats', 'wrapped-in-joy-gifts']),
+      assetId: z.enum(['starbucks-logo', 'marry-furrmily-cats', 'wrapped-in-joy-gifts', 'wrapped-in-joy-ribbon-text']),
     })
     .strict(),
   z.object({ source: z.literal('org-file'), fileId: z.string().uuid() }).strict(),
@@ -43,8 +44,13 @@ export const appearanceSchema = z
     completionTitle: z.string().max(200).optional(),
     completionMessage: z.string().max(1000).optional(),
     instructions: z.object({
+      introMode: z.enum(['text', 'image']).optional(),
+      introImage: assetSchema.nullable().optional(),
+      introImageAlt: z.string().max(300).optional(),
+      introImageSize: z.enum(['xs', 'small', 'medium', 'large', 'custom']).optional(),
+      introImageWidth: z.number().min(20).max(100).optional(),
       intro: z.string().max(200).optional(),
-      introFont: z.enum(['inherit', 'sans', 'serif', 'mono', 'script']).optional(),
+      introFont: z.enum(['inherit', 'sans', 'serif', 'mono', 'script', 'flourish']).optional(),
       title: z.string().max(200).optional(),
       secondaryTitle: z.string().max(200).optional(),
       secondaryBody: z.string().max(3000).optional(),
@@ -239,6 +245,12 @@ export const holidayAppearance: Appearance = {
 export const creatorAppearance: Appearance = {
   ...holidayAppearance,
   renderer: 'creator',
+  instructions: {
+    introMode: 'image',
+    intro: 'WRAPPED IN JOY',
+    introImage: { source: 'builtin', assetId: 'wrapped-in-joy-ribbon-text' },
+    introImageAlt: 'Wrapped in Joy',
+  },
   colors: { ...holidayAppearance.colors, primary: '#164b3c', primaryText: '#ffffff' },
   artwork: { ...holidayAppearance.artwork, alt: 'Sculpted holiday gifts with gold ribbons and your selected brand logo' },
 };
@@ -249,7 +261,7 @@ export function readAppearance(value: unknown): Appearance {
 export function assetFileIds(config: Appearance): string[] {
   return [
     ...new Set(
-      [config.brand.logo, config.artwork.asset].flatMap((asset) =>
+      [config.brand.logo, config.artwork.asset, config.instructions?.introImage].flatMap((asset) =>
         asset?.source === 'org-file' ? [asset.fileId] : []
       )
     ),

@@ -1,0 +1,3 @@
+Built-in image_gen edit mode, transparent background. Source: gift-lid.webp.
+
+Precise material refinement of isolated gift LID animation layer. Keep exact silhouette, perspective, lid dimensions, centered vertical gold ribbon and exact canvas placement/margins. Enhance ivory paper with fine tactile grain and subtle tiny botanical embossing along the front lip, realistic folded edge seams, soft upper-left lighting and natural lower lip occlusion shadow. Rich woven gold satin ribbon with bronze shadows. Do not add box body bow or logo. Preserve transparent alpha, no backdrop or outer haze. It must align with existing box body.

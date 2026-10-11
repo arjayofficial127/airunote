@@ -14,7 +14,7 @@ export function AppearanceFields({
   disabled?: boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [picker, setPicker] = useState<"logo" | "artwork" | null>(null);
+  const [picker, setPicker] = useState<"logo" | "artwork" | "intro" | null>(null);
   const giftOpening = v.giftOpening ?? { labelMode: 'unwrap' as const, customLabel: '', showReplay: false };
   useEffect(() => {
     if (!picker) return;
@@ -113,12 +113,36 @@ export function AppearanceFields({
       </section>}
       <section className="space-y-3 rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Instructions</h3>
+        <label className="block text-sm">Opening text format
+          <select className={inputClass} value={v.instructions?.introMode ?? 'text'} onChange={e => onChange({ ...v, instructions: { ...v.instructions, introMode: e.target.value as 'text' | 'image' } })}>
+            <option value="text">Text</option><option value="image">Image lettering</option>
+          </select>
+        </label>
+        {v.instructions?.introMode === 'image' && <div className="space-y-3">
+          <button type="button" className="w-full rounded-xl border bg-[#fffdf8] p-3 text-left" onClick={() => onChange({ ...v, instructions: { ...v.instructions, introMode: 'image', introImage: { source: 'builtin', assetId: 'wrapped-in-joy-ribbon-text' }, introImageAlt: 'Wrapped in Joy' } })}>
+            <img src="/exam-assets/creator/wrapped-in-joy-crafted.png" alt="Wrapped in Joy with a gold ribbon W" className="h-auto w-full" />
+            <span className="mt-2 block text-xs font-semibold">Use Wrapped in Joy — ribbon W</span>
+          </button>
+          <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => setPicker('intro')}>Choose another image</button>
+          <label className="block text-sm">Image size
+            <select className={inputClass} value={v.instructions?.introImageSize ?? (v.instructions?.introImage?.source === 'builtin' && v.instructions.introImage.assetId === 'wrapped-in-joy-ribbon-text' ? 'medium' : 'large')} onChange={e => onChange({ ...v, instructions: { ...v.instructions, introImageSize: e.target.value as NonNullable<Appearance['instructions']>['introImageSize'] } })}>
+              <option value="xs">XS</option><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option><option value="custom">Custom</option>
+            </select>
+          </label>
+          {v.instructions?.introImageSize === 'custom' && <label className="block text-sm">Custom width — {v.instructions.introImageWidth ?? 72}%
+            <input type="range" min={20} max={100} step={1} className="mt-2 w-full" value={v.instructions.introImageWidth ?? 72} onChange={e => onChange({ ...v, instructions: { ...v.instructions, introImageWidth: Number(e.target.value) } })} />
+            <input aria-label="Custom image width percentage" type="number" min={20} max={100} className={inputClass} value={v.instructions.introImageWidth ?? 72} onChange={e => { if (e.target.value !== '') onChange({ ...v, instructions: { ...v.instructions, introImageWidth: Math.max(20, Math.min(100, Number(e.target.value))) } }); }} />
+          </label>}
+          {text('Image text (accessibility)', v.instructions?.introImageAlt ?? '', introImageAlt => onChange({ ...v, instructions: { ...v.instructions, introImageAlt } }))}
+        </div>}
+        {v.instructions?.introMode !== 'image' && <>
         {text('Opening text (optional)', v.instructions?.intro ?? '', intro => onChange({ ...v, instructions: { ...v.instructions, intro } }))}
         <label className="block text-sm">Opening text font
           <select className={inputClass} value={v.instructions?.introFont ?? 'inherit'} onChange={e => onChange({ ...v, instructions: { ...v.instructions, introFont: e.target.value as NonNullable<Appearance['instructions']>['introFont'] } })}>
-            <option value="inherit">Match exam</option><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option><option value="script">Script</option>
+            <option value="inherit">Match exam</option><option value="sans">Sans serif</option><option value="serif">Serif</option><option value="mono">Monospace</option><option value="script">Script</option><option value="flourish">Flourish — first letter only</option>
           </select>
         </label>
+        </>}
         {text('Instructions heading (optional)', v.instructions?.title ?? '', title => onChange({ ...v, instructions: { ...v.instructions, title } }))}
         <p className="text-xs text-slate-500">The main instructions use the exam’s Instructions field. If it already includes these headings, move them here to avoid repeats.</p>
         <details className="rounded-xl border p-3">
@@ -372,7 +396,7 @@ export function AppearanceFields({
             <NativeFileLibrary
               onSelect={(asset) => {
                 onChange(
-                  picker === "logo"
+                  picker === "intro" ? { ...v, instructions: { ...v.instructions, introMode: 'image', introImage: asset, introImageAlt: v.instructions?.introImageAlt || v.instructions?.intro || 'Opening text' } } : picker === "logo"
                     ? {
                         ...v,
                         brand: { ...v.brand, logo: asset, logoVisible: true },

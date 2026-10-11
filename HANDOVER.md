@@ -331,3 +331,12 @@ Instructions preview: added a separate Instructions dropdown/gallery state that 
 ## Instruction editing and production release — 2026-10-11
 
 User explicitly approved publishing all accumulated changes to production. Added optional opening text/font, instruction heading, and a second instruction block with optional heading. Existing descriptions remain untouched; the local sample separates its headings/body into the new fields. Reduced instructions header height, added Your details/timer guidance, hid Previous on the first question, and softened question background artwork. Gallery supports separate Instructions state and Pan/Interact modes. All accumulated visual refinements are included. Production build passed (backend TypeScript and Next production compilation), with existing import/image warnings. No tests or browser smoke tests run per user instruction. No database migration is needed for the optional JSON appearance fields.
+
+Opening text flourish option: added locally hosted Great Vibes calligraphy (Google Fonts, OFL license included), with a larger initial letter and room for swashes. Select Flourish in the opening-text font menu. Local only; no tests run.
+
+Opening image text: added Text/Image lettering choice, selectable built-in Wrapped in Joy ribbon-W artwork, native library image selection, accessible alternative text and fallback to normal text on image failure. Asset references participate in existing org-file validation/resolution. Generated artwork and prompt are saved under frontend/public/exam-assets/creator. Local only; no tests run.
+
+Ribbon wordmark default: new Creator appearance configurations and the local sample default to the ribbon-W image. Built-in ribbon lettering renders slightly smaller and bleeds left beyond the instruction gutter; other selected images retain standard alignment. Existing saved appearance settings are preserved. Local only, no tests run.
+
+
+Holiday entry release — 2026-10-11: user approved publishing the locked design. Added independently layered embossed gift artwork, corrected green/ivory seal, photographic green wall/table backdrop and contact shadow, separate botanical corners with reduced-motion-aware twinkling lights, coffee cherries and individually placed pinecones. Opening lettering supports image presets and custom sizing. Paper reveal scale now follows gift width. Backend and isolated frontend production builds passed; tests skipped per prior request. Production deployment status is recorded separately.

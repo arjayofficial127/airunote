@@ -1,6 +1,6 @@
 'use client';
 
-import { ExamAppearanceProvider, useExamAppearance, useExamPreview } from './ExamAppearanceProvider';
+import { ExamAppearanceProvider, useExamAppearance, useExamPreview, useExamAssetUrl } from './ExamAppearanceProvider';
 import { CreatorEntryReveal, CreatorCompletionGift } from './CreatorEntryReveal';
 import { readAppearance } from '@/lib/exam-appearance';
 import { FormEvent, useEffect, useRef, useState } from 'react';
@@ -55,10 +55,15 @@ function SyncChip({ status, count, onRetry }: { status: ExamSyncStatus; count: n
 
 function ExamInstructions({ description }: { description: string | null }) {
   const { instructions } = useExamAppearance();
-  const fonts = { inherit: 'inherit', sans: 'Arial, sans-serif', serif: 'Georgia, serif', mono: 'ui-monospace, monospace', script: '"Brush Script MT", "Segoe Script", cursive' };
-  if (!description && !instructions?.intro && !instructions?.title && !instructions?.secondaryTitle && !instructions?.secondaryBody) return null;
+  const introImageUrl = useExamAssetUrl(instructions?.introImage ?? null);
+  const [failedIntroImage, setFailedIntroImage] = useState<string>();
+  const ribbonImage = instructions?.introImage?.source === 'builtin' && instructions.introImage.assetId === 'wrapped-in-joy-ribbon-text';
+  const imageSize = instructions?.introImageSize ?? (ribbonImage ? 'medium' : 'large');
+  const imageWidth = imageSize === 'custom' ? Math.max(20, Math.min(100, instructions?.introImageWidth ?? 72)) : { xs: 40, small: 55, medium: 72, large: 100 }[imageSize];
+  const fonts = { inherit: 'inherit', sans: 'Arial, sans-serif', serif: 'Georgia, serif', mono: 'ui-monospace, monospace', script: '"Brush Script MT", "Segoe Script", cursive', flourish: 'inherit' };
+  if (!introImageUrl && !description && !instructions?.intro && !instructions?.title && !instructions?.secondaryTitle && !instructions?.secondaryBody) return null;
   return <div className="creator-instructions space-y-5">
-    {instructions?.intro && <p className="instruction-intro" style={{ fontFamily: fonts[instructions.introFont ?? 'inherit'] }}>{instructions.intro}</p>}
+    {instructions?.introMode === 'image' && introImageUrl && introImageUrl !== failedIntroImage ? <img src={introImageUrl} alt={instructions.introImageAlt || instructions.intro || 'Opening text'} onError={() => setFailedIntroImage(introImageUrl)} className="instruction-image block h-auto w-full max-w-lg object-contain" data-ribbon={ribbonImage} style={{ width: `${imageWidth}%`, maxWidth: `${480 * imageWidth / 100}px` }} /> : instructions?.intro && <p className="instruction-intro" data-font={instructions.introFont} style={{ fontFamily: fonts[instructions.introFont ?? 'inherit'] }}>{instructions.introFont === 'flourish' ? <><span className="instruction-wild-initial">{Array.from(instructions.intro)[0]}</span>{Array.from(instructions.intro).slice(1).join('')}</> : instructions.intro}</p>}
     <div>
       {instructions?.title && <h2 className="mb-3 text-lg font-bold">{instructions.title}</h2>}
       {description && <p>{description}</p>}
