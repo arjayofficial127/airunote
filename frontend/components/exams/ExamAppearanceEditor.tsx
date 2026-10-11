@@ -96,7 +96,8 @@ export function ExamAppearanceEditor({
       </p>
     );
   return (
-    <div className="space-y-5">
+    <div className="appearance-workspace">
+      <div className="appearance-controls space-y-5" aria-label="Appearance controls">
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border bg-white p-5">
         <div className="max-w-xl">
           <h2 className="font-semibold">
@@ -215,22 +216,11 @@ export function ExamAppearanceEditor({
           Only organization admins can change appearance.
         </p>
       )}
-      <div className="exam-appearance-layout grid min-w-0 items-start gap-6">
-        <AppearanceFields
-          value={draft.config}
-          disabled={!admin || busy}
-          onChange={(config) => setDraft({ ...draft, config })}
-        />
-        <div className="min-w-0">
-          <AppearancePreview
-            config={draft.config}
-            title={title}
-            description={description}
-            examDraft={examDraft}
-            orgId={org}
-          />
-        </div>
-      </div>
+      <AppearanceFields
+        value={draft.config}
+        disabled={!admin || busy}
+        onChange={(config) => setDraft({ ...draft, config })}
+      />
       {admin && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-4">
           <input
@@ -269,6 +259,16 @@ export function ExamAppearanceEditor({
           </button>
         </div>
       )}
+      </div>
+      <div className="appearance-preview-panel" aria-label="Live preview">
+        <AppearancePreview
+          config={draft.config}
+          title={title}
+          description={description}
+          examDraft={examDraft}
+          orgId={org}
+        />
+      </div>
     </div>
   );
 }

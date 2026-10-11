@@ -267,9 +267,25 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
     </main>
   );
 
-  if (exam.attempt.status === 'terminated') return <main className={`exam-terminal-page relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 text-center shadow-2xl"><div className="mb-6 border-b border-[var(--exam-color-e4c7a3)] pb-5"><ExamContext title={exam.attempt.title} /></div><div className="mx-auto flex h-14 w-14 items-center justify-center text-red-600" aria-hidden="true"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 2.1 18a2 2 0 0 0 1.7 3h16.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="#fef2f2"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><h1 className="mt-5 text-2xl font-semibold text-[var(--exam-color-2f2118)]">Attempt paused by focus protection</h1><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">The exam detected that this window lost focus. Your answers and end time were saved. Contact your administrator if you need a continue link.</p><p className="mt-5 rounded-xl bg-[var(--exam-color-f4eadf)] px-4 py-3 text-xs text-[var(--exam-color-876650)]">Attempt #{exam.attempt.attemptNumber} · reason: {exam.attempt.terminationReason || 'focus policy'}</p>{!exam.attempt.isPreview && <button type="button" onClick={exam.startAnother} className="mt-5 rounded-xl border border-[var(--exam-color-d3b18a)] px-4 py-2.5 text-sm font-semibold text-[var(--exam-color-68452d)] hover:bg-[var(--exam-color-fff5e8)]">Different respondent</button>}<p className="mt-2 text-xs text-[var(--exam-color-947056)]">The interrupted attempt stays visible in the administrator’s audit report.</p></section></main>;
-
-  if (exam.attempt.status === 'timed_out' || exam.attempt.status === 'abandoned' || exam.attempt.status === 'void') return <main className={`exam-terminal-page relative flex min-h-screen items-center justify-center overflow-hidden p-6 ${autumnBackground}`}><AutumnBackdrop /><section className="relative z-[1] max-w-lg rounded-[2rem] border border-[var(--exam-color-e4c7a3)] bg-[var(--exam-color-fffdf8)] p-8 text-center shadow-2xl"><div className="mb-6 border-b border-[var(--exam-color-e4c7a3)] pb-5"><ExamContext title={exam.attempt.title} /></div><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--exam-color-eee4d9)] text-2xl text-[var(--exam-color-725441)]">◷</div><h1 className="mt-5 text-2xl font-semibold text-[var(--exam-color-2f2118)]">{exam.attempt.status === 'timed_out' ? 'Time has ended for this attempt' : exam.attempt.status === 'void' ? 'This attempt was marked void' : 'This attempt is no longer active'}</h1><p className="mt-3 text-sm leading-6 text-[var(--exam-color-705746)]">Your saved answers remain on record. Contact the exam administrator if you need help or permission to retake.</p></section></main>;
+  if (['terminated', 'timed_out', 'abandoned', 'void'].includes(exam.attempt.status)) {
+    const paused = exam.attempt.status === 'terminated';
+    const timedOut = exam.attempt.status === 'timed_out';
+    return <main className={`exam-terminal-page terminal-refined relative min-h-screen ${autumnBackground}`}>
+      <AutumnBackdrop />
+      <section className="terminal-card relative z-[1]" aria-labelledby="terminal-title">
+        {appearance.renderer === 'creator' ? <ExamTopBanner title={exam.attempt.title} /> : <div className="terminal-context"><ExamSponsorBrand /><ExamContext title={exam.attempt.title} /></div>}
+        <div className="terminal-body">
+          <div className="terminal-icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paused ? <><rect x="7" y="5" width="3" height="14" rx="1" /><rect x="14" y="5" width="3" height="14" rx="1" /></> : <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>}</svg></div>
+          <p className="terminal-eyebrow">{paused ? 'Focus protection' : timedOut ? 'Time limit reached' : 'Attempt closed'}</p>
+          <h1 id="terminal-title">{paused ? 'Your attempt is paused' : timedOut ? 'Time is up' : exam.attempt.status === 'void' ? 'This attempt was marked void' : 'This attempt is no longer active'}</h1>
+          <p className="terminal-description">{paused ? 'The exam window lost focus. Your saved answers remain on record.' : 'Your saved answers remain on record.'}</p>
+          <div className="terminal-next-step"><h2>What happens next?</h2><p>{paused ? 'Contact your exam administrator for a continue link to resume this attempt.' : 'Contact your exam administrator if you need help or permission to retake.'}</p></div>
+          <p className="terminal-attempt">Attempt #{exam.attempt.attemptNumber}{exam.attempt.isPreview ? ' · Admin preview' : ''}</p>
+          {paused && !exam.attempt.isPreview && <button type="button" onClick={exam.startAnother} className="terminal-secondary">Different respondent</button>}
+        </div>
+      </section>
+    </main>;
+  }
 
   if (exam.attempt.status === 'completed') return (
     <main className={`exam-completion-page relative min-h-screen overflow-hidden px-4 py-6 sm:px-6 sm:py-10 ${autumnBackground}`}>
@@ -291,13 +307,13 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
           </div>
         </section>
         {exam.attempt.questions.length > 0 && <details className="completion-review group">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 font-semibold">
-            <span>Review your answers<span className="mt-1 block text-xs font-normal opacity-70">{exam.attempt.questions.length} question{exam.attempt.questions.length === 1 ? '' : 's'} · Your submitted responses</span></span>
+          <summary className="completion-review-toggle flex cursor-pointer list-none items-center justify-center gap-3 font-semibold">
+            <span><span className="group-open:hidden">Review your answers</span><span className="hidden group-open:inline">Hide your answers</span></span>
             <svg className="shrink-0 transition-transform group-open:rotate-180" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
           <div className="space-y-3 border-t border-[var(--exam-color-ead8c2)] p-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[var(--exam-color-ead8c2)] bg-white p-5"><h2 className="font-medium text-[var(--exam-color-33241b)]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[var(--exam-color-624a3a)]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[var(--exam-color-00754a)]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[var(--exam-color-80634f)]">{question.explanation}</p>}</article>)}</div>
         </details>}
-        {!exam.attempt.isPreview && availability === 'open' && exam.attempt.attemptNumber < exam.overview.maxAttempts && <div className="mt-5 text-center"><button type="button" onClick={exam.startAnother} className="min-h-11 rounded-xl px-4 py-2 text-sm font-semibold text-[var(--exam-color-68452d)] underline decoration-current/30 underline-offset-4 hover:bg-[var(--exam-color-fffdf8)]">Take another attempt <span aria-hidden="true">→</span></button></div>}
+        {!exam.attempt.isPreview && availability === 'open' && exam.attempt.attemptNumber < exam.overview.maxAttempts && <div className="completion-retry"><button type="button" onClick={exam.startAnother} className="completion-retry-button">Take another attempt <span aria-hidden="true">→</span></button><p className="mt-2 text-center text-xs text-[var(--exam-color-705746)]">{exam.overview.maxAttempts - exam.attempt.attemptNumber} attempt{exam.overview.maxAttempts - exam.attempt.attemptNumber === 1 ? '' : 's'} remaining</p></div>}
       </div>
     </main>
   );

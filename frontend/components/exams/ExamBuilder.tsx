@@ -124,7 +124,7 @@ export function ExamBuilder({ examId }: ExamBuilderProps) {
   ];
 
   return (
-    <div className="exam-editor min-w-0 min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div data-appearance={tab === 'appearance'} className="exam-editor min-w-0 min-h-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
       {leaveHref && <LeaveExamDialog onCancel={() => setLeaveHref(null)} onLeave={() => { dirtyRef.current = false; router.push(leaveHref); setLeaveHref(null); }} />}
       <div className="exam-editor-container mx-auto min-w-0 max-w-7xl">
         <header className="flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-end lg:justify-between">

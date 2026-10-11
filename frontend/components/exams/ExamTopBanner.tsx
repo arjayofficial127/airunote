@@ -9,7 +9,7 @@ export function ExamTopBanner({ title }: { title: string }) {
   const builtinLogo = appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo';
   const [failed, setFailed] = useState<string>();
   const src = custom && custom !== failed ? custom : '/exam-assets/creator/holiday-banner.png';
-  return <div className="exam-top-banner">
+  return <div className="exam-top-banner"><div className="exam-top-banner-inner">
     <img className="exam-top-banner-art" src={src} alt={appearance.banner?.alt || 'Wrapped in Joy'} onError={() => setFailed(src)} />
     <div className="exam-top-banner-brand">
       <span>AIRUNOTE EXAMS</span>
@@ -22,5 +22,5 @@ export function ExamTopBanner({ title }: { title: string }) {
       <p>{appearance.headerLabel}</p>
       <h1>{title}</h1>
     </div>
-  </div>;
+  </div></div>;
 }

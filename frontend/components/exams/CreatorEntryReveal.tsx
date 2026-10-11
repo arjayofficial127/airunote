@@ -145,6 +145,11 @@ export function CreatorCompletionGift() {
   return <div className="gift-completion" aria-hidden="true" data-motion={appearance.decorations.animated}>
     {appearance.artwork.visible && <div className="gift-stage">
       <div className="gift-contact-shadow" />
+      {appearance.decorations.leaves && <>
+        <img className="completion-sprig completion-sprig-left" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
+        <img className="completion-sprig completion-sprig-right" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
+        {[1, 2, 3].map(cone => <img key={cone} className={`completion-pinecone completion-pinecone-${cone}`} src={`/exam-assets/creator/pinecone-natural-${cone}.png`} alt="" draggable={false} />)}
+      </>}
       <div className="completion-thank-you" />
       <div className="gift-body-layer"><img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
       <div className="completion-gift-lid"><div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" /></div>

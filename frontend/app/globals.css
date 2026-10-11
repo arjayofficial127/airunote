@@ -1246,6 +1246,14 @@ tr:hover > .block-icon-wrapper .block-icon {
 .completion-thank-you { position: absolute; z-index: 1; top: 30%; left: 24%; width: 52%; height: 26%; padding-top: 9%; background: linear-gradient(125deg,#fffbed,#e9dcc1); border: 1px solid #d7bd81; border-radius: 3px; color: #294333; font: italic 600 clamp(16px, 4vw, 22px) Georgia, serif; text-align: center; transform: rotate(-3deg); box-shadow: 0 3px 12px #041b1633; }
 .gift-completion .gift-body-layer, .gift-completion .gift-brand-seal { z-index: 2; }
 .gift-completion .completion-gift-lid { z-index: 3; }
+.completion-sprig, .completion-pinecone { position: absolute; height: auto; pointer-events: none; user-select: none; filter: drop-shadow(0 4px 4px #031a1660); }
+.completion-sprig { z-index: 0; width: 48%; }
+.completion-sprig-left { left: -25%; bottom: 16%; transform: rotate(66deg); }
+.completion-sprig-right { right: -24%; bottom: 26%; transform: rotate(-22deg); width: 43%; }
+.completion-pinecone { z-index: 3; }
+.completion-pinecone-1 { width: 32%; left: -19%; bottom: 7%; transform: rotate(-28deg); }
+.completion-pinecone-2 { width: 22%; right: -24%; bottom: 18%; transform: rotate(32deg); }
+.completion-pinecone-3 { width: 25%; right: -8%; bottom: 3%; transform: rotate(74deg); }
 .completion-receipt[data-creator="true"] .completion-eyebrow { color: #e8cd88; }
 .completion-receipt[data-creator="true"] .completion-message { color: #e0e5d7; max-width: 34ch; margin-top: 14px; }
 .completion-confirmation { margin-top: 12px; padding: 0; border: 0; background: transparent; }
@@ -1307,7 +1315,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-theme[data-renderer="creator"] .entry-start-action button:hover { background: #86142a; }
 
 /* Shared compact holiday banner: artwork plus editable live identity. */
-.exam-top-banner { position: relative; isolation: isolate; container-type: inline-size; width: 100%; background: #0b2b20; color: #fff8e6; overflow: hidden; }
+.exam-top-banner { position: relative; isolation: isolate; width: 100%; background: #0b2b20; color: #fff8e6; overflow: hidden; }
 .exam-top-banner-art { display: block; width: 100%; height: auto; aspect-ratio: 3 / 1; object-fit: cover; }
 .exam-top-banner-brand { position: absolute; top: 5%; left: 8%; right: 8%; display: flex; align-items: center; justify-content: center; gap: 2cqw; font-size: clamp(7px, 1.8cqw, 12px); line-height: 1.2; letter-spacing: .08em; }
 .exam-top-banner-brand strong { display: flex; align-items: center; gap: 1cqw; font-size: clamp(9px, 2.5cqw, 18px); }
@@ -1363,11 +1371,49 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-confirmation { width: fit-content; margin: 14px auto 0; padding: 7px 12px; border: 1px solid #c5d5ac44; border-radius: 99px; background: #c5d5ac0d; }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-message { max-width: 44ch; margin-top: 20px; padding-top: 18px; border-top: 1px solid #c5d5ac33; font-size: 14px; line-height: 1.65; }
 .exam-theme[data-renderer="creator"] .completion-review { margin: 0; border: 0; border-radius: 0; }
-.exam-theme[data-renderer="creator"] .completion-review summary { padding: 20px 24px; }
+.completion-review { padding: 20px 24px; }
+.completion-review .completion-review-toggle { min-height: 48px; padding: 12px 16px; border-radius: 12px; background: #164b3c; color: #fffdf8; }
+.completion-review .completion-review-toggle:hover { background: #103c30; }
+.completion-review[open] .completion-review-toggle { margin-bottom: 16px; }
+.completion-retry { padding: 0 24px 24px; }
+.completion-retry-button { width: 100%; min-height: 48px; padding: 12px 16px; border: 1px solid #a51c33; border-radius: 12px; background: transparent; color: #a51c33; font-size: 14px; font-weight: 600; }
+.completion-retry-button:hover { background: #a51c330a; }
+.completion-retry-button:focus-visible { outline: 3px solid #a51c33; outline-offset: 3px; }
 .exam-theme[data-renderer="creator"] .completion-layout > .text-center { margin: 0; padding: 0 20px 16px; }
 .exam-theme[data-renderer="creator"] .completion-layout > .text-center button { color: #a51c33; }
 @media (min-width: 640px) {
   .exam-theme[data-renderer="creator"] .exam-completion-page { padding: 32px 24px; }
   .exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { padding-inline: 40px; }
-  .exam-theme[data-renderer="creator"] .completion-review summary { padding-inline: 40px; }
+  .completion-review, .completion-retry { padding-inline: 40px; }
 }
+
+/* Appearance workspace: the app sidebar is column one; controls and preview fill the rest. */
+.exam-editor[data-appearance="true"] .exam-editor-container { max-width: none; }
+.appearance-workspace { display: grid; gap: 24px; min-width: 0; align-items: start; }
+.appearance-controls, .appearance-preview-panel { min-width: 0; }
+.appearance-preview-panel { border: 1px solid #e2e8f0; border-radius: 16px; background: #f1f5f9; padding: 16px; }
+@container (min-width: 900px) {
+  .appearance-workspace { grid-template-columns: 320px minmax(0, 1fr); height: calc(100dvh - 280px); min-height: 480px; }
+  .appearance-controls, .appearance-preview-panel { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+  .appearance-controls { padding-right: 8px; padding-bottom: 24px; }
+  .appearance-preview-panel { position: sticky; top: 16px; }
+}
+
+/* Keep the banner at its approved compact scale on wide displays. */
+.exam-top-banner-inner { position: relative; container-type: inline-size; max-width: 888px; margin-inline: auto; overflow: hidden; }
+.exam-top-banner { background: #0b2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center / cover no-repeat; }
+.terminal-refined { display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.terminal-card { width: 100%; max-width: 560px; overflow: hidden; border: 1px solid #d9d8c6; border-radius: 24px; background: #fffdf8; box-shadow: 0 16px 48px #18392b18; }
+.terminal-context { padding: 24px; border-bottom: 1px solid #e3dfcf; }
+.terminal-body { padding: clamp(24px, 5vw, 40px); text-align: center; color: #173e31; }
+.terminal-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; color: #a51c33; background: #f8e9e9; }
+.terminal-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #a51c33; }
+.terminal-body h1 { margin-top: 8px; font-size: clamp(24px, 4vw, 30px); font-weight: 700; line-height: 1.2; text-wrap: balance; }
+.terminal-description { margin-top: 14px; font-size: 14px; line-height: 1.65; color: #53665c; }
+.terminal-next-step { margin-top: 24px; padding: 18px; border: 1px solid #dce5da; border-radius: 12px; background: #f0f4ed; text-align: left; }
+.terminal-next-step h2 { font-size: 14px; font-weight: 700; }
+.terminal-next-step p { margin-top: 6px; font-size: 14px; line-height: 1.6; }
+.terminal-attempt { margin-top: 18px; font-size: 12px; color: #63736a; }
+.terminal-secondary { width: 100%; min-height: 48px; margin-top: 20px; padding: 12px 16px; border: 1px solid #a51c33; border-radius: 12px; color: #a51c33; font-size: 14px; font-weight: 600; }
+.terminal-secondary:hover { background: #f8e9e9; }
+.terminal-secondary:focus-visible { outline: 3px solid #a51c33; outline-offset: 3px; }
