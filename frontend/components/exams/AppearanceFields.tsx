@@ -350,11 +350,11 @@ export function AppearanceFields({
         <h3 className="font-semibold">Completion</h3>
         <label className="block text-sm">
           Celebration text
-          <input className={inputClass} maxLength={120} value={v.completionEyebrow ?? 'A little moment to celebrate'} onChange={e => onChange({ ...v, completionEyebrow: e.target.value })} />
+          <input className={inputClass} maxLength={120} value={v.completionEyebrow ?? ''} onChange={e => onChange({ ...v, completionEyebrow: e.target.value })} />
         </label>
         <label className="block text-sm">
           Completion headline
-          <input className={inputClass} maxLength={200} value={v.completionTitle ?? 'Beautifully done.'} onChange={e => onChange({ ...v, completionTitle: e.target.value })} />
+          <input className={inputClass} maxLength={200} value={v.completionTitle ?? 'END OF EXAM'} onChange={e => onChange({ ...v, completionTitle: e.target.value })} />
         </label>
         <label className="block text-sm">
           Completion message

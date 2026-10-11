@@ -235,7 +235,7 @@ export function ExamContent({ exam, previewInstructions = false }: { exam: Retur
               <div className="min-w-0 flex-1 max-w-xl">
                 <div className="text-xs font-bold uppercase tracking-[0.24em] text-[var(--exam-color-f4b36f)]">{appearance.headerLabel}</div>
                 <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{exam.overview.title}</h1>
-                {appearance.renderer !== 'creator' && !appearance.instructions && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--exam-color-ead8c7)]">{exam.overview.description}</p>}
+                {!appearance.instructions && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--exam-color-ead8c7)]">{exam.overview.description}</p>}
                 <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.durationMinutes} minutes</span>
                   <span className="rounded-full bg-white/10 px-3 py-1.5">{exam.overview.questionCount} question{exam.overview.questionCount === 1 ? '' : 's'}</span>
@@ -243,7 +243,7 @@ export function ExamContent({ exam, previewInstructions = false }: { exam: Retur
                   {exam.overview.preventFocusLoss && <span className="rounded-full bg-[color:var(--exam-color-d97706-25)] px-3 py-1.5 text-[var(--exam-color-ffd28c)]">Focus lock on</span>}
                 </div>
               </div>
-              {appearance.renderer !== 'creator' && <StoreNineCats />}
+              <StoreNineCats />
             </div>
           </div>}
           {(appearance.renderer === 'creator' || appearance.instructions) && <ExamInstructions description={exam.overview.description} />}
@@ -284,10 +284,10 @@ export function ExamContent({ exam, previewInstructions = false }: { exam: Retur
               {appearance.renderer !== 'creator' && appearance.decorations.completion && <div aria-hidden="true" className="mb-4 text-5xl">{appearance.renderer === 'holiday' ? '🎁' : '🍂'}</div>}
 
             </div>
-            {(appearance.completionEyebrow ?? 'A little moment to celebrate') && <p className="completion-eyebrow">{appearance.completionEyebrow ?? 'A little moment to celebrate'}</p>}
-            <h1 className="completion-title">{appearance.completionTitle ?? 'Beautifully done.'}</h1>
+            {(appearance.completionEyebrow ?? '') && <p className="completion-eyebrow">{appearance.completionEyebrow ?? ''}</p>}
+            <h1 className="completion-title">{appearance.completionTitle ?? 'END OF EXAM'}</h1>
             <div className="completion-confirmation" role="status"><span aria-hidden="true">✓</span><span>{exam.attempt.isPreview ? 'Preview recorded' : 'Answers submitted'}</span></div>
-            <p className="completion-message">{exam.attempt.isPreview ? 'This authenticated preview is retained as an audit record and does not use an attempt allowance.' : (appearance.completionMessage || 'Thank you for giving it your best. Your answers are safely saved.')}</p>
+            <p className="completion-message">{exam.attempt.isPreview ? 'This authenticated preview is retained as an audit record and does not use an attempt allowance.' : (appearance.completionMessage || 'Thank you for giving it your best. Your answers are safely saved.').replace(/^END OF EXAM\s*[—–-]\s*/i, '')}</p>
           </div>
         </section>
         {exam.attempt.questions.length > 0 && <details className="completion-review group">

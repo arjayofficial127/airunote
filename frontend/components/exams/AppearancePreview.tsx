@@ -187,7 +187,7 @@ function PreviewScreen({ config, title = 'Your exam title', description, orgId, 
     } as ReturnType<typeof usePublicExam>;
   }, [config, title, description, screen, examDraft]);
   return <PreviewFrame mobile={mobile} fullscreen={fullscreen} gallery={gallery} onEscape={onEscape}>
-    <fieldset  style={{ '--exam-preview-page-height': gallery ? '100dvh' : '0px', '--exam-terminal-height': mobile || fullscreen || gallery ? '100dvh' : '720px' } as CSSProperties} className="m-0 min-w-0 border-0 p-0">
+    <fieldset  style={{ '--exam-preview-page-height': mobile || fullscreen || gallery ? '100dvh' : '0px', '--exam-terminal-height': mobile || fullscreen || gallery ? '100dvh' : '720px' } as CSSProperties} className="m-0 min-w-0 border-0 p-0">
       <ExamAppearanceProvider config={config} preview previewOrgId={orgId}>
         <ExamContent key={`${screen}-${config.renderer}`} exam={model} previewInstructions={screen === "instructions"} />
       </ExamAppearanceProvider>

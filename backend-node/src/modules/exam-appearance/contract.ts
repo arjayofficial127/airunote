@@ -212,7 +212,7 @@ export const holidayAppearance: Appearance = {
   renderer: 'holiday',
   headerLabel: 'FY27 HOLIDAY PROMOTION',
   completionMessage:
-    'END OF EXAM — Thank you for participating! Let’s get ready to celebrate the holiday season and create joyful moments for our customers.',
+    'Thank you for participating! Let’s get ready to celebrate the holiday season and create joyful moments for our customers.',
   brand: { ...legacyAppearance.brand, badge: '386 NEPO CENTER' },
   artwork: {
     asset: { source: 'builtin', assetId: 'wrapped-in-joy-gifts' },
