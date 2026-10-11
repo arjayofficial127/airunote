@@ -1291,6 +1291,13 @@ tr:hover > .block-icon-wrapper .block-icon {
 .entry-instructions-body { padding-top: 8px; }
 .entry-optional-details summary span { font-weight: 400; }
 .entry-identity-form .entry-start-action { position: sticky; bottom: 0; z-index: 5; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); background: var(--exam-color-fffdf8); }
+/* During extraction/zoom the form travels as one sheet. Sticky positioning
+   would pin its action to the changing animated viewport and make it stall. */
+.gift-reveal[data-phase="opening"] .entry-start-action { position: static; }
+.gift-reveal[data-phase="opening"] .gift-open-button,
+.gift-reveal[data-phase="opening"] .gift-reassurance { animation: giftEntryActionOut .18s ease-out both; }
+@keyframes giftEntryActionOut { to { opacity: 0; visibility: hidden; } }
+
 .gift-reveal[data-phase="open"] .gift-revealed-content { min-height: 100dvh; }
 @media (max-width: 639px) {
   .gift-revealed-content > .exam-entry-hero h1 { font-size: 1.15rem; }
