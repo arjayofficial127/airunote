@@ -55,6 +55,14 @@ export function PublicQuestionCard({ question, number, shortValue, saving, onSho
         </div>
       )}
 
+      {question.type === 'date' && (
+        <div className="mt-6">
+          <label htmlFor={`date-${question.id}`} className="mb-2 block text-sm text-[var(--exam-color-49372b)]">Choose a date</label>
+          <input id={`date-${question.id}`} type="date" max="9999-12-31" disabled={disabled} value={shortValue} onChange={(event) => onShortChange(event.target.value)} onBlur={onSaveShort} aria-describedby={`date-format-${question.id}`} className="min-h-12 min-w-0 w-full max-w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 text-[var(--exam-color-49372b)] outline-none focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)] disabled:opacity-60" />
+          <p id={`date-format-${question.id}`} className="mt-2 text-xs text-[var(--exam-color-947056)]">{shortValue ? `Selected date: ${shortValue}` : 'Saved as YYYY-MM-DD'}</p>
+        </div>
+      )}
+
       {question.type === 'short_text' && (
         <textarea disabled={disabled} value={shortValue} onChange={(event) => onShortChange(event.target.value)} onBlur={onSaveShort} rows={5} placeholder="Type your answer…" className="mt-6 w-full rounded-xl border border-[var(--exam-color-d9bea0)] bg-white px-4 py-3 leading-6 text-[var(--exam-color-49372b)] outline-none focus:border-[var(--exam-color-d97838)] focus:ring-2 focus:ring-[var(--exam-color-f4d2ab)] disabled:bg-[var(--exam-color-f6eee4)]" />
       )}

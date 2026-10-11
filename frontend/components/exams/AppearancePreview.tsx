@@ -7,7 +7,7 @@ import type { usePublicExam } from "./usePublicExam";
 import type { Appearance } from "@/lib/exam-appearance";
 import type { PublicExamOverview, PublicAttempt, ExamInput } from "@/lib/api/exams";
 import { PreviewGallery } from "./PreviewGallery";
-export const previewScreens = ["entry", "instructions", "questions", "completed", "upcoming", "ended", "terminated", "timed_out"] as const;
+export const previewScreens = ["entry", "instructions", "questions", "date", "completed", "upcoming", "ended", "terminated", "timed_out"] as const;
 export interface PreviewProps { config: Appearance; title?: string; description?: string | null; orgId: string; examDraft?: ExamInput; }
 const noop = async () => undefined;
 export function AppearancePreview({
@@ -150,8 +150,8 @@ function PreviewScreen({ config, title = 'Your exam title', description, orgId, 
         {
           id: "sample-question",
           sectionId: null,
-          type: "single_choice",
-          prompt: "Which option would you choose?",
+          type: screen === "date" ? "date" : "single_choice",
+          prompt: screen === "date" ? "Date (YYYY-MM-DD)" : "Which option would you choose?",
           position: 0,
           required: true,
           points: 1,
@@ -163,7 +163,7 @@ function PreviewScreen({ config, title = 'Your exam title', description, orgId, 
             { id: "a", label: "First option" },
             { id: "b", label: "Second option" },
           ],
-          selectedAnswers: ["a"],
+          selectedAnswers: screen === "date" ? [] : ["a"],
         },
       ],
     };

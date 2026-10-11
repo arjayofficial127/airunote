@@ -1,3 +1,4 @@
+import { isDateAnswer } from './date-answer';
 import { sectionIssues } from './section-structure';
 import { z } from 'zod';
 
@@ -14,6 +15,7 @@ export const examQuestionTypeSchema = z.enum([
   'multiple_choice',
   'true_false',
   'short_text',
+  'date',
 ]);
 
 export const examOptionInputSchema = z.object({
@@ -47,6 +49,9 @@ export const examQuestionInputSchema = z.object({
   correctAnswers: z.array(z.string().max(2000)).max(100).optional(),
   options: z.array(examOptionInputSchema).max(100).optional(),
 }).superRefine((question, context) => {
+  if (question.type === 'date' && (question.correctAnswers ?? []).some(value => !isDateAnswer(value))) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['correctAnswers'], message: 'Use a valid date in YYYY-MM-DD format' });
+  }
   const isChoice = question.type === 'single_choice' || question.type === 'multiple_choice';
   if (isChoice && (!question.options || question.options.length < 2)) {
     context.addIssue({

@@ -3,7 +3,7 @@ import apiClient from './client';
 
 export type ExamStatus = 'draft' | 'published' | 'closed';
 export type ExamReviewMode = 'none' | 'respondent_answers' | 'with_correct_answers';
-export type ExamQuestionType = 'single_choice' | 'multiple_choice' | 'true_false' | 'short_text';
+export type ExamQuestionType = 'single_choice' | 'multiple_choice' | 'true_false' | 'short_text' | 'date';
 
 export interface ExamListItem {
   id: string;

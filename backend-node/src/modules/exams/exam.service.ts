@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { isDateAnswer } from './date-answer';
 import { readAppearance } from '../exam-appearance/contract';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import { ExamRepository, ExamAttemptRecord, ExamAnswerRecord } from './exam.repository';
@@ -431,7 +432,7 @@ export class ExamService {
 
   private cleanAnswer(question: ExamQuestionView, answer: string[]): string[] {
     const cleaned = answer.map((value) => value.trim()).filter(Boolean);
-    if ((question.type === 'single_choice' || question.type === 'true_false' || question.type === 'short_text') && cleaned.length > 1) {
+    if ((question.type === 'single_choice' || question.type === 'true_false' || question.type === 'short_text' || question.type === 'date') && cleaned.length > 1) {
       throw new ExamServiceError('This question accepts one answer', 400, 'TOO_MANY_ANSWERS');
     }
     if ((question.type === 'single_choice' || question.type === 'multiple_choice') && cleaned.some(
@@ -440,6 +441,8 @@ export class ExamService {
     if (question.type === 'true_false' && cleaned.some((value) => value !== 'true' && value !== 'false')) {
       throw new ExamServiceError('Answer must be true or false', 400, 'INVALID_ANSWER');
     }
+    if (question.type === 'date' && cleaned.some(value => !isDateAnswer(value)))
+      throw new ExamServiceError('Enter a valid date in YYYY-MM-DD format', 400, 'INVALID_ANSWER');
     return cleaned;
   }
 

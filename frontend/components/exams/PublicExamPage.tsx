@@ -178,7 +178,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
     if (current.timeRemainingSeconds !== 0 || current.timedOut || expiringQuestionId.current === current.id) return;
     expiringQuestionId.current = current.id;
     const text = (shortAnswers[current.id] ?? '').trim();
-    const answer = current.type === 'short_text' ? (text ? [text] : []) : current.selectedAnswers;
+    const answer = (current.type === 'short_text' || current.type === 'date') ? (text ? [text] : []) : current.selectedAnswers;
     void expireQuestion(current.id, answer).then((saved) => {
       if (saved && safeQuestionIndex < questions.length - 1) {
         playNext();
@@ -332,7 +332,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
     ? [{ question: current, index: safeQuestionIndex }]
     : questions.map((question, index) => ({ question, index }));
   const answerFor = (question: PublicAttemptQuestion): string[] => {
-    if (question.type !== 'short_text') return question.selectedAnswers;
+    if ((question.type !== 'short_text' && question.type !== 'date')) return question.selectedAnswers;
     const value = (shortAnswers[question.id] ?? '').trim();
     return value ? [value] : [];
   };
@@ -345,7 +345,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
   const submitFinal = async () => {
     primeSound();
     for (const question of questions) {
-      if (question.type !== 'short_text' || question.timedOut) continue;
+      if ((question.type !== 'short_text' && question.type !== 'date') || question.timedOut) continue;
       const answer = answerFor(question);
       if (answer.join('\u0000') === question.selectedAnswers.join('\u0000')) continue;
       if (!await exam.saveAnswer(question.id, answer)) return;
