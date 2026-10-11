@@ -1435,3 +1435,33 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-music-info strong { display: block; font-size: 14px; margin: 4px 0; }
 .exam-music-info > span { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .exam-music-info a { display: inline-block; margin-top: 8px; text-decoration: underline; }
+
+/* Anchor the tabletop to the gift, independent of message length or viewport. */
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration {
+  container-type: inline-size;
+  background: #0c2b20;
+}
+.exam-theme[data-renderer="creator"] .completion-celebration::before,
+.exam-theme[data-renderer="creator"] .completion-celebration::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: -2;
+  left: 0;
+  right: 0;
+  background-image: url("/exam-assets/creator/green-studio-backdrop-red.png");
+  background-repeat: no-repeat;
+}
+.exam-theme[data-renderer="creator"] .completion-celebration::before {
+  top: 0;
+  height: calc(20px + min(54.208cqw, 212.872px));
+  background-size: 100% 160%;
+  background-position: center top;
+}
+.exam-theme[data-renderer="creator"] .completion-celebration::after {
+  top: calc(20px + min(54.208cqw, 212.872px));
+  bottom: 0;
+  background-size: 100% 650%;
+  background-position: center bottom;
+  box-shadow: inset 0 1px 0 #b4d4a51c;
+}
