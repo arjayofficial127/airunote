@@ -15,6 +15,7 @@ import {
 } from "@/lib/exam-appearance";
 import { fileLibrary as nativeFilesApi } from "@/services/fileLibrary";
 import { assetFileIds } from "@/lib/exam-appearance";
+import { ExamBackgroundMusic } from './ExamBackgroundMusic';
 import { themeColors } from "./themeColors";
 const Context = createContext<Appearance>(legacyAppearance);
 const PreviewMode = createContext(false);
@@ -119,6 +120,7 @@ export function ExamAppearanceProvider({
             }
           >
             {children}
+            <ExamBackgroundMusic />
           </div>
         </PreviewUrls.Provider>
       </PreviewMode.Provider>

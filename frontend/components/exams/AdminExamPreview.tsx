@@ -38,20 +38,18 @@ export function AdminExamPreview({ orgId, examId }: { orgId: string; examId: str
     }
   };
 
-  if (!data) return <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-sm" role="status">{error || 'Preparing admin preview…'}</main>;
+  if (!data) return <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6 text-sm" role="status">{error ? 'Sign in to Airunote with an administrator account to open this preview. For access without signing in, ask for a public preview code.' : 'Preparing admin preview…'}</main>;
   const overview: PublicExamOverview = {
     ...data.exam,
     appearance: data.appearance,
-    availability: 'open',
-    startsAt: null,
-    endsAt: null,
+    availability: data.exam.startsAt && Date.parse(data.exam.startsAt) > Date.now() ? 'upcoming' : data.exam.endsAt && Date.parse(data.exam.endsAt) <= Date.now() ? 'ended' : 'open',
     serverTime: new Date().toISOString(),
     questionCount: data.exam.questions.length,
     totalPoints: data.exam.questions.reduce((sum, question) => sum + (question.graded ? question.points : 0), 0),
   };
   const model = { overview, attempt: null, loading: starting, error } as ReturnType<typeof usePublicExam>;
   return <>
-    <div className="bg-violet-50 px-4 py-2 text-center text-xs text-violet-900">Admin preview · Main page → Instructions → Exam. Start exam creates a test attempt excluded from respondent statistics.</div>
+    <div className="bg-violet-50 px-4 py-2 text-center text-xs text-violet-900">Admin preview · Main page → Instructions → Exam. Start exam creates a graded Admin Attempt in PreviewAttempts. All exam rules apply; attempts are unlimited.</div>
     <ExamAppearanceProvider config={data.appearance} preview previewOrgId={orgId}>
       <ExamContent exam={model} onPreviewStart={() => void startPreview()} />
     </ExamAppearanceProvider>

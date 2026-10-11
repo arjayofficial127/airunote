@@ -94,7 +94,7 @@ export function buildExamReport(exam: ExamDefinitionView, data: ExamReportData) 
       remainingSeconds: attempt.status === 'in_progress' ? Math.max(0, availableSeconds - rawElapsed) : 0,
       active,
       needsAdmin: ['inactive_stale', 'focus_terminated', 'terminated', 'timed_out', 'abandoned'].includes(classification),
-      eligibleForContinue: !attempt.isPreview && ['inactive_stale', 'focus_terminated', 'terminated', 'timed_out', 'abandoned'].includes(classification),
+      eligibleForContinue: ['inactive_stale', 'focus_terminated', 'terminated', 'timed_out', 'abandoned'].includes(classification),
       activeQuestionId: latestQuestionByAttempt.get(attempt.id)?.questionId ?? null,
       earnedPoints,
       possiblePoints,

@@ -931,3 +931,9 @@ export const examAttemptEventsTable = pgTable('exam_attempt_events', {
   attemptCreatedIdx: index('exam_attempt_events_attempt_created_idx').on(table.attemptId, table.createdAt),
   eventTypeIdx: index('exam_attempt_events_type_idx').on(table.eventType),
 }));
+
+// Opt-in public preview access; only a hash of the eight-digit code is retained.
+export const examPreviewCodesTable = pgTable('exam_preview_codes', {
+  examId: uuid('exam_id').primaryKey().references(() => examsTable.id, { onDelete: 'cascade' }),
+  codeHash: text('code_hash').notNull(),
+});

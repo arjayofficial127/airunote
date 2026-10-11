@@ -1,4 +1,5 @@
 'use client';
+import { CreatorBotanicalFrame } from './CreatorEntryReveal';
 import { useState } from 'react';
 import { useExamAppearance, useExamAssetUrl } from './ExamAppearanceProvider';
 
@@ -8,9 +9,13 @@ export function ExamTopBanner({ title }: { title: string }) {
   const logo = useExamAssetUrl(appearance.brand.logo);
   const builtinLogo = appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo';
   const [failed, setFailed] = useState<string>();
-  const src = custom && custom !== failed ? custom : '/exam-assets/creator/holiday-banner.png';
+  const selected = custom && custom !== failed ? custom : '/exam-assets/creator/holiday-banner.png';
+  const holidayBanner = selected === '/exam-assets/creator/holiday-banner.png';
+  const src = holidayBanner && failed !== '/exam-assets/creator/holiday-banner-clean-left.png'
+    ? '/exam-assets/creator/holiday-banner-clean-left.png' : selected;
   return <div className="exam-top-banner"><div className="exam-top-banner-inner">
     <img className="exam-top-banner-art" src={src} alt={appearance.banner?.alt || 'Wrapped in Joy'} onError={() => setFailed(src)} />
+    {holidayBanner && src.endsWith('holiday-banner-clean-left.png') && <CreatorBotanicalFrame corners={['top']} />}
     <div className="exam-top-banner-brand">
       <span>AIRUNOTE EXAMS</span>
       {appearance.brand.visible && <>

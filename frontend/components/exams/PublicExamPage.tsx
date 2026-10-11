@@ -2,7 +2,7 @@
 
 import { ExamAppearanceProvider, useExamAppearance, useExamPreview, useExamAssetUrl } from './ExamAppearanceProvider';
 import { ExamTopBanner } from './ExamTopBanner';
-import { CreatorEntryReveal, CreatorCompletionGift } from './CreatorEntryReveal';
+import { CreatorEntryReveal, CreatorCompletionGift, CreatorBotanicalFrame } from './CreatorEntryReveal';
 import { readAppearance } from '@/lib/exam-appearance';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import type { PublicAttemptQuestion, PublicExamOverview } from '@/lib/api/exams';
@@ -12,7 +12,7 @@ import { PublicQuestionCard } from './PublicQuestionCard';
 import { useExamSounds } from './useExamSounds';
 import { usePublicExam, type ExamSyncStatus } from './usePublicExam';
 
-interface PublicExamPageProps { publicId: string }
+interface PublicExamPageProps { publicId: string; codedGrant?: string }
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -122,8 +122,8 @@ function ScheduledExamNotice({ overview, state, seconds }: { overview: PublicExa
   );
 }
 
-export function PublicExamPage({ publicId }: PublicExamPageProps) {
-  const exam = usePublicExam(publicId);
+export function PublicExamPage({ publicId, codedGrant }: PublicExamPageProps) {
+  const exam = usePublicExam(publicId, codedGrant);
   return <ExamAppearanceProvider config={readAppearance(exam.attempt?.appearance ?? exam.overview?.appearance)}><ExamContent exam={exam} /></ExamAppearanceProvider>;
 }
 
@@ -280,8 +280,8 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
           <h1 id="terminal-title">{paused ? 'Your attempt is paused' : timedOut ? 'Time is up' : exam.attempt.status === 'void' ? 'This attempt was marked void' : 'This attempt is no longer active'}</h1>
           <p className="terminal-description">{paused ? 'The exam window lost focus. Your saved answers remain on record.' : 'Your saved answers remain on record.'}</p>
           <div className="terminal-next-step"><h2>What happens next?</h2><p>{paused ? 'Contact your exam administrator for a continue link to resume this attempt.' : 'Contact your exam administrator if you need help or permission to retake.'}</p></div>
-          <p className="terminal-attempt">Attempt #{exam.attempt.attemptNumber}{exam.attempt.isPreview ? ' · Admin preview' : ''}</p>
-          {paused && !exam.attempt.isPreview && <button type="button" onClick={exam.startAnother} className="terminal-secondary">Different respondent</button>}
+          <p className="terminal-attempt">Attempt #{exam.attempt.attemptNumber}{exam.attempt.isPreview ? ` · ${exam.attempt.previewedByRole === 'PreviewCoded' ? 'Preview Coded' : 'Admin Attempt'}` : ''}</p>
+          {(paused || exam.attempt.isPreview) && <button type="button" onClick={exam.startAnother} className="terminal-secondary">{exam.attempt.isPreview ? 'Try another preview' : 'Different respondent'}</button>}
         </div>
       </section>
     </main>;
@@ -293,8 +293,9 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
       <div className="completion-layout relative z-[1] mx-auto max-w-2xl">
         {appearance.renderer === 'creator' ? <div className="completion-banner"><ExamTopBanner title={exam.attempt.title} /></div> : <><div className="mb-5"><ExamSponsorBrand /></div><div className="mb-5 px-1"><ExamContext title={exam.attempt.title} /></div></>}
         <section className="completion-receipt" data-creator={appearance.renderer === 'creator'}>
-          {exam.attempt.isPreview && <div className="border-b border-violet-200 bg-violet-50 px-5 py-3 text-xs font-semibold text-violet-800">Admin preview · {exam.attempt.previewedByEmail} · excluded from respondent statistics</div>}
+          {exam.attempt.isPreview && <div className="border-b border-violet-200 bg-violet-50 px-5 py-3 text-xs font-semibold text-violet-800">{exam.attempt.previewedByRole === 'PreviewCoded' ? 'Preview Coded' : 'Admin Attempt'} · {exam.attempt.previewedByEmail} · excluded from respondent statistics</div>}
           <div className="completion-celebration">
+            <CreatorBotanicalFrame corners={['bottom']} />
             <div className="completion-art">
               <CreatorCompletionGift />
               {appearance.renderer !== 'creator' && appearance.decorations.completion && <div aria-hidden="true" className="mb-4 text-5xl">{appearance.renderer === 'holiday' ? '🎁' : '🍂'}</div>}
@@ -303,7 +304,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
             {(appearance.completionEyebrow ?? '') && <p className="completion-eyebrow">{appearance.completionEyebrow ?? ''}</p>}
             <h1 className="completion-title">{appearance.completionTitle ?? 'END OF EXAM'}</h1>
             <div className="completion-confirmation" role="status"><span aria-hidden="true">✓</span><span>{exam.attempt.isPreview ? 'Preview recorded' : 'Answers submitted'}</span></div>
-            <p className="completion-message">{exam.attempt.isPreview ? 'This authenticated preview is retained as an audit record and does not use an attempt allowance.' : (appearance.completionMessage || 'Thank you for giving it your best. Your answers are safely saved.').replace(/^END OF EXAM\s*[—–-]\s*/i, '')}</p>
+            <p className="completion-message">{exam.attempt.isPreview ? 'Your answers and grade are saved in PreviewAttempts. Preview attempts are unlimited.' : (appearance.completionMessage || 'Thank you for giving it your best. Your answers are safely saved.').replace(/^END OF EXAM\s*[—–-]\s*/i, '')}</p>
           </div>
         </section>
         {exam.attempt.questions.length > 0 && <details className="completion-review group">
@@ -313,7 +314,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
           </summary>
           <div className="space-y-3 border-t border-[var(--exam-color-ead8c2)] p-4">{exam.attempt.questions.map((question, index) => <article key={question.id} className="rounded-2xl border border-[var(--exam-color-ead8c2)] bg-white p-5"><h2 className="font-medium text-[var(--exam-color-33241b)]">{index + 1}. {question.prompt}</h2><div className="mt-3 text-sm text-[var(--exam-color-624a3a)]"><span className="font-semibold">Your answer:</span> {question.selectedAnswers.length ? question.selectedAnswers.map((answer) => answerLabel(question, answer)).join(', ') : 'No answer'}</div>{question.correctAnswers && <div className="mt-2 text-sm text-[var(--exam-color-00754a)]"><span className="font-semibold">Correct answer:</span> {question.correctAnswers.map((answer) => answerLabel(question, answer)).join(', ')}</div>}{question.explanation && <p className="mt-3 text-sm leading-6 text-[var(--exam-color-80634f)]">{question.explanation}</p>}</article>)}</div>
         </details>}
-        {!exam.attempt.isPreview && availability === 'open' && exam.attempt.attemptNumber < exam.overview.maxAttempts && <div className="completion-retry"><button type="button" onClick={exam.startAnother} className="completion-retry-button">Take another attempt <span aria-hidden="true">→</span></button><p className="mt-2 text-center text-xs text-[var(--exam-color-705746)]">{exam.overview.maxAttempts - exam.attempt.attemptNumber} attempt{exam.overview.maxAttempts - exam.attempt.attemptNumber === 1 ? '' : 's'} remaining</p></div>}
+        {(exam.attempt.isPreview || (availability === 'open' && exam.attempt.attemptNumber < exam.overview.maxAttempts)) && <div className="completion-retry"><button type="button" onClick={exam.startAnother} className="completion-retry-button">Take another attempt <span aria-hidden="true">→</span></button><p className="mt-2 text-center text-xs text-[var(--exam-color-705746)]">{exam.attempt.isPreview ? 'Unlimited preview attempts' : `${exam.overview.maxAttempts - exam.attempt.attemptNumber} attempts remaining`}</p></div>}
       </div>
     </main>
   );
@@ -362,7 +363,7 @@ export function ExamContent({ exam, previewInstructions = false, onPreviewStart 
           <div className="exam-status-strip mx-auto max-w-4xl px-4 py-3 sm:px-5">
           {appearance.renderer !== 'creator' && <>{appearance.headerLabel && <p className="exam-context-label mb-1">{appearance.headerLabel}</p>}
           <h1 className="text-base font-bold leading-snug sm:text-lg">{exam.attempt.title}</h1></>}
-          {exam.attempt.isPreview && <p className="mt-1 text-xs text-[var(--exam-color-8a6951)]">Admin preview · {exam.attempt.previewedByEmail}</p>}
+          {exam.attempt.isPreview && <p className="mt-1 text-xs text-[var(--exam-color-8a6951)]">{exam.attempt.previewedByRole === 'PreviewCoded' ? 'Preview Coded' : 'Admin Attempt'} · {exam.attempt.previewedByEmail}</p>}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <div className="exam-status-counts min-w-0 flex-1 text-xs leading-5 text-[var(--exam-color-8a6951)]">
               <p className="font-semibold">{exam.attempt.oneQuestionAtATime ? `Question ${safeQuestionIndex + 1} of ${questions.length}` : `${questions.length} questions`}</p>

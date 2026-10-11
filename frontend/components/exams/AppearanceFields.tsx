@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import type { Appearance } from "@/lib/exam-appearance";
+import { defaultExamMusic, type Appearance } from "@/lib/exam-appearance";
 import { NativeFileLibrary } from "@/components/files/NativeFileLibrary";
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
@@ -13,6 +13,8 @@ export function AppearanceFields({
   onChange: (v: Appearance) => void;
   disabled?: boolean;
 }) {
+  const music = v.music ?? { ...defaultExamMusic, enabled: v.renderer === 'creator' };
+  const setMusic = (patch: Partial<typeof music>) => onChange({ ...v, music: { ...music, ...patch } });
   const dialogRef = useRef<HTMLDivElement>(null);
   const [picker, setPicker] = useState<"logo" | "artwork" | "intro" | "banner" | null>(null);
   const giftOpening = v.giftOpening ?? { labelMode: 'unwrap' as const, customLabel: '', showReplay: false };
@@ -380,6 +382,19 @@ export function AppearanceFields({
         {toggle("Enable exam sounds", v.sound.available, (available) =>
           onChange({ ...v, sound: { ...v.sound, available } }),
         )}
+      </section>
+      <section className="space-y-3 rounded-2xl border bg-white p-5">
+        <h3 className="font-semibold">Background music</h3>
+        <p className="text-xs text-slate-500">Starts after the first click or key press and loops. Enable only when your license covers this website use. Credits do not replace a license.</p>
+        {toggle("Play background music", music.enabled, (enabled) => setMusic({ enabled }))}
+        {text("Audio URL (MP3/M4A)", music.url, (url) => setMusic({ url }))}
+        {text("Track title", music.title, (title) => setMusic({ title }))}
+        {text("Artist", music.artist, (artist) => setMusic({ artist }))}
+        {text("Source / credit link", music.sourceUrl, (sourceUrl) => setMusic({ sourceUrl }))}
+        <label className="block text-sm">Volume · {Math.round(music.volume * 100)}%
+          <input className="mt-2 w-full" type="range" min="0" max="100" value={Math.round(music.volume * 100)} onChange={(e) => setMusic({ volume: Number(e.target.value) / 100 })} />
+        </label>
+        {toggle("Show music credits", music.creditVisible, (creditVisible) => setMusic({ creditVisible }))}
       </section>
       {picker && (
         <div

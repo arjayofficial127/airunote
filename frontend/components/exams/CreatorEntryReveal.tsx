@@ -3,6 +3,17 @@
 import { useEffect, useLayoutEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useExamAppearance, useExamAssetUrl } from './ExamAppearanceProvider';
 
+export function CreatorBotanicalFrame({ corners = ['top', 'bottom'] }: { corners?: readonly ('top' | 'bottom')[] }) {
+  const appearance = useExamAppearance();
+  if (appearance.renderer !== 'creator' || !appearance.decorations.leaves) return null;
+  return <div className="gift-botanical-frame" aria-hidden="true" data-motion={appearance.decorations.animated}>
+        {corners.map(corner => <div key={corner} className={`gift-botanical-corner gift-botanical-${corner}`}>
+          <img src={`/exam-assets/creator/holiday-corner-${corner}-red.png`} alt="" width="1280" height="1280" draggable={false} />
+          {(corner === 'top' ? [[22, 3], [50, 2], [67, 8], [11, 20], [7, 43], [8, 55]] : [[92, 21], [92, 37], [94, 55], [61, 82], [38, 87]]).map(([x, y], i) => <i key={i} className="gift-fairy-light" style={{ left: `${x}%`, top: `${y}%`, '--twinkle-delay': `${-i * .83}s`, '--twinkle-duration': `${2.8 + i * .31}s` } as CSSProperties} />)}
+        </div>)}
+      </div>;
+}
+
 /** Presentation only: opening a gift never starts an attempt or its timer. */
 export function CreatorEntryReveal({ title, children, initiallyOpen = false, notice }: { title: string; children?: ReactNode; initiallyOpen?: boolean; notice?: { state: 'upcoming' | 'ended'; countdown?: string; scheduledFor?: string } }) {
   const appearance = useExamAppearance();
@@ -92,12 +103,7 @@ export function CreatorEntryReveal({ title, children, initiallyOpen = false, not
   if (!enabled) return <>{children}</>;
   return <div className="gift-reveal" data-phase={phase} data-motion={appearance.decorations.animated} data-notice={notice?.state}>
     {phase !== 'open' && <div className="gift-invitation">
-      {appearance.decorations.leaves && <div className="gift-botanical-frame" aria-hidden="true">
-        {(['top', 'bottom'] as const).map(corner => <div key={corner} className={`gift-botanical-corner gift-botanical-${corner}`}>
-          <img src={`/exam-assets/creator/holiday-corner-${corner}-red.png`} alt="" width="1280" height="1280" draggable={false} />
-          {(corner === 'top' ? [[22, 3], [50, 2], [67, 8], [11, 20], [7, 43], [8, 55]] : [[92, 21], [92, 37], [94, 55], [61, 82], [38, 87]]).map(([x, y], i) => <i key={i} className="gift-fairy-light" style={{ left: `${x}%`, top: `${y}%`, '--twinkle-delay': `${-i * .83}s`, '--twinkle-duration': `${2.8 + i * .31}s` } as CSSProperties} />)}
-        </div>)}
-      </div>}
+      <CreatorBotanicalFrame />
       <p className="gift-eyebrow">{appearance.headerLabel}</p>
       <h1>{title}</h1>
       {notice && <h2 className="gift-schedule-heading">{notice.state === 'upcoming' ? 'Your gift opens soon' : 'This exam has ended'}</h2>}

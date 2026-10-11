@@ -1364,8 +1364,8 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-theme[data-renderer="creator"] .exam-completion-page { padding: 16px; }
 .exam-theme[data-renderer="creator"] .completion-layout { overflow: hidden; border: 1px solid #214c3933; border-radius: 24px; background: #fffdf8; box-shadow: 0 16px 48px #18392b18; }
 .exam-theme[data-renderer="creator"] .completion-banner { margin: 0; }
-.exam-theme[data-renderer="creator"] .completion-receipt { border: 0; border-radius: 0; box-shadow: none; background: radial-gradient(ellipse at 50% 15%,#2e573d88,transparent 65%),linear-gradient(#0c2b2000,#0c2b20 72%),#0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center top / cover no-repeat; }
-.exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { padding: 12px 24px 28px; background: none; }
+.exam-theme[data-renderer="creator"] .completion-receipt { border: 0; border-radius: 0; box-shadow: none; background: #0c2b20; }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { position: relative; isolation: isolate; overflow: hidden; padding: 20px 24px 40px; background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center bottom / 100% 125% no-repeat; }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-art { width: min(56%, 220px); margin-bottom: 4px; }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-title { margin-top: 8px; font-size: clamp(28px, 5vw, 36px); }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-confirmation { width: fit-content; margin: 14px auto 0; padding: 7px 12px; border: 1px solid #c5d5ac44; border-radius: 99px; background: #c5d5ac0d; }
@@ -1417,3 +1417,21 @@ tr:hover > .block-icon-wrapper .block-icon {
 .terminal-secondary { width: 100%; min-height: 48px; margin-top: 20px; padding: 12px 16px; border: 1px solid #a51c33; border-radius: 12px; color: #a51c33; font-size: 14px; font-weight: 600; }
 .terminal-secondary:hover { background: #f8e9e9; }
 .terminal-secondary:focus-visible { outline: 3px solid #a51c33; outline-offset: 3px; }
+
+/* Shared holiday lights honor the appearance setting and reduced motion. */
+.gift-botanical-frame[data-motion="false"] .gift-fairy-light { animation: none; opacity: .75; }
+@media (prefers-reduced-motion: reduce) {
+  .gift-botanical-frame .gift-fairy-light { animation: none; opacity: .75; }
+}
+
+/* Keep the animated branch inside the banner, clear of its lettering. */
+.exam-top-banner-inner > .gift-botanical-frame { z-index: 0; }
+.exam-top-banner-inner .gift-botanical-top { top: -3%; left: -1%; width: 28%; max-width: none; }
+
+.exam-music-credit { position: fixed; z-index: 40; bottom: max(12px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); }
+.exam-music-credit > button { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #c5d5ac66; background: #12382e; color: #fff8e6; box-shadow: 0 2px 10px #0002; }
+.exam-music-credit > button:focus-visible { outline: 3px solid #d7b46e; outline-offset: 3px; }
+.exam-music-info { position: absolute; bottom: 100%; left: 0; width: min(260px, calc(100vw - 32px)); padding: 16px; border-radius: 12px; background: #fffdf8; color: #163c30; box-shadow: 0 8px 28px #0003; font: 12px/1.5 system-ui, sans-serif; }
+.exam-music-info strong { display: block; font-size: 14px; margin: 4px 0; }
+.exam-music-info > span { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.exam-music-info a { display: inline-block; margin-top: 8px; text-decoration: underline; }

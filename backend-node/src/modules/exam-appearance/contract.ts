@@ -114,6 +114,15 @@ export const appearanceSchema = z
     rounding: z.enum(['rounded', 'soft', 'square']),
     footer: z.object({ visible: z.boolean(), text: z.string().max(500) }).strict(),
     sound: z.object({ available: z.boolean(), defaultEnabled: z.boolean() }).strict(),
+    music: z.object({
+      enabled: z.boolean(),
+      url: z.string().max(2000).refine(value => value === '' || /^https:\/\//.test(value) || /^\/(?!\/)/.test(value), 'Use an HTTPS URL or a site-relative path'),
+      title: z.string().max(200),
+      artist: z.string().max(200),
+      sourceUrl: z.string().max(2000).refine(value => value === '' || /^https:\/\//.test(value), 'Use an HTTPS source link'),
+      volume: z.number().min(0).max(1),
+      creditVisible: z.boolean(),
+    }).strict().optional(),
   })
   .strict();
 export type Appearance = z.infer<typeof appearanceSchema>;
@@ -282,3 +291,13 @@ export const appearanceInputSchema = z
     revision: z.number().int().min(0),
   })
   .strict();
+
+export const defaultExamMusic = {
+  enabled: true,
+  url: '/exam-assets/music/winter-lanterns.mp3',
+  title: 'Winter Lanterns',
+  artist: 'Airunote · Original synthesized instrumental',
+  sourceUrl: '',
+  volume: 0.12,
+  creditVisible: false,
+};

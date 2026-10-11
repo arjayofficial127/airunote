@@ -51,7 +51,7 @@ function getDeviceId(): string {
   return created;
 }
 
-export function usePublicExam(publicId: string) {
+export function usePublicExam(publicId: string, codedGrant?: string) {
   const [overview, setOverview] = useState<PublicExamOverview | null>(null);
   const [attempt, setAttempt] = useState<PublicAttempt | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export function usePublicExam(publicId: string) {
   const kickSyncRef = useRef<() => Promise<void>>(async () => undefined);
   const stoppedRef = useRef(false);
   const fatalSyncErrorRef = useRef(false);
-  const tokenKey = `airunote_exam_attempt_${publicId}`;
+  const tokenKey = `airunote_exam_${codedGrant ? "coded_preview" : "attempt"}_${publicId}`;
 
   const updateAttempt = useCallback((next: PublicAttempt | ((current: PublicAttempt | null) => PublicAttempt | null)) => {
     setAttempt((current) => {
@@ -201,7 +201,7 @@ export function usePublicExam(publicId: string) {
         const previewToken = query.get('preview');
         const queryToken = query.get('resume') || previewToken;
         const storedToken = queryToken || window.localStorage.getItem(tokenKey);
-        const publicOverview = await publicExamsApi.overview(publicId);
+        const publicOverview = codedGrant ? await publicExamsApi.previewOverview(publicId, codedGrant) : await publicExamsApi.overview(publicId);
         if (!active) return;
         setOverview(publicOverview);
         if (storedToken) {
@@ -212,7 +212,7 @@ export function usePublicExam(publicId: string) {
             setAccessToken(storedToken);
             restoreQueue(current);
             if (!previewToken) window.localStorage.setItem(tokenKey, storedToken);
-            if (queryToken) window.history.replaceState({}, '', `/exam/${publicId}`);
+            if (queryToken && !previewToken) window.history.replaceState({}, '', `/exam/${publicId}`);
           } catch (attemptError) {
             console.warn('Stored exam attempt could not be resumed', attemptError);
             if (!isRetryable(attemptError)) window.localStorage.removeItem(tokenKey);
@@ -226,7 +226,7 @@ export function usePublicExam(publicId: string) {
       }
     })();
     return () => { active = false; stoppedRef.current = true; };
-  }, [publicId, restoreQueue, tokenKey]);
+  }, [publicId, codedGrant, restoreQueue, tokenKey]);
 
   useEffect(() => {
     const online = () => retrySync();
@@ -238,7 +238,8 @@ export function usePublicExam(publicId: string) {
     setError(null);
     setLoading(true);
     try {
-      const result = await publicExamsApi.start(publicId, { ...identity, respondentEmail: identity.respondentEmail || null, respondentIdentifier: identity.respondentIdentifier || null, deviceId: getDeviceId() });
+      const input = { ...identity, respondentEmail: identity.respondentEmail || null, respondentIdentifier: identity.respondentIdentifier || null, deviceId: getDeviceId() };
+      const result = codedGrant ? await publicExamsApi.previewStart(publicId, codedGrant, input) : await publicExamsApi.start(publicId, input);
       accessTokenRef.current = result.accessToken;
       setAccessToken(result.accessToken);
       queueStorageKeyRef.current = `airunote_exam_unsynced_${result.attempt.id}`;
@@ -251,7 +252,7 @@ export function usePublicExam(publicId: string) {
     } finally {
       setLoading(false);
     }
-  }, [publicId, publishQueueState, tokenKey, updateAttempt]);
+  }, [publicId, codedGrant, publishQueueState, tokenKey, updateAttempt]);
 
   const saveAnswer = useCallback(async (questionId: string, answer: string[]): Promise<boolean> => {
     if (!accessTokenRef.current || attemptRef.current?.status !== 'in_progress') return false;
@@ -369,6 +370,7 @@ export function usePublicExam(publicId: string) {
   }, [attempt?.remainingSeconds, attempt?.status, submit, unsyncedQuestionIds.length]);
 
   const startAnother = () => {
+    if (attempt?.isPreview && !codedGrant && attempt.previewRestartPath) { window.location.assign(attempt.previewRestartPath); return; }
     window.localStorage.removeItem(tokenKey);
     const queueKey = queueStorageKeyRef.current;
     if (queueKey) window.localStorage.removeItem(queueKey);

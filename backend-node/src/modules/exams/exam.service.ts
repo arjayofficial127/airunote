@@ -1,5 +1,6 @@
+import jwt from 'jsonwebtoken';
 import { readAppearance } from '../exam-appearance/contract';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import { ExamRepository, ExamAttemptRecord, ExamAnswerRecord } from './exam.repository';
 import {
   CreateExamInput,
@@ -331,8 +332,60 @@ export class ExamService {
     return { accessToken: token, attempt: this.buildAttemptPayload(exam, attempt, [], true) };
   }
 
+  private previewSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new ExamServiceError('Preview access is unavailable', 503, 'PREVIEW_UNAVAILABLE');
+    return secret;
+  }
+  async configurePreviewCode(orgId: string, examId: string, enabled: boolean) {
+    const exam = await this.get(orgId, examId);
+    if (enabled) this.previewSecret();
+    const code = enabled ? randomInt(0, 100_000_000).toString().padStart(8, '0') : null;
+    await this.repository.setPreviewCode(exam.id, code ? this.hash(`preview-code:${exam.id}:${code}`) : null);
+    return { code, path: `/exam/coded-preview?exam=${encodeURIComponent(exam.publicId)}` };
+  }
+  async unlockPreview(publicId: string, code: string) {
+    const exam = await this.repository.getByPublicId(publicId);
+    const hash = exam ? await this.repository.getPreviewCode(exam.id) : null;
+    const candidate = exam ? this.hash(`preview-code:${exam.id}:${code}`) : '';
+    if (!exam || !hash || !/^\d{8}$/.test(code) || !timingSafeEqual(Buffer.from(hash), Buffer.from(candidate)))
+      throw new ExamServiceError('Invalid preview code', 403, 'INVALID_PREVIEW_CODE');
+    const grant = jwt.sign({ purpose: 'coded-preview', examId: exam.id, codeHash: hash }, this.previewSecret(), { expiresIn: '12h' });
+    return { grant, overview: { ...await this.getPublicOverview(publicId), availability: this.publicAvailability({ ...exam, status: 'published' }) } };
+  }
+  async authorizePreview(publicId: string, grant: string) {
+    let payload: jwt.JwtPayload;
+    try { payload = jwt.verify(grant, this.previewSecret()) as jwt.JwtPayload; }
+    catch { throw new ExamServiceError('Enter the preview code again', 403, 'INVALID_PREVIEW_GRANT'); }
+    const exam = await this.repository.getByPublicId(publicId);
+    if (!exam || payload.purpose !== 'coded-preview' || payload.examId !== exam.id || payload.codeHash !== await this.repository.getPreviewCode(exam.id))
+      throw new ExamServiceError('Preview access has changed. Enter the current code.', 403, 'INVALID_PREVIEW_GRANT');
+    return exam;
+  }
+  async codedPreviewOverview(publicId: string, grant: string) {
+    const exam = await this.authorizePreview(publicId, grant);
+    return { ...await this.getPublicOverview(publicId), availability: this.publicAvailability({ ...exam, status: 'published' }) };
+  }
+  async startCodedPreview(publicId: string, grant: string, input: StartAttemptInput, signals: PublicRequestSignals) {
+    const exam = await this.authorizePreview(publicId, grant);
+    this.assertAvailable({ ...exam, status: 'published' });
+    if (!exam.questions.length) throw new ExamServiceError('This exam has no questions', 409, 'EXAM_EMPTY');
+    if (exam.requireEmail && !input.respondentEmail) throw new ExamServiceError('Email is required', 400, 'EMAIL_REQUIRED');
+    if (exam.requireIdentifier && !input.respondentIdentifier) throw new ExamServiceError('Partner number is required', 400, 'IDENTIFIER_REQUIRED');
+    const token = this.createToken();
+    const attempt = await this.repository.createAttempt({ examId: exam.id, expectedUpdatedAt: exam.updatedAt,
+      accessTokenHash: this.tokenHash(token), respondentName: input.respondentName, respondentEmail: input.respondentEmail ?? null,
+      respondentIdentifier: input.respondentIdentifier ?? null, identityKeyHash: this.hash(`coded:${token}`),
+      deviceHash: this.hash(input.deviceId), ipHash: this.hash(signals.ipAddress), userAgentHash: this.hash(signals.userAgent),
+      attemptNumber: 1, questionOrder: this.createQuestionOrder(exam), optionOrder: this.createOptionOrder(exam),
+      isPreview: true, previewedByRole: 'PreviewCoded' });
+    await this.repository.addEvent(attempt.id, 'coded_preview_started', {});
+    return { accessToken: token, attempt: this.buildAttemptPayload(exam, attempt, [], true) };
+  }
+
   async startPreview(orgId: string, examId: string, user: { userId: string; email: string }) {
     const exam = await this.get(orgId, examId);
+    this.assertAvailable({ ...exam, status: 'published' });
     if (exam.questions.length === 0) throw new ExamServiceError('This exam has no questions', 409, 'EXAM_EMPTY');
     const token = this.createToken();
     const identityKeyHash = this.hash(`preview:${user.userId}:${Date.now()}`);
@@ -439,6 +492,7 @@ export class ExamService {
       completedAt: attempt.completedAt,
       endedAt: attempt.endedAt ?? attempt.completedAt,
       isPreview: attempt.isPreview,
+      previewRestartPath: attempt.isPreview ? (attempt.previewedByRole === 'PreviewCoded' ? `/exam/coded-preview?exam=${encodeURIComponent(exam.publicId)}` : `/exam/admin-preview?org=${exam.orgId}&exam=${exam.id}`) : null,
       previewedByEmail: attempt.previewedByEmail,
       previewedByRole: attempt.previewedByRole,
       remainingSeconds: attempt.status === 'in_progress' ? this.remainingSeconds(exam, attempt) : 0,
@@ -463,7 +517,7 @@ export class ExamService {
         status: 'timed_out', completedAt: new Date(), endedAt: new Date(), terminationReason: 'time_expired', lastActiveAt: new Date(),
       }) ?? attempt;
       await this.repository.addEvent(attempt.id, 'time_expired', {});
-    } else if (attempt.status === 'in_progress' && !attempt.isPreview && Date.now() - attempt.lastActiveAt.getTime() >= 15 * 60_000) {
+    } else if (attempt.status === 'in_progress' && Date.now() - attempt.lastActiveAt.getTime() >= 15 * 60_000) {
       attempt = await this.repository.updateAttempt(attempt.id, {
         status: 'abandoned', completedAt: attempt.lastActiveAt, endedAt: attempt.lastActiveAt, terminationReason: 'inactive_abandoned',
       }) ?? attempt;
@@ -556,11 +610,6 @@ export class ExamService {
       const updated = await this.repository.updateAttempt(attempt.id, { lastActiveAt: new Date() });
       return this.buildAttemptPayload(exam, updated ?? attempt, answers, true);
     }
-    if (attempt.isPreview) {
-      await this.repository.addEvent(attempt.id, 'preview_focus_lost_ignored', metadata);
-      const updated = await this.repository.updateAttempt(attempt.id, { lastActiveAt: new Date() });
-      return this.buildAttemptPayload(exam, updated ?? attempt, answers, true);
-    }
     await this.repository.addEvent(attempt.id, 'focus_lost', metadata);
     const nextViolationCount = attempt.focusViolationCount + 1;
     const updated = await this.repository.updateAttempt(attempt.id, exam.preventFocusLoss ? {
@@ -650,7 +699,7 @@ export class ExamService {
     for (const attempt of data.attempts) {
       if (attempt.status !== 'in_progress') continue;
       const expiresAt = new Date(attempt.startedAt.getTime() + (exam.durationMinutes * 60 + attempt.extraTimeSeconds) * 1000);
-      const abandoned = !attempt.isPreview && now.getTime() - attempt.lastActiveAt.getTime() >= 15 * 60_000 && expiresAt > now;
+      const abandoned = now.getTime() - attempt.lastActiveAt.getTime() >= 15 * 60_000 && expiresAt > now;
       if (expiresAt > now && !abandoned) continue;
       const terminalAt = abandoned ? attempt.lastActiveAt : expiresAt;
       const updated = await this.repository.updateAttempt(attempt.id, abandoned ? {

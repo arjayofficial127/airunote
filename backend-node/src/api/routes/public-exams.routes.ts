@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response, Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { ZodError } from 'zod';
 import { ExamService, ExamServiceError } from '../../modules/exams/exam.service';
 import { attemptEventSchema, saveAnswerSchema, startAttemptSchema } from '../../modules/exams/exam.types';
@@ -28,6 +29,20 @@ function attemptToken(req: Request): string {
   if (!token) throw new ExamServiceError('Attempt token is required', 401, 'ATTEMPT_TOKEN_REQUIRED');
   return token;
 }
+
+const previewCodeLimit = rateLimit({ windowMs: 15 * 60_000, limit: 10, standardHeaders: true, legacyHeaders: false });
+router.post('/:publicId/preview-unlock', previewCodeLimit, async (req, res, next) => {
+  try { res.json({ success: true, data: await service.unlockPreview(req.params.publicId, typeof req.body.code === 'string' ? req.body.code : '') }); }
+  catch (error) { handleError(error, res, next); }
+});
+router.post('/:publicId/preview-overview', publicExamBrowseRateLimit, async (req, res, next) => {
+  try { res.json({ success: true, data: await service.codedPreviewOverview(req.params.publicId, req.body.grant || '') }); }
+  catch (error) { handleError(error, res, next); }
+});
+router.post('/:publicId/preview-start', publicExamStartRateLimit, async (req, res, next) => {
+  try { res.status(201).json({ success: true, data: await service.startCodedPreview(req.params.publicId, req.body.grant || '', startAttemptSchema.parse(req.body), { ipAddress: req.ip || 'unknown', userAgent: req.header('user-agent') || 'unknown' }) }); }
+  catch (error) { handleError(error, res, next); }
+});
 
 router.get('/:publicId', publicExamBrowseRateLimit, async (req: Request, res: Response, next: NextFunction) => {
   try {

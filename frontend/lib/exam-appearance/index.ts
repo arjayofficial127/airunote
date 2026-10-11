@@ -1,5 +1,6 @@
 export {
   appearanceSchema,
+  defaultExamMusic,
   legacyAppearance,
   plainAppearance,
   holidayAppearance,

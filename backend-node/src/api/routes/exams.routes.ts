@@ -112,6 +112,13 @@ router.post('/:examId/attempts/:attemptId/void', async (req: Request, res: Respo
   }
 });
 
+router.post('/:examId/preview-code', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (typeof req.body.enabled !== 'boolean') throw new ExamServiceError('enabled must be boolean', 400, 'INVALID_INPUT');
+    res.json({ success: true, data: await service.configurePreviewCode(req.params.orgId, req.params.examId, req.body.enabled) });
+  } catch (error) { handleError(error, res, next); }
+});
+
 router.post('/:examId/preview', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new ExamServiceError('Authentication required', 401, 'UNAUTHORIZED');
