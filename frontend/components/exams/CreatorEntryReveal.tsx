@@ -1,5 +1,6 @@
 'use client';
 
+import { ExamImage } from './ExamImage';
 import { useEffect, useLayoutEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useExamAppearance, useExamAssetUrl } from './ExamAppearanceProvider';
 
@@ -8,7 +9,7 @@ export function CreatorBotanicalFrame({ corners = ['top', 'bottom'] }: { corners
   if (appearance.renderer !== 'creator' || !appearance.decorations.leaves) return null;
   return <div className="gift-botanical-frame" aria-hidden="true" data-motion={appearance.decorations.animated}>
         {corners.map(corner => <div key={corner} className={`gift-botanical-corner gift-botanical-${corner}`}>
-          <img src={`/exam-assets/creator/holiday-corner-${corner}-red.png`} alt="" width="1280" height="1280" draggable={false} />
+          <ExamImage sizes="(max-width: 700px) 120px, 240px" src={`/exam-assets/creator/holiday-corner-${corner}-red.png`} alt="" width="1280" height="1280" draggable={false} />
           {(corner === 'top' ? [[22, 3], [50, 2], [67, 8], [11, 20], [7, 43], [8, 55]] : [[92, 21], [92, 37], [94, 55], [61, 82], [38, 87]]).map(([x, y], i) => <i key={i} className="gift-fairy-light" style={{ left: `${x}%`, top: `${y}%`, '--twinkle-delay': `${-i * .83}s`, '--twinkle-duration': `${2.8 + i * .31}s` } as CSSProperties} />)}
         </div>)}
       </div>;
@@ -112,22 +113,22 @@ export function CreatorEntryReveal({ title, children, initiallyOpen = false, not
         <div className="gift-contact-shadow" />
         <div className="gift-light" />
         {appearance.decorations.leaves && <>
-          <img className="gift-coffee-sprig gift-coffee-right" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
-          <img className="gift-coffee-sprig gift-coffee-left" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
+          <ExamImage sizes="(max-width: 700px) 120px, 240px" className="gift-coffee-sprig gift-coffee-right" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
+          <ExamImage sizes="(max-width: 700px) 120px, 240px" className="gift-coffee-sprig gift-coffee-left" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
         </>}
         <div className="gift-body-layer">
-          <img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" width="1475" height="1066" draggable={false} onError={() => setFailedArt(true)} />
+          <ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-body-embossed-red.png" alt="" width="1475" height="1066" draggable={false} onError={() => setFailedArt(true)} />
         </div>
         {appearance.brand.visible && appearance.brand.logoVisible && logo && logo !== failedLogo && <div className="gift-brand-seal" data-builtin={appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo'} style={{ '--gift-seal-color': appearance.colors.logo } as CSSProperties}>
           {appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo'
             ? <span style={{ maskImage: `url("${logo}")`, WebkitMaskImage: `url("${logo}")`, backgroundColor: 'color-mix(in srgb, var(--gift-seal-color) 55%, #102c21)'  }} />
-            : <img src={logo} alt="" onError={() => setFailedLogo(logo)} />}
+            : <ExamImage src={logo} alt="" onError={() => setFailedLogo(logo)} />}
         </div>}
         <div className="gift-top-layer">
-          <div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
-          <div className="gift-bow-layer"><img src="/exam-assets/creator/gift-bow-embossed-red.png" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
+          <div className="gift-lid-layer"><ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
+          <div className="gift-bow-layer"><ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-bow-embossed-red.png" alt="" width="1536" height="1024" draggable={false} onError={() => setFailedArt(true)} /></div>
         </div>
-        {appearance.decorations.leaves && <div className="gift-pinecone-trio">{[1, 2, 3].map(cone => <img key={cone} className={`gift-pinecone gift-pinecone-${cone}`} src={`/exam-assets/creator/pinecone-natural-${cone}.png`} alt="" draggable={false} />)}</div>}
+        {appearance.decorations.leaves && <div className="gift-pinecone-trio">{[1, 2, 3].map(cone => <ExamImage sizes="(max-width: 700px) 80px, 140px" key={cone} className={`gift-pinecone gift-pinecone-${cone}`} src={`/exam-assets/creator/pinecone-natural-${cone}.png`} alt="" draggable={false} />)}</div>}
         {appearance.decorations.leaves && <div className="gift-dust">{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ '--x': `${5 + i * 37 % 90}%`, '--delay': `${-i * .73}s`, '--duration': `${4 + i % 4}s` } as CSSProperties} />)}</div>}
       </div>
       {!notice && <p className="gift-caption">{appearance.artwork.caption || 'A little joy before you begin'}</p>}
@@ -152,17 +153,17 @@ export function CreatorCompletionGift() {
     {appearance.artwork.visible && <div className="gift-stage">
       <div className="gift-contact-shadow" />
       {appearance.decorations.leaves && <>
-        <img className="completion-sprig completion-sprig-left" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
-        <img className="completion-sprig completion-sprig-right" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
-        {[1, 2, 3].map(cone => <img key={cone} className={`completion-pinecone completion-pinecone-${cone}`} src={`/exam-assets/creator/pinecone-natural-${cone}.png`} alt="" draggable={false} />)}
+        <ExamImage sizes="(max-width: 700px) 120px, 240px" className="completion-sprig completion-sprig-left" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
+        <ExamImage sizes="(max-width: 700px) 120px, 240px" className="completion-sprig completion-sprig-right" src="/exam-assets/creator/coffee-cherry-sprig.png" alt="" draggable={false} />
+        {[1, 2, 3].map(cone => <ExamImage sizes="(max-width: 700px) 80px, 140px" key={cone} className={`completion-pinecone completion-pinecone-${cone}`} src={`/exam-assets/creator/pinecone-natural-${cone}.png`} alt="" draggable={false} />)}
       </>}
       <div className="completion-thank-you" />
-      <div className="gift-body-layer"><img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
+      <div className="gift-body-layer"><ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
       {/* The paper sits between the rear wall and the front lip of the box. */}
-      <div className="gift-body-layer completion-box-front"><img src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
-      <div className="completion-gift-lid"><div className="gift-lid-layer"><img src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" /></div>
-      <div className="gift-bow-layer"><img src="/exam-assets/creator/gift-bow-embossed-red.png" alt="" /></div></div>
-      {appearance.brand.visible && appearance.brand.logoVisible && logo && <div className="gift-brand-seal" data-builtin={appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo'} style={{ '--gift-seal-color': appearance.colors.logo } as CSSProperties}>{appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo' ? <span style={{maskImage:`url("${logo}")`,WebkitMaskImage:`url("${logo}")`,backgroundColor:'color-mix(in srgb, var(--gift-seal-color) 55%, #102c21)'}} /> : <img src={logo} alt="" />}</div>}
+      <div className="gift-body-layer completion-box-front"><ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-body-embossed-red.png" alt="" /></div>
+      <div className="completion-gift-lid"><div className="gift-lid-layer"><ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-lid-embossed-red.png" alt="" /></div>
+      <div className="gift-bow-layer"><ExamImage sizes="(max-width: 700px) 75vw, 600px" src="/exam-assets/creator/gift-bow-embossed-red.png" alt="" /></div></div>
+      {appearance.brand.visible && appearance.brand.logoVisible && logo && <div className="gift-brand-seal" data-builtin={appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo'} style={{ '--gift-seal-color': appearance.colors.logo } as CSSProperties}>{appearance.brand.logo?.source === 'builtin' && appearance.brand.logo.assetId === 'starbucks-logo' ? <span style={{maskImage:`url("${logo}")`,WebkitMaskImage:`url("${logo}")`,backgroundColor:'color-mix(in srgb, var(--gift-seal-color) 55%, #102c21)'}} /> : <ExamImage src={logo} alt="" />}</div>}
     </div>}
     <div className="gift-dust">{Array.from({length:18},(_,i)=><i key={i} style={{'--x':`${4+i*37%92}%`,'--delay':`${i*.06}s`,'--duration':'2.8s'} as CSSProperties}/>)}</div>
   </div>;

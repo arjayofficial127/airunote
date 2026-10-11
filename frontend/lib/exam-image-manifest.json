@@ -1,0 +1,881 @@
+{
+  "/exam-assets/creator/coffee-cherry-sprig.png": {
+    "width": 1374,
+    "height": 1145,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/3b4e6ef06b253f43-160.webp",
+        "bytes": 8880
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/3b4e6ef06b253f43-360.webp",
+        "bytes": 25322
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/3b4e6ef06b253f43-720.webp",
+        "bytes": 70872
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/3b4e6ef06b253f43-1200.webp",
+        "bytes": 170246
+      },
+      {
+        "width": 1374,
+        "url": "/exam-assets/optimized/3b4e6ef06b253f43-1374.webp",
+        "bytes": 213118
+      }
+    ]
+  },
+  "/exam-assets/creator/gift-body-embossed-red.png": {
+    "width": 1474,
+    "height": 1067,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/5417a39e776eff5f-160.webp",
+        "bytes": 4448
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/5417a39e776eff5f-360.webp",
+        "bytes": 13474
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/5417a39e776eff5f-720.webp",
+        "bytes": 37352
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/5417a39e776eff5f-1200.webp",
+        "bytes": 92056
+      },
+      {
+        "width": 1474,
+        "url": "/exam-assets/optimized/5417a39e776eff5f-1474.webp",
+        "bytes": 123074
+      }
+    ]
+  },
+  "/exam-assets/creator/gift-body-embossed.png": {
+    "width": 1475,
+    "height": 1067,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/8536b43a765e2a64-160.webp",
+        "bytes": 4284
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/8536b43a765e2a64-360.webp",
+        "bytes": 14152
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/8536b43a765e2a64-720.webp",
+        "bytes": 47102
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/8536b43a765e2a64-1200.webp",
+        "bytes": 139278
+      },
+      {
+        "width": 1475,
+        "url": "/exam-assets/optimized/8536b43a765e2a64-1475.webp",
+        "bytes": 194976
+      }
+    ]
+  },
+  "/exam-assets/creator/gift-bow-embossed-red.png": {
+    "width": 1536,
+    "height": 1024,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/a8d8ae89ba84d286-160.webp",
+        "bytes": 5942
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/a8d8ae89ba84d286-360.webp",
+        "bytes": 17696
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/a8d8ae89ba84d286-720.webp",
+        "bytes": 55796
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/a8d8ae89ba84d286-1200.webp",
+        "bytes": 142854
+      },
+      {
+        "width": 1536,
+        "url": "/exam-assets/optimized/a8d8ae89ba84d286-1536.webp",
+        "bytes": 206914
+      }
+    ]
+  },
+  "/exam-assets/creator/gift-bow-embossed.png": {
+    "width": 1536,
+    "height": 1024,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/4c47412f8ddc987a-160.webp",
+        "bytes": 6194
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/4c47412f8ddc987a-360.webp",
+        "bytes": 18394
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/4c47412f8ddc987a-720.webp",
+        "bytes": 64380
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/4c47412f8ddc987a-1200.webp",
+        "bytes": 175684
+      },
+      {
+        "width": 1536,
+        "url": "/exam-assets/optimized/4c47412f8ddc987a-1536.webp",
+        "bytes": 250506
+      }
+    ]
+  },
+  "/exam-assets/creator/gift-lid-embossed-red.png": {
+    "width": 1536,
+    "height": 1024,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/d0172a63ebc6fa75-160.webp",
+        "bytes": 2460
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/d0172a63ebc6fa75-360.webp",
+        "bytes": 8154
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/d0172a63ebc6fa75-720.webp",
+        "bytes": 21264
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/d0172a63ebc6fa75-1200.webp",
+        "bytes": 59094
+      },
+      {
+        "width": 1536,
+        "url": "/exam-assets/optimized/d0172a63ebc6fa75-1536.webp",
+        "bytes": 80786
+      }
+    ]
+  },
+  "/exam-assets/creator/gift-lid-embossed.png": {
+    "width": 1536,
+    "height": 1024,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/5c99e52897b5d35e-160.webp",
+        "bytes": 2038
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/5c99e52897b5d35e-360.webp",
+        "bytes": 6386
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/5c99e52897b5d35e-720.webp",
+        "bytes": 20372
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/5c99e52897b5d35e-1200.webp",
+        "bytes": 62056
+      },
+      {
+        "width": 1536,
+        "url": "/exam-assets/optimized/5c99e52897b5d35e-1536.webp",
+        "bytes": 90810
+      }
+    ]
+  },
+  "/exam-assets/creator/green-studio-backdrop-red.png": {
+    "width": 1122,
+    "height": 1402,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/301fe7694fbe14e4-160.webp",
+        "bytes": 2062
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/301fe7694fbe14e4-360.webp",
+        "bytes": 11178
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/301fe7694fbe14e4-720.webp",
+        "bytes": 57284
+      },
+      {
+        "width": 1122,
+        "url": "/exam-assets/optimized/301fe7694fbe14e4-1122.webp",
+        "bytes": 130194
+      }
+    ]
+  },
+  "/exam-assets/creator/green-studio-backdrop.png": {
+    "width": 1122,
+    "height": 1402,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/fbc1ac9b7a4dab82-160.webp",
+        "bytes": 2028
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/fbc1ac9b7a4dab82-360.webp",
+        "bytes": 12380
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/fbc1ac9b7a4dab82-720.webp",
+        "bytes": 74120
+      },
+      {
+        "width": 1122,
+        "url": "/exam-assets/optimized/fbc1ac9b7a4dab82-1122.webp",
+        "bytes": 190120
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-banner-clean-left.png": {
+    "width": 2172,
+    "height": 724,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/0df2ddf021cacd2c-160.webp",
+        "bytes": 1926
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/0df2ddf021cacd2c-360.webp",
+        "bytes": 6588
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/0df2ddf021cacd2c-720.webp",
+        "bytes": 20952
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/0df2ddf021cacd2c-1200.webp",
+        "bytes": 51418
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/0df2ddf021cacd2c-1600.webp",
+        "bytes": 85712
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-banner-clean.png": {
+    "width": 2172,
+    "height": 724,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/5745d9666a1ad104-160.webp",
+        "bytes": 1380
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/5745d9666a1ad104-360.webp",
+        "bytes": 4856
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/5745d9666a1ad104-720.webp",
+        "bytes": 16876
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/5745d9666a1ad104-1200.webp",
+        "bytes": 42300
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/5745d9666a1ad104-1600.webp",
+        "bytes": 67772
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-banner.png": {
+    "width": 2172,
+    "height": 724,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/fe8477077b29db87-160.webp",
+        "bytes": 2612
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/fe8477077b29db87-360.webp",
+        "bytes": 9750
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/fe8477077b29db87-720.webp",
+        "bytes": 31200
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/fe8477077b29db87-1200.webp",
+        "bytes": 73446
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/fe8477077b29db87-1600.webp",
+        "bytes": 121636
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-corner-bottom-red.png": {
+    "width": 1254,
+    "height": 1254,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/0c29e0b2a4af5b5e-160.webp",
+        "bytes": 8604
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/0c29e0b2a4af5b5e-360.webp",
+        "bytes": 32300
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/0c29e0b2a4af5b5e-720.webp",
+        "bytes": 100292
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/0c29e0b2a4af5b5e-1200.webp",
+        "bytes": 231656
+      },
+      {
+        "width": 1254,
+        "url": "/exam-assets/optimized/0c29e0b2a4af5b5e-1254.webp",
+        "bytes": 249256
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-corner-bottom.png": {
+    "width": 1254,
+    "height": 1254,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/50e3103d05d92843-160.webp",
+        "bytes": 11266
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/50e3103d05d92843-360.webp",
+        "bytes": 46338
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/50e3103d05d92843-720.webp",
+        "bytes": 147608
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/50e3103d05d92843-1200.webp",
+        "bytes": 361718
+      },
+      {
+        "width": 1254,
+        "url": "/exam-assets/optimized/50e3103d05d92843-1254.webp",
+        "bytes": 387050
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-corner-right-red.png": {
+    "width": 1024,
+    "height": 1536,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/00baf516f8005546-160.webp",
+        "bytes": 12902
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/00baf516f8005546-360.webp",
+        "bytes": 45662
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/00baf516f8005546-720.webp",
+        "bytes": 143030
+      },
+      {
+        "width": 1024,
+        "url": "/exam-assets/optimized/00baf516f8005546-1024.webp",
+        "bytes": 238534
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-corner-right-wide-red.png": {
+    "width": 1024,
+    "height": 1536,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/da04c1d53247035b-160.webp",
+        "bytes": 13888
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/da04c1d53247035b-360.webp",
+        "bytes": 46582
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/da04c1d53247035b-720.webp",
+        "bytes": 154098
+      },
+      {
+        "width": 1024,
+        "url": "/exam-assets/optimized/da04c1d53247035b-1024.webp",
+        "bytes": 283968
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-corner-top-red.png": {
+    "width": 1254,
+    "height": 1254,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/8a0a3bd8e0cd025f-160.webp",
+        "bytes": 9866
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/8a0a3bd8e0cd025f-360.webp",
+        "bytes": 39648
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/8a0a3bd8e0cd025f-720.webp",
+        "bytes": 129518
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/8a0a3bd8e0cd025f-1200.webp",
+        "bytes": 290862
+      },
+      {
+        "width": 1254,
+        "url": "/exam-assets/optimized/8a0a3bd8e0cd025f-1254.webp",
+        "bytes": 310938
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-corner-top.png": {
+    "width": 1254,
+    "height": 1254,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/a0b37d12697b7d84-160.webp",
+        "bytes": 11300
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/a0b37d12697b7d84-360.webp",
+        "bytes": 45702
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/a0b37d12697b7d84-720.webp",
+        "bytes": 152726
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/a0b37d12697b7d84-1200.webp",
+        "bytes": 361514
+      },
+      {
+        "width": 1254,
+        "url": "/exam-assets/optimized/a0b37d12697b7d84-1254.webp",
+        "bytes": 388856
+      }
+    ]
+  },
+  "/exam-assets/creator/holiday-pine-corner.png": {
+    "width": 1254,
+    "height": 1254,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/45b707291d6d7b65-160.webp",
+        "bytes": 12390
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/45b707291d6d7b65-360.webp",
+        "bytes": 46772
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/45b707291d6d7b65-720.webp",
+        "bytes": 153742
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/45b707291d6d7b65-1200.webp",
+        "bytes": 374638
+      },
+      {
+        "width": 1254,
+        "url": "/exam-assets/optimized/45b707291d6d7b65-1254.webp",
+        "bytes": 400518
+      }
+    ]
+  },
+  "/exam-assets/creator/pinecone-natural-1.png": {
+    "width": 1536,
+    "height": 1024,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/a2ff84877bb7656e-160.webp",
+        "bytes": 7988
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/a2ff84877bb7656e-360.webp",
+        "bytes": 26298
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/a2ff84877bb7656e-720.webp",
+        "bytes": 88070
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/a2ff84877bb7656e-1200.webp",
+        "bytes": 230986
+      },
+      {
+        "width": 1536,
+        "url": "/exam-assets/optimized/a2ff84877bb7656e-1536.webp",
+        "bytes": 336674
+      }
+    ]
+  },
+  "/exam-assets/creator/pinecone-natural-2.png": {
+    "width": 1222,
+    "height": 1287,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/c96d8feb3f59dfe6-160.webp",
+        "bytes": 10032
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/c96d8feb3f59dfe6-360.webp",
+        "bytes": 36516
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/c96d8feb3f59dfe6-720.webp",
+        "bytes": 123110
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/c96d8feb3f59dfe6-1200.webp",
+        "bytes": 282208
+      },
+      {
+        "width": 1222,
+        "url": "/exam-assets/optimized/c96d8feb3f59dfe6-1222.webp",
+        "bytes": 289206
+      }
+    ]
+  },
+  "/exam-assets/creator/pinecone-natural-3.png": {
+    "width": 1374,
+    "height": 1145,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/a9f8492e0762052f-160.webp",
+        "bytes": 9066
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/a9f8492e0762052f-360.webp",
+        "bytes": 31674
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/a9f8492e0762052f-720.webp",
+        "bytes": 108652
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/a9f8492e0762052f-1200.webp",
+        "bytes": 255738
+      },
+      {
+        "width": 1374,
+        "url": "/exam-assets/optimized/a9f8492e0762052f-1374.webp",
+        "bytes": 311978
+      }
+    ]
+  },
+  "/exam-assets/creator/pinecone-trio.png": {
+    "width": 1536,
+    "height": 1024,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/f7eba57a5aff7be7-160.webp",
+        "bytes": 8544
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/f7eba57a5aff7be7-360.webp",
+        "bytes": 27610
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/f7eba57a5aff7be7-720.webp",
+        "bytes": 85218
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/f7eba57a5aff7be7-1200.webp",
+        "bytes": 216582
+      },
+      {
+        "width": 1536,
+        "url": "/exam-assets/optimized/f7eba57a5aff7be7-1536.webp",
+        "bytes": 306670
+      }
+    ]
+  },
+  "/exam-assets/creator/wrapped-in-joy-bronze.png": {
+    "width": 2048,
+    "height": 768,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/9641d73043724823-160.webp",
+        "bytes": 5826
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/9641d73043724823-360.webp",
+        "bytes": 16554
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/9641d73043724823-720.webp",
+        "bytes": 41734
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/9641d73043724823-1200.webp",
+        "bytes": 84440
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/9641d73043724823-1600.webp",
+        "bytes": 132690
+      }
+    ]
+  },
+  "/exam-assets/creator/wrapped-in-joy-crafted.png": {
+    "width": 2048,
+    "height": 768,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/d97b093b71c2e9ae-160.webp",
+        "bytes": 6172
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/d97b093b71c2e9ae-360.webp",
+        "bytes": 18582
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/d97b093b71c2e9ae-720.webp",
+        "bytes": 47858
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/d97b093b71c2e9ae-1200.webp",
+        "bytes": 100424
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/d97b093b71c2e9ae-1600.webp",
+        "bytes": 158562
+      }
+    ]
+  },
+  "/exam-assets/creator/wrapped-in-joy-playful.png": {
+    "width": 2048,
+    "height": 768,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/232012a869eb0fae-160.webp",
+        "bytes": 5890
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/232012a869eb0fae-360.webp",
+        "bytes": 17250
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/232012a869eb0fae-720.webp",
+        "bytes": 44180
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/232012a869eb0fae-1200.webp",
+        "bytes": 93518
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/232012a869eb0fae-1600.webp",
+        "bytes": 139232
+      }
+    ]
+  },
+  "/exam-assets/creator/wrapped-in-joy-ribbon-candy.png": {
+    "width": 2048,
+    "height": 768,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/728d851e5cf46ae3-160.webp",
+        "bytes": 6052
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/728d851e5cf46ae3-360.webp",
+        "bytes": 17664
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/728d851e5cf46ae3-720.webp",
+        "bytes": 47296
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/728d851e5cf46ae3-1200.webp",
+        "bytes": 108186
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/728d851e5cf46ae3-1600.webp",
+        "bytes": 167136
+      }
+    ]
+  },
+  "/exam-assets/creator/wrapped-in-joy-ribbon-text.png": {
+    "width": 2048,
+    "height": 768,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/7322f56b3d31744f-160.webp",
+        "bytes": 4900
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/7322f56b3d31744f-360.webp",
+        "bytes": 13900
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/7322f56b3d31744f-720.webp",
+        "bytes": 33448
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/7322f56b3d31744f-1200.webp",
+        "bytes": 68684
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/7322f56b3d31744f-1600.webp",
+        "bytes": 108658
+      }
+    ]
+  },
+  "/exam-assets/creator/wrapped-in-joy-tricolor.png": {
+    "width": 2048,
+    "height": 768,
+    "variants": [
+      {
+        "width": 160,
+        "url": "/exam-assets/optimized/9c6801dbdd7e7121-160.webp",
+        "bytes": 5538
+      },
+      {
+        "width": 360,
+        "url": "/exam-assets/optimized/9c6801dbdd7e7121-360.webp",
+        "bytes": 17172
+      },
+      {
+        "width": 720,
+        "url": "/exam-assets/optimized/9c6801dbdd7e7121-720.webp",
+        "bytes": 44286
+      },
+      {
+        "width": 1200,
+        "url": "/exam-assets/optimized/9c6801dbdd7e7121-1200.webp",
+        "bytes": 97276
+      },
+      {
+        "width": 1600,
+        "url": "/exam-assets/optimized/9c6801dbdd7e7121-1600.webp",
+        "bytes": 145298
+      }
+    ]
+  }
+}

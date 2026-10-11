@@ -1,0 +1,2 @@
+:root { --exam-studio-image: url("/exam-assets/optimized/301fe7694fbe14e4-720.webp"); }
+@media (min-width: 701px), (min-resolution: 2dppx) { :root { --exam-studio-image: url("/exam-assets/optimized/301fe7694fbe14e4-1122.webp"); } }

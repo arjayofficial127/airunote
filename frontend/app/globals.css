@@ -1,3 +1,4 @@
+@import "./exam-images.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -962,7 +963,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 }
 
 /* Creator entry: independent transparent artwork layers, one finite reveal. */
-.gift-invitation { position: relative; isolation: isolate; overflow: hidden; text-align: center; padding: clamp(1.5rem,5vw,3rem); color: #fff8e6; background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center bottom / 100% 125% no-repeat; }
+.gift-invitation { position: relative; isolation: isolate; overflow: hidden; text-align: center; padding: clamp(1.5rem,5vw,3rem); color: #fff8e6; background: #0c2b20 var(--exam-studio-image) center bottom / 100% 125% no-repeat; }
 .gift-eyebrow { color: #e8cd88; font-size: .68rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; overflow-wrap: anywhere; }
 .gift-invitation h1 { margin: .8rem auto 0; max-width: 24ch; font-size: clamp(1.4rem,4vw,2.25rem); font-weight: 700; line-height: 1.15; text-wrap: balance; overflow-wrap: anywhere; }
 .gift-stage { position: relative; width: min(100%,380px); aspect-ratio: 1 / 1.18; margin: 0 auto; }
@@ -1236,7 +1237,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 }
 
 /* A quiet closing scene, using the same materials as the opening gift. */
-.completion-receipt[data-creator="true"] { background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center / cover no-repeat; color: #fff8e6; }
+.completion-receipt[data-creator="true"] { background: #0c2b20 var(--exam-studio-image) center / cover no-repeat; color: #fff8e6; }
 .completion-receipt[data-creator="true"]::before { display: none; }
 .completion-receipt[data-creator="true"] .completion-celebration { background: radial-gradient(ellipse at 50% 27%, #efd18b2b, transparent 55%); padding: 22px 24px 28px; }
 .completion-receipt[data-creator="true"] .completion-art { width: min(100%, 250px); margin-bottom: 12px; }
@@ -1367,7 +1368,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 .exam-theme[data-renderer="creator"] .completion-layout { overflow: hidden; border: 1px solid #214c3933; border-radius: 24px; background: #fffdf8; box-shadow: 0 16px 48px #18392b18; }
 .exam-theme[data-renderer="creator"] .completion-banner { margin: 0; }
 .exam-theme[data-renderer="creator"] .completion-receipt { border: 0; border-radius: 0; box-shadow: none; background: #0c2b20; }
-.exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { position: relative; isolation: isolate; overflow: hidden; padding: 20px 24px 40px; background: #0c2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center bottom / 100% 125% no-repeat; }
+.exam-theme[data-renderer="creator"] .completion-receipt .completion-celebration { position: relative; isolation: isolate; overflow: hidden; padding: 20px 24px 40px; background: #0c2b20 var(--exam-studio-image) center bottom / 100% 125% no-repeat; }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-art { width: min(56%, 220px); margin-bottom: 4px; }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-title { margin-top: 8px; font-size: clamp(28px, 5vw, 36px); }
 .exam-theme[data-renderer="creator"] .completion-receipt .completion-confirmation { width: fit-content; margin: 14px auto 0; padding: 7px 12px; border: 1px solid #c5d5ac44; border-radius: 99px; background: #c5d5ac0d; }
@@ -1403,7 +1404,7 @@ tr:hover > .block-icon-wrapper .block-icon {
 
 /* Keep the banner at its approved compact scale on wide displays. */
 .exam-top-banner-inner { position: relative; container-type: inline-size; max-width: 888px; margin-inline: auto; overflow: hidden; }
-.exam-top-banner { background: #0b2b20 url("/exam-assets/creator/green-studio-backdrop-red.png") center / cover no-repeat; }
+.exam-top-banner { background: #0b2b20 var(--exam-studio-image) center / cover no-repeat; }
 .terminal-refined { display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
 .terminal-card { width: 100%; max-width: 560px; overflow: hidden; border: 1px solid #d9d8c6; border-radius: 24px; background: #fffdf8; box-shadow: 0 16px 48px #18392b18; }
 .terminal-context { padding: 24px; border-bottom: 1px solid #e3dfcf; }
@@ -1451,7 +1452,7 @@ tr:hover > .block-icon-wrapper .block-icon {
   z-index: -2;
   left: 0;
   right: 0;
-  background-image: url("/exam-assets/creator/green-studio-backdrop-red.png");
+  background-image: var(--exam-studio-image);
   background-repeat: no-repeat;
 }
 .exam-theme[data-renderer="creator"] .completion-celebration::before {

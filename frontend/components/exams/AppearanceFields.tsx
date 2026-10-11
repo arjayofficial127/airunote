@@ -1,4 +1,5 @@
 "use client";
+import { ExamImage } from './ExamImage';
 import { useState, useEffect, useRef } from "react";
 import { defaultExamMusic, type Appearance } from "@/lib/exam-appearance";
 import { NativeFileLibrary } from "@/components/files/NativeFileLibrary";
@@ -129,7 +130,7 @@ export function AppearanceFields({
         </div>
         {v.instructions?.introMode === 'image' && <div className="space-y-3">
           <button type="button" className="w-full rounded-xl border bg-[#fffdf8] p-3 text-left" onClick={() => onChange({ ...v, instructions: { ...v.instructions, introMode: 'image', introImage: { source: 'builtin', assetId: 'wrapped-in-joy-ribbon-text' }, introImageAlt: 'Wrapped in Joy' } })}>
-            <img src="/exam-assets/creator/wrapped-in-joy-crafted.png" alt="Wrapped in Joy with a gold ribbon W" className="h-auto w-full" />
+            <ExamImage loading="lazy" sizes="280px" src="/exam-assets/creator/wrapped-in-joy-crafted.png" alt="Wrapped in Joy with a gold ribbon W" className="h-auto w-full" />
             <span className="mt-2 block text-xs font-semibold">Use Wrapped in Joy — ribbon W</span>
           </button>
           <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => setPicker('intro')}>Choose another image</button>

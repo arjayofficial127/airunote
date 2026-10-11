@@ -1,3 +1,4 @@
+import { imageVariant, imageWidths } from '../../modules/files/image-delivery';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
 import { Router, Request, Response, NextFunction } from 'express';
@@ -205,6 +206,20 @@ router.get(
   wrap(async (r, s) => {
     const file = await owned(r);
     if (file.deletedAt) throw new AppearanceError('File removed.', 404);
+    if (r.query.w !== undefined || r.query.format !== undefined) {
+      const width = Number(r.query.w);
+      if (!imageWidths.includes(width as typeof imageWidths[number]) || r.query.format !== 'webp') {
+        s.status(400).send('Unsupported image variant.'); return;
+      }
+      if (['image/png', 'image/jpeg', 'image/webp'].includes(file.mimeType)) {
+        const variant = await imageVariant(file, width);
+        if (variant) {
+          s.set({'Content-Type': variant.mime, 'Cache-Control': 'private, no-store',
+            'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox"});
+          s.send(variant.body); return;
+        }
+      }
+    }
     s.set({
       'Content-Type': file.mimeType,
       'X-Content-Type-Options': 'nosniff',
@@ -299,6 +314,22 @@ publicAssetRouter.get(
     if (!result.length) {
       s.sendStatus(404);
       return;
+    }
+    if (r.query.w !== undefined || r.query.format !== undefined) {
+      const width = Number(r.query.w);
+      if (!imageWidths.includes(width as typeof imageWidths[number]) || r.query.format !== 'webp') {
+        s.status(400).send('Unsupported image variant.'); return;
+      }
+      if (['image/png', 'image/jpeg', 'image/webp'].includes(file.mimeType)) {
+        const variant = await imageVariant(file, width);
+        if (!variant) { s.set('Retry-After', '2').sendStatus(503); return; }
+        // Revalidate each time so revoked/private/archived assets are not served from a CDN.
+        s.set({'Content-Type': variant.mime, 'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'private, no-cache', 'ETag': variant.etag,
+          'Content-Security-Policy': "default-src 'none'; sandbox"});
+        if (r.fresh) { s.sendStatus(304); return; }
+        s.send(variant.body); return;
+      }
     }
     s.set({
       'Content-Type': file.mimeType,

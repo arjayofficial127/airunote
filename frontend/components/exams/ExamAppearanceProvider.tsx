@@ -55,7 +55,7 @@ export function ExamAppearanceProvider({
     void Promise.all(
       ids.split(",").map(async (id) => {
         try {
-          const blob = await nativeFilesApi.preview(previewOrgId, id);
+          const blob = await nativeFilesApi.preview(previewOrgId, id, 1200);
           if (!active) return null;
           const url = URL.createObjectURL(blob);
           allocated.push(url);

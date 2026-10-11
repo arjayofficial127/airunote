@@ -1,5 +1,6 @@
 'use client';
 
+import { ExamImage } from './ExamImage';
 import { ExamAppearanceProvider, useExamAppearance, useExamPreview, useExamAssetUrl } from './ExamAppearanceProvider';
 import { ExamEntryGate } from './ExamEntryGate';
 import { ExamTopBanner } from './ExamTopBanner';
@@ -65,7 +66,7 @@ function ExamInstructions({ description }: { description: string | null }) {
   const fonts = { inherit: 'inherit', sans: 'Arial, sans-serif', serif: 'Georgia, serif', mono: 'ui-monospace, monospace', script: '"Brush Script MT", "Segoe Script", cursive', flourish: 'inherit' };
   if (!introImageUrl && !description && !instructions?.intro && !instructions?.title && !instructions?.secondaryTitle && !instructions?.secondaryBody) return null;
   return <div className="creator-instructions space-y-5">
-    {renderer !== 'creator' && (instructions?.introMode === 'image' && introImageUrl && introImageUrl !== failedIntroImage ? <img src={introImageUrl} alt={instructions.introImageAlt || instructions.intro || 'Opening text'} onError={() => setFailedIntroImage(introImageUrl)} className="instruction-image block h-auto w-full max-w-lg object-contain" data-ribbon={ribbonImage} style={{ width: `${imageWidth}%`, maxWidth: `${480 * imageWidth / 100}px` }} /> : instructions?.intro && <p className="instruction-intro" data-font={instructions.introFont} style={{ fontFamily: fonts[instructions.introFont ?? 'inherit'] }}>{instructions.introFont === 'flourish' ? <><span className="instruction-wild-initial">{Array.from(instructions.intro)[0]}</span>{Array.from(instructions.intro).slice(1).join('')}</> : instructions.intro}</p>)}
+    {renderer !== 'creator' && (instructions?.introMode === 'image' && introImageUrl && introImageUrl !== failedIntroImage ? <ExamImage src={introImageUrl} alt={instructions.introImageAlt || instructions.intro || 'Opening text'} onError={() => setFailedIntroImage(introImageUrl)} className="instruction-image block h-auto w-full max-w-lg object-contain" data-ribbon={ribbonImage} style={{ width: `${imageWidth}%`, maxWidth: `${480 * imageWidth / 100}px` }} /> : instructions?.intro && <p className="instruction-intro" data-font={instructions.introFont} style={{ fontFamily: fonts[instructions.introFont ?? 'inherit'] }}>{instructions.introFont === 'flourish' ? <><span className="instruction-wild-initial">{Array.from(instructions.intro)[0]}</span>{Array.from(instructions.intro).slice(1).join('')}</> : instructions.intro}</p>)}
       <div className="entry-instructions-body">
       {instructions?.title && <h2 className="mb-3 text-lg font-bold">{instructions.title}</h2>}
       {description && <p>{description}</p>}

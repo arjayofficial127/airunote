@@ -70,3 +70,25 @@ Rollback the application to the prior revision while retaining these additive co
 - The live shell-nlt4 ended-window screen matched the pre-release computed styles and geometry for its six primary elements.
 - Production admin browser verification awaits user sign-in after the previous session expired. Admin persistence, template controls, built-in selection, and preview states passed local integration/browser checks before deployment. No test respondent attempts were added in production.
 - The first hosted build identified isolated dependency resolution and error narrowing differences; these were corrected and the frontend rebuilt locally with backend dependencies absent before the successful release.
+
+### Responsive image delivery (2026-10-12)
+
+Bundled PNG/JPEG originals remain the saved asset identifiers. `ExamImage` resolves them through
+`frontend/lib/exam-image-manifest.json` to content-hashed WebP variants (160–1600px), retaining
+transparency and existing DOM/animation layers. Run `node frontend/scripts/build-exam-images.cjs`
+after adding/replacing originals; commit the manifest, generated CSS, and optimized files together.
+Hashed files use immutable one-year caching; never overwrite an existing hashed URL. Keep old
+variants available when releasing new artwork so cached clients continue working.
+
+Public uploaded artwork uses the same existing file ID with fixed `w` and `format=webp` parameters.
+Ownership/public visibility and published-exam usage checks run before conversion or cache access.
+Variants are generated on demand for old and new files, deduplicated in flight and retained in a
+32 MiB process LRU. At most four transformations run concurrently. Browser ETags reduce repeat
+transfer while `private, no-cache` requires access revalidation; this intentionally does not put
+revocable organization files in a public immutable CDN cache. Original content/download requests
+are unchanged. Admin appearance previews use the authenticated content route at 1200px.
+Animated uploads retain their originals. Conversion failure falls back to original content; client
+image errors also fall back to the original URL. No exam/config/data migration is required.
+
+The uploaded-variant cache is process-local (cold after restart); persistent object-store derivatives
+and CDN authorization are a separate future deployment. Audio is already `preload="none"`.

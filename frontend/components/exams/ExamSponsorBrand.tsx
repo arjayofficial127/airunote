@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import { ExamImage } from "./ExamImage";
 import { CreatorGiftScene } from "./CreatorGiftScene";
 import { useState } from "react";
 import { useExamAppearance, useExamAssetUrl } from "./ExamAppearanceProvider";
@@ -35,12 +35,11 @@ export function ExamSponsorBrand({ compact = false }: { compact?: boolean }) {
                 }}
               />
             ) : (
-              <Image
+              <ExamImage
                 src={url}
                 alt={brand.logoAlt}
                 width={compact ? 32 : 44}
                 height={compact ? 32 : 44}
-                unoptimized
                 onError={() => setFailedUrl(url)}
                 className={compact ? "h-8 w-8 shrink-0 object-contain" : "h-12 w-12 shrink-0 object-contain"}
               />
@@ -75,15 +74,12 @@ export function StoreNineCats({ compact = false }: { compact?: boolean }) {
       className={compact ? "w-24 shrink-0" : "w-full max-w-[220px] shrink-0"}
     >
       <div className="relative aspect-[3/4] overflow-hidden rounded-[1.4rem] border border-[var(--exam-color-d99a49)] bg-[var(--exam-color-f7ead4)] shadow-[0_18px_45px_rgba(79,45,20,0.2)]">
-        <Image
+        <ExamImage
           src={url}
           alt={artwork.alt}
-          fill
           onError={() => setFailedUrl(url)}
-          unoptimized={artwork.asset?.source === "org-file"}
-          priority={!compact}
           sizes={compact ? "96px" : "(max-width: 768px) 180px, 220px"}
-          className="object-contain"
+          className="absolute inset-0 h-full w-full object-contain"
         />
       </div>
       {!compact && artwork.caption && (

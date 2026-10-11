@@ -180,7 +180,7 @@ export const filesApi = {
 const uploadIds = new WeakMap<File, string>();
 export const nativeFilesApi = {
   capabilities: async (org: string): Promise<{ uploadsAvailable: boolean; maxBytes: number; types: string[] }> => (await apiClient.get(`/orgs/${org}/files/capabilities`)).data.data,
-  preview: async (org: string, id: string): Promise<Blob> => (await apiClient.get(`/orgs/${org}/files/${id}/content`, { responseType: 'blob' })).data,
+  preview: async (org: string, id: string, width?: number): Promise<Blob> => (await apiClient.get(`/orgs/${org}/files/${id}/content`, { responseType: 'blob', params: width ? {w: width, format: 'webp'} : undefined })).data,
   details: async (org: string, id: string): Promise<OrgFile & { uses: { ownerKind: string; ownerId: string; label: string }[] }> => (await apiClient.get(`/orgs/${org}/files/${id}`)).data.data,
   cleanup: async (org: string): Promise<OrgFile[]> => (await apiClient.get(`/orgs/${org}/files/cleanup`)).data.data,
   upload: async (org: string, file: File, visibility: 'private' | 'public', onProgress: (n: number) => void): Promise<OrgFile> => {
