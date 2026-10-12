@@ -43,6 +43,12 @@ function formatDate(value: string | null): string {
   return value ? new Date(value).toLocaleString() : '—';
 }
 
+function formatStarted(value: string | null): string {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  return `${date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} · ${date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+}
+
 function AttemptDateTime({
   value,
   emptyLabel,
@@ -302,10 +308,20 @@ export function ExamReports({ examId }: ExamReportsProps) {
   }, [examId, hydrate]);
   useEffect(() => {
     const timer = window.setInterval(() => {
+      // Keep an open attempt/menu stable while the admin is interacting.
+      if (
+        document.hidden ||
+        selectedAttempt ||
+        recovery ||
+        document.querySelector(
+          '.admin-reports details.report-action-menu[open], .admin-reports details.report-attempt-menu[open]',
+        )
+      )
+        return;
       void refreshEntity('examReport', examId);
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [examId, refreshEntity]);
+  }, [examId, refreshEntity, selectedAttempt, recovery]);
 
   const questionById = useMemo(
     () =>
@@ -446,6 +462,9 @@ export function ExamReports({ examId }: ExamReportsProps) {
       setIncludeVoids(!!p.includeVoids);
       setAdvanced(!!p.advanced);
       setAllColumns(!!p.allColumns);
+      setMobileTable(
+        p.mobileTable === undefined ? !!p.allColumns : !!p.mobileTable,
+      );
       if (
         [
           'respondentName',
@@ -489,6 +508,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
             sortDirection,
             advanced,
             allColumns,
+            mobileTable,
           }),
         );
       } catch {}
@@ -510,6 +530,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
     sortDirection,
     advanced,
     allColumns,
+    mobileTable,
   ]);
 
   const openPreview = () => {
@@ -709,12 +730,15 @@ export function ExamReports({ examId }: ExamReportsProps) {
               <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
                 {report.exam.title}
               </h1>
-              <p className="mt-2 text-sm text-slate-500">
-                Updated{' '}
+              <p className="report-refresh-status mt-2 text-sm text-slate-500">
+                {reportError ? 'Refresh unavailable · Last updated' : 'Updated'}{' '}
                 {new Date(report.generatedAt).toLocaleTimeString(undefined, {
                   timeZoneName: 'short',
                 })}{' '}
-                · Auto-refresh every 5 seconds
+                ·{' '}
+                {selectedAttempt || recovery
+                  ? 'Auto-refresh paused while reviewing'
+                  : 'Refreshes every 5s'}
               </p>
             </div>
             <div className="report-header-actions">
@@ -828,7 +852,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
                 type="button"
                 aria-pressed={summaryFilter === item.filter}
                 onClick={() => setSummaryFilter(item.filter)}
-                className={`admin-report-stat border bg-white text-left ${summaryFilter === item.filter ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'}`}
+                className={`admin-report-stat border bg-white text-left ${summaryFilter === item.filter ? 'border-blue-400' : 'border-slate-200'}`}
               >
                 <p className="text-xs font-semibold text-slate-500">
                   {item.label}
@@ -940,27 +964,27 @@ export function ExamReports({ examId }: ExamReportsProps) {
                 Filters{filterCount ? ` (${filterCount})` : ''}
               </button>
               {tab === 'live' && (
-                <>
-                  <button
-                    type="button"
-                    aria-pressed={allColumns}
-                    onClick={() => {
-                      setMobileTable(!allColumns);
-                      setAllColumns(!allColumns);
+                <label className="report-view-select">
+                  <span>View</span>
+                  <select
+                    aria-label="Attempt view"
+                    value={
+                      mobileTable
+                        ? allColumns
+                          ? 'full'
+                          : 'essential'
+                        : 'grouped'
+                    }
+                    onChange={(event) => {
+                      setMobileTable(event.target.value !== 'grouped');
+                      setAllColumns(event.target.value === 'full');
                     }}
-                    className="rounded-lg border px-3 py-2"
                   >
-                    {allColumns ? 'Essential columns' : 'All columns'}
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={mobileTable}
-                    onClick={() => setMobileTable(!mobileTable)}
-                    className="admin-mobile-table-toggle rounded-lg border px-3 py-2"
-                  >
-                    {mobileTable ? 'Grouped view' : 'Full table'}
-                  </button>
-                </>
+                    <option value="grouped">Grouped</option>
+                    <option value="essential">Essential table</option>
+                    <option value="full">Full table</option>
+                  </select>
+                </label>
               )}
             </div>
             <div className="report-filter-status">
@@ -969,6 +993,46 @@ export function ExamReports({ examId }: ExamReportsProps) {
                 attempts · {filtered.filter((row) => row.isPreview).length} test
                 attempts
               </span>
+              {tab === 'live' && (
+                <div className="report-sort-control">
+                  <label>
+                    Sort{' '}
+                    <select
+                      aria-label="Sort attempts"
+                      value={sortKey}
+                      onChange={(event) =>
+                        setSortKey(event.target.value as SortKey)
+                      }
+                    >
+                      {(
+                        [
+                          ['startedAt', 'Latest started'],
+                          ['respondentName', 'Name'],
+                          ['percentage', 'Score'],
+                          ['timeInExamSeconds', 'Duration'],
+                          ['classification', 'Status'],
+                          ['focusViolationCount', 'Focus events'],
+                          ['endedAt', 'Ended'],
+                          ['lastActiveAt', 'Last seen'],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    aria-label={`Sort ${sortDirection === 'asc' ? 'descending' : 'ascending'}`}
+                    onClick={() =>
+                      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+                    }
+                  >
+                    {sortDirection === 'asc' ? '↑' : '↓'}
+                  </button>
+                </div>
+              )}
               {hasFilters && (
                 <button
                   type="button"
@@ -1045,7 +1109,13 @@ export function ExamReports({ examId }: ExamReportsProps) {
           </section>
           {tab === 'live' && (
             <div className="space-y-6">
+              {active.length === 0 && (
+                <p className="report-monitor-idle">
+                  Nobody answering now <span>· Updates automatically</span>
+                </p>
+              )}
               <details
+                hidden={active.length === 0}
                 className="report-live-monitor rounded-xl border border-slate-200 bg-white"
                 open={active.length > 0}
               >
@@ -1152,14 +1222,10 @@ export function ExamReports({ examId }: ExamReportsProps) {
                       className="report-group-head"
                       aria-label="Sort grouped attempts"
                     >
-                      <div>{sortHeader('Identity', 'respondentName')}</div>
-                      <div>{sortHeader('Score & attempt', 'percentage')}</div>
-                      <div>
-                        {sortHeader('Duration & events', 'timeInExamSeconds')}
-                      </div>
-                      <div>
-                        {sortHeader('Status & actions', 'classification')}
-                      </div>
+                      <div>Identity</div>
+                      <div>Score &amp; attempt</div>
+                      <div>Duration &amp; events</div>
+                      <div>Status &amp; actions</div>
                     </div>
                     {filtered
                       .filter((row) => row.isPreview === previewTable)
@@ -1169,9 +1235,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
                           className={`report-group-row ${row.classification === 'void' ? 'opacity-75' : ''}`}
                         >
                           <div className="report-group-cell">
-                            <span className="report-group-label">
-                              {sortHeader('Identity', 'respondentName')}
-                            </span>
+                            <span className="report-group-label">Identity</span>
                             <button
                               type="button"
                               className="text-left font-semibold"
@@ -1195,7 +1259,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
                           </div>
                           <div className="report-group-cell">
                             <span className="report-group-label">
-                              {sortHeader('Score & attempt', 'percentage')}
+                              Score &amp; attempt
                             </span>
                             <strong className="report-group-score">
                               {row.scoreIsProvisional
@@ -1211,25 +1275,27 @@ export function ExamReports({ examId }: ExamReportsProps) {
                           </div>
                           <div className="report-group-cell">
                             <span className="report-group-label">
-                              {sortHeader(
-                                'Duration & events',
-                                'timeInExamSeconds',
-                              )}
+                              Duration &amp; events
                             </span>
-                            <b>{formatDuration(row.timeInExamSeconds)}</b>
-                            <small>Started: {formatDate(row.startedAt)}</small>
-                            <span
-                              className={`report-group-events ${row.focusViolationCount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}
-                            >
-                              {row.focusViolationCount} focus{' '}
-                              {row.focusViolationCount === 1
-                                ? 'event'
-                                : 'events'}
-                            </span>
+                            <div className="report-duration-line">
+                              <b>{formatDuration(row.timeInExamSeconds)}</b>
+                              <span aria-hidden="true">·</span>
+                              <span
+                                className={`report-group-events ${row.focusViolationCount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}
+                              >
+                                {row.focusViolationCount} focus{' '}
+                                {row.focusViolationCount === 1
+                                  ? 'event'
+                                  : 'events'}
+                              </span>
+                            </div>
+                            <small title={formatDate(row.startedAt)}>
+                              Started {formatStarted(row.startedAt)}
+                            </small>
                           </div>
                           <div className="report-group-cell report-group-actions">
                             <span className="report-group-label">
-                              {sortHeader('Status & actions', 'classification')}
+                              Status &amp; actions
                             </span>
                             <span
                               className={`report-group-status rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(row.classification)}`}
