@@ -9,3 +9,9 @@ Every prior filter, sort, classification, export format, reporting view, detail 
 Checks: TypeScript and focused lint; 12 layout checks (three reporting views at 320, 390, 780, 1440px), no page overflow or runtime errors; direct review and recovery-dialog access; advanced-filter/reset; all columns/full table; export and secondary-menu availability. Connected fixture flow is recorded in flow.log. Screenshot inspection includes the user's narrow desktop-panel width and dark mode.
 
 10/10 is a usability target, not an objective score claimed by this change. Review the action-first layout at localhost:3000/dev/admin before release.
+
+## Approved four-group layout
+
+Applied locally on 2026-10-12. Essential rows show Identity, Score & attempt, Duration & events, and Status & actions. Desktop uses four columns; narrow panels use two columns over two rows. The exam title appears only in the report heading. All-column table access and existing reporting/recovery functionality are preserved. Retake remains behind the row's more-actions disclosure and confirmation, while eligible continuation is directly available.
+
+Verified TypeScript, focused lint, whitespace, eight responsive theme/width combinations (320, 390, 640, 1440), table/grouped transitions, attempt detail and recovery dialogs in the isolated sandbox. JPEG evidence: `grouped-{light,dark}-{width}.jpg`. No backend changes or release performed.

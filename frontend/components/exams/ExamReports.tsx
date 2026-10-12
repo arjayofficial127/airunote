@@ -945,7 +945,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
                     type="button"
                     aria-pressed={allColumns}
                     onClick={() => {
-                      if (!allColumns) setMobileTable(true);
+                      setMobileTable(!allColumns);
                       setAllColumns(!allColumns);
                     }}
                     className="rounded-lg border px-3 py-2"
@@ -958,7 +958,7 @@ export function ExamReports({ examId }: ExamReportsProps) {
                     onClick={() => setMobileTable(!mobileTable)}
                     className="admin-mobile-table-toggle rounded-lg border px-3 py-2"
                   >
-                    {mobileTable ? 'Respondent cards' : 'Full table'}
+                    {mobileTable ? 'Grouped view' : 'Full table'}
                   </button>
                 </>
               )}
@@ -1148,67 +1148,135 @@ export function ExamReports({ examId }: ExamReportsProps) {
                     </div>
                   )}
                   <div className="admin-report-cards">
+                    <div
+                      className="report-group-head"
+                      aria-label="Sort grouped attempts"
+                    >
+                      <div>{sortHeader('Identity', 'respondentName')}</div>
+                      <div>{sortHeader('Score & attempt', 'percentage')}</div>
+                      <div>
+                        {sortHeader('Duration & events', 'timeInExamSeconds')}
+                      </div>
+                      <div>
+                        {sortHeader('Status & actions', 'classification')}
+                      </div>
+                    </div>
                     {filtered
                       .filter((row) => row.isPreview === previewTable)
                       .map((row) => (
-                        <article key={row.id} className="border-b p-5">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
+                        <article
+                          key={row.id}
+                          className={`report-group-row ${row.classification === 'void' ? 'opacity-75' : ''}`}
+                        >
+                          <div className="report-group-cell">
+                            <span className="report-group-label">
+                              {sortHeader('Identity', 'respondentName')}
+                            </span>
                             <button
                               type="button"
                               className="text-left font-semibold"
                               onClick={() => setSelectedAttempt(row)}
                             >
                               {row.respondentName}
-                              <span className="block text-xs font-normal">
-                                {row.respondentIdentifier ||
-                                  row.respondentEmail ||
-                                  `Attempt #${row.attemptNumber}`}
-                              </span>
                             </button>
+                            {row.respondentIdentifier && (
+                              <small>ID · {row.respondentIdentifier}</small>
+                            )}
+                            {row.respondentEmail && (
+                              <small>{row.respondentEmail}</small>
+                            )}
+                            {row.isPreview && (
+                              <small className="text-violet-700">
+                                {row.previewedByRole === 'PreviewCoded'
+                                  ? 'Preview Coded'
+                                  : 'Admin Attempt'}
+                              </small>
+                            )}
+                          </div>
+                          <div className="report-group-cell">
+                            <span className="report-group-label">
+                              {sortHeader('Score & attempt', 'percentage')}
+                            </span>
+                            <strong className="report-group-score">
+                              {row.scoreIsProvisional
+                                ? 'Provisional'
+                                : row.percentage === null
+                                  ? 'Pending grade'
+                                  : `${row.percentage}%`}
+                            </strong>
+                            <small>
+                              {row.earnedPoints}/{row.possiblePoints} points ·
+                              Attempt #{row.attemptNumber}
+                            </small>
+                          </div>
+                          <div className="report-group-cell">
+                            <span className="report-group-label">
+                              {sortHeader(
+                                'Duration & events',
+                                'timeInExamSeconds',
+                              )}
+                            </span>
+                            <b>{formatDuration(row.timeInExamSeconds)}</b>
+                            <small>Started: {formatDate(row.startedAt)}</small>
                             <span
-                              className={`rounded-full px-3 py-1 text-xs ${statusClass(row.classification)}`}
+                              className={`report-group-events ${row.focusViolationCount > 0 ? 'text-amber-700' : 'text-emerald-700'}`}
+                            >
+                              {row.focusViolationCount} focus{' '}
+                              {row.focusViolationCount === 1
+                                ? 'event'
+                                : 'events'}
+                            </span>
+                          </div>
+                          <div className="report-group-cell report-group-actions">
+                            <span className="report-group-label">
+                              {sortHeader('Status & actions', 'classification')}
+                            </span>
+                            <span
+                              className={`report-group-status rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(row.classification)}`}
                             >
                               {statusLabel(row.classification)}
                             </span>
-                          </div>
-                          <p className="mt-3 text-sm">
-                            {row.scoreIsProvisional ? 'Provisional: ' : ''}
-                            {row.percentage === null
-                              ? 'Pending grade'
-                              : `${row.earnedPoints}/${row.possiblePoints} points · ${row.percentage}%`}{' '}
-                            · {formatDuration(row.timeInExamSeconds)}
-                          </p>
-                          <p className="mt-2 text-xs">
-                            Started: {formatDate(row.startedAt)} · Focus events:{' '}
-                            {row.focusViolationCount}
-                          </p>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className="rounded-lg border px-3 py-2"
-                              onClick={() => setSelectedAttempt(row)}
-                            >
-                              View attempt
-                            </button>
+                            <div className="report-group-buttons">
+                              <button
+                                type="button"
+                                className="report-group-view"
+                                onClick={() => setSelectedAttempt(row)}
+                              >
+                                View attempt
+                              </button>
+                              {row.classification !== 'void' &&
+                                !row.isPreview && (
+                                  <details className="report-attempt-menu">
+                                    <summary
+                                      aria-label={`More actions for ${row.respondentName}`}
+                                    >
+                                      ⋯
+                                    </summary>
+                                    <div>
+                                      <button
+                                        type="button"
+                                        onClick={(event) => {
+                                          event.currentTarget
+                                            .closest('details')
+                                            ?.removeAttribute('open');
+                                          openRecovery(row, 'void');
+                                        }}
+                                      >
+                                        Void &amp; allow retake
+                                      </button>
+                                    </div>
+                                  </details>
+                                )}
+                            </div>
                             {row.eligibleForContinue && (
                               <button
                                 type="button"
-                                className="rounded-lg border px-3 py-2"
+                                className="report-group-continue"
                                 onClick={() => openRecovery(row, 'continue')}
                               >
-                                Continue link
+                                Continue link (+5 min)
                               </button>
                             )}
-                            {row.classification !== 'void' &&
-                              !row.isPreview && (
-                                <button
-                                  type="button"
-                                  className="rounded-lg border px-3 py-2"
-                                  onClick={() => openRecovery(row, 'void')}
-                                >
-                                  Void & allow retake
-                                </button>
-                              )}
                           </div>
                         </article>
                       ))}

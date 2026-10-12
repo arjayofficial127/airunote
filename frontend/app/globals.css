@@ -1700,3 +1700,34 @@ details[open]>.report-attempts-heading::before { content:'▾'; }
  .admin-reports[data-mobile-table="true"] .admin-report-table { display:block; }
  .admin-reports[data-mobile-table="true"] .admin-report-cards { display:none; }
 }
+
+/* Four report groups preserve the same reading order at every width. */
+.admin-reports[data-columns="compact"][data-mobile-table="false"] .admin-report-cards { display:block; }
+.admin-reports[data-columns="compact"][data-mobile-table="false"] .admin-report-table { display:none; }
+.report-group-head,.report-group-row { display:grid; grid-template-columns:1.12fr 1.12fr 1.08fr 1fr; gap:18px; padding:16px 20px; }
+.report-group-head { background:var(--admin-soft); color:var(--admin-muted); font-size:12px; border-bottom:1px solid var(--admin-border); }
+.report-group-row { align-items:center; border-bottom:1px solid var(--admin-border); }
+.report-group-row:last-child { border-bottom:0; }
+.report-group-cell { min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:6px; overflow-wrap:anywhere; }
+.report-group-cell small { color:var(--admin-muted); font-size:12px; }
+.report-group-label { display:none; }
+.report-group-score { font-size:22px; line-height:1.2; }
+.report-group-events { font-size:12px; }
+.report-group-actions { align-items:flex-end; }
+.report-group-buttons { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.report-group-view,.report-group-continue { border-radius:8px; padding:10px; background:var(--admin-soft); color:#315ab1; font-weight:600; font-size:12px; }
+.report-attempt-menu { position:relative; }
+.report-attempt-menu summary { list-style:none; cursor:pointer; min-width:36px; min-height:40px; display:grid; place-items:center; font-size:20px; border-radius:8px; }
+.report-attempt-menu summary::-webkit-details-marker { display:none; }
+.report-attempt-menu[open]>div { position:absolute; right:0; bottom:100%; z-index:20; width:180px; padding:6px; border:1px solid var(--admin-border); border-radius:10px; background:var(--admin-panel); box-shadow:0 8px 24px #0002; }
+.report-attempt-menu button { width:100%; text-align:left; color:#b42335; padding:10px; font-size:12px; border-radius:6px; }
+.report-attempt-menu button:hover { background:var(--admin-soft); }
+@container (max-width:820px) {
+ .report-group-head { display:none; }
+ .report-group-row { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px 14px; padding:18px 16px; align-items:start; }
+ .report-group-cell { padding-left:10px; border-left:2px solid var(--admin-border); }
+ .report-group-label { display:block; font-size:10px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--admin-muted); }
+ .report-group-actions { align-items:flex-start; }
+}
+
+.admin-exams[data-theme="dark"] :is(.report-group-view,.report-group-continue) { color:#96b7ff; }
