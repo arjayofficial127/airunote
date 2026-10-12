@@ -57,7 +57,7 @@ export function AppearancePreview({
           {!gallery && <div className="flex items-center gap-1" role="group" aria-label="Preview screen navigation">
           <button type="button" className="h-11 rounded-lg border bg-white px-3 text-xs hover:bg-slate-100" aria-label="Previous preview screen" onClick={() => stepScreen(-1)}>← Back</button>
           <select aria-label="Preview screen" className="h-11 rounded-lg border bg-white px-3 text-xs" value={screen} onChange={e => setScreen(e.target.value)}>
-            {previewScreens.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+            {previewScreens.map(s => <option key={s} value={s}>{({entry:'Opening',instructions:'Instructions',questions:'Questions',date:'Date question',completed:'Completion',upcoming:'Upcoming',ended:'Ended',terminated:'Interrupted',timed_out:'Timed out'} as Record<string,string>)[s]}</option>)}
           </select>
           <button type="button" className="h-11 rounded-lg border bg-white px-3 text-xs hover:bg-slate-100" aria-label="Next preview screen" onClick={() => stepScreen(1)}>Next →</button>
           </div>}

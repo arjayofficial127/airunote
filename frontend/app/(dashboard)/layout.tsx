@@ -114,6 +114,14 @@ export default function DashboardLayout({
     }
   }, [isEditorMode]);
   
+  // A desktop sidebar must not become a blocking drawer after a viewport resize.
+  useEffect(() => {
+    const breakpoint = window.matchMedia('(min-width: 1024px)');
+    const sync = () => { if (!breakpoint.matches) { setSidebarOpen(false); setEditorSidebarOpen(false); setAppSidebarOpen(false); } };
+    sync(); breakpoint.addEventListener('change', sync);
+    return () => breakpoint.removeEventListener('change', sync);
+  }, []);
+
   // Check if we're in org context
   const isInOrgContext = pathname?.startsWith('/orgs/') && orgId;
   

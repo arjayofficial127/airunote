@@ -90,7 +90,7 @@ interface MetadataIndexContextValue extends MetadataIndexState {
   refreshKey: (key: MetadataKey) => Promise<void>;
 }
 
-const MetadataIndexContext = createContext<MetadataIndexContextValue | null>(null);
+export const MetadataIndexContext = createContext<MetadataIndexContextValue | null>(null);
 
 
 /**

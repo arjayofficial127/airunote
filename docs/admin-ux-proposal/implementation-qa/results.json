@@ -1,0 +1,192 @@
+{
+  "qa": [
+    {
+      "tab": "Setup",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Questions (5)",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Appearance",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Share & access",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "JSON pro",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Setup",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Questions (5)",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Appearance",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Share & access",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "JSON pro",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Setup",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Questions (5)",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Appearance",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Share & access",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "JSON pro",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Setup",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "Questions (5)",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "Appearance",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "Share & access",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "JSON pro",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "Live attempts",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Answer matrix",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Question analytics",
+      "width": 320,
+      "scroll": 320
+    },
+    {
+      "tab": "Live attempts",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Answer matrix",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Question analytics",
+      "width": 390,
+      "scroll": 390
+    },
+    {
+      "tab": "Live attempts",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Answer matrix",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Question analytics",
+      "width": 768,
+      "scroll": 768
+    },
+    {
+      "tab": "Live attempts",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "Answer matrix",
+      "width": 1440,
+      "scroll": 1440
+    },
+    {
+      "tab": "Question analytics",
+      "width": 1440,
+      "scroll": 1440
+    }
+  ],
+  "errors": [],
+  "unknown": [],
+  "mutations": [
+    {
+      "path": "/orgs/11111111-1111-4111-8111-111111111111/exams/22222222-2222-4222-8222-222222222222/definition",
+      "method": "PUT"
+    },
+    {
+      "path": "/orgs/11111111-1111-4111-8111-111111111111/exams/22222222-2222-4222-8222-222222222222/definition",
+      "method": "PUT"
+    },
+    {
+      "path": "/orgs/11111111-1111-4111-8111-111111111111/appearance/exams/22222222-2222-4222-8222-222222222222",
+      "method": "PUT"
+    },
+    {
+      "path": "/orgs/11111111-1111-4111-8111-111111111111/exams/22222222-2222-4222-8222-222222222222/access-code",
+      "method": "POST"
+    },
+    {
+      "path": "/orgs/11111111-1111-4111-8111-111111111111/exams/22222222-2222-4222-8222-222222222222/attempts/attempt1/continue",
+      "method": "POST"
+    },
+    {
+      "path": "/orgs/11111111-1111-4111-8111-111111111111/exams/22222222-2222-4222-8222-222222222222/attempts/attempt1/void",
+      "method": "POST"
+    }
+  ]
+}

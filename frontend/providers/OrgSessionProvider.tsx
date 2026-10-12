@@ -44,7 +44,7 @@ interface OrgSessionContextValue extends OrgSessionState {
   refetch: () => Promise<void>;
 }
 
-const OrgSessionContext = createContext<OrgSessionContextValue | null>(null);
+export const OrgSessionContext = createContext<OrgSessionContextValue | null>(null);
 
 /**
  * OrgSessionProvider

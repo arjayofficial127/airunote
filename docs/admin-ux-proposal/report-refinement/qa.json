@@ -1,0 +1,74 @@
+{
+  "measurements": [
+    {
+      "width": 320,
+      "scroll": 320,
+      "tab": "Live attempts",
+      "attentionTop": 692,
+      "attemptTop": 1156
+    },
+    {
+      "width": 320,
+      "scroll": 320,
+      "tab": "Answer matrix"
+    },
+    {
+      "width": 320,
+      "scroll": 320,
+      "tab": "Question analytics"
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "tab": "Live attempts",
+      "attentionTop": 624,
+      "attemptTop": 1038
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "tab": "Answer matrix"
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "tab": "Question analytics"
+    },
+    {
+      "width": 780,
+      "scroll": 780,
+      "tab": "Live attempts",
+      "attentionTop": 515,
+      "attemptTop": 777
+    },
+    {
+      "width": 780,
+      "scroll": 780,
+      "tab": "Answer matrix"
+    },
+    {
+      "width": 780,
+      "scroll": 780,
+      "tab": "Question analytics"
+    },
+    {
+      "width": 1440,
+      "scroll": 1440,
+      "tab": "Live attempts",
+      "attentionTop": 463,
+      "attemptTop": 725
+    },
+    {
+      "width": 1440,
+      "scroll": 1440,
+      "tab": "Answer matrix"
+    },
+    {
+      "width": 1440,
+      "scroll": 1440,
+      "tab": "Question analytics"
+    }
+  ],
+  "errors": [],
+  "interactionChecks": "review, continuation dialog, all columns, filters/reset, export/menu access"
+}

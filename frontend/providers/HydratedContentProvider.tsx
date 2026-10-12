@@ -55,7 +55,7 @@ interface HydratedContentContextValue {
   error: string | null;
 }
 
-const HydratedContentContext = createContext<HydratedContentContextValue | null>(null);
+export const HydratedContentContext = createContext<HydratedContentContextValue | null>(null);
 
 /**
  * Hydrated Content Provider

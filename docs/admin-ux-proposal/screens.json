@@ -1,0 +1,146 @@
+[
+  {
+    "id": "01-exam-library",
+    "title": "Exams",
+    "note": "A compact operational list replaces repeated large action rows. Counts here are illustrative.",
+    "section": "library"
+  },
+  {
+    "id": "02-exam-details",
+    "title": "Exam details",
+    "note": "Keep full title and instructions; move utilities out of the opening action wall.",
+    "section": "editor"
+  },
+  {
+    "id": "03-timing-attempts",
+    "title": "Timing & attempts",
+    "note": "Explicit timezone display preserves current instant conversion; a selectable timezone is a separately scoped enhancement.",
+    "section": "editor"
+  },
+  {
+    "id": "04-answering-rules",
+    "title": "Answering rules",
+    "note": "No restrictions are removed. High-impact restrictions get a consequence panel.",
+    "section": "editor"
+  },
+  {
+    "id": "05-identity-results",
+    "title": "Identity & results",
+    "note": "Keep identity requirements separate from scoring and decorative completion settings.",
+    "section": "editor"
+  },
+  {
+    "id": "06-question-builder",
+    "title": "Questions & sections",
+    "note": "A navigable outline replaces scrolling through every fully expanded question.",
+    "section": "editor"
+  },
+  {
+    "id": "07-sections-and-grading",
+    "title": "Sections & grading after attempts",
+    "note": "Explain locked controls in place; preserve safe section deletion and grading power.",
+    "section": "editor"
+  },
+  {
+    "id": "08-appearance-theme",
+    "title": "Appearance · Theme",
+    "note": "Theme thumbnails improve discovery; explicit apply preserves independent saved snapshots.",
+    "section": "editor"
+  },
+  {
+    "id": "09-appearance-opening",
+    "title": "Appearance · Opening",
+    "note": "Copy and motion settings remain separate from exam timing.",
+    "section": "editor"
+  },
+  {
+    "id": "10-appearance-instructions",
+    "title": "Appearance · Instructions",
+    "note": "All respondent instructions and fields remain visible; no new respondent disclosures are proposed.",
+    "section": "editor"
+  },
+  {
+    "id": "11-brand-and-artwork",
+    "title": "Appearance · Brand & artwork",
+    "note": "Keep visibility, asset selection, alternative text, badge, and caption controls.",
+    "section": "editor"
+  },
+  {
+    "id": "12-style-audio",
+    "title": "Appearance · Style & audio",
+    "note": "No color, renderer, decoration, footer, sound, or music control is removed.",
+    "section": "editor"
+  },
+  {
+    "id": "13-completion",
+    "title": "Appearance · Completion",
+    "note": "Retain confirmation, answer review, and conditional retry alongside configurable wording.",
+    "section": "editor"
+  },
+  {
+    "id": "14-preview-gallery",
+    "title": "Preview studio",
+    "note": "All nine current states, zoom, pan, pinch, keyboard controls, Fit one/all, and interaction mode remain.",
+    "section": "editor"
+  },
+  {
+    "id": "15-share-access",
+    "title": "Share & access",
+    "note": "Keep respondent examiner codes and reviewer preview codes distinct in language, behavior, and placement.",
+    "section": "editor"
+  },
+  {
+    "id": "16-json-tools",
+    "title": "JSON pro",
+    "note": "Preserve upload/paste import and portable JSON with the existing lock. Richer validation is a proposed improvement.",
+    "section": "editor"
+  },
+  {
+    "id": "17-live-reports",
+    "title": "Reports · Live attempts",
+    "note": "Keep all filters, sorting, refresh, exports, classifications, and test-attempt separation.",
+    "section": "reports"
+  },
+  {
+    "id": "18-attempt-review",
+    "title": "Attempt review & recovery",
+    "note": "Replace prompt-style recovery with explicit consequences and reason capture. Five minutes stays fixed.",
+    "section": "reports"
+  },
+  {
+    "id": "19-answer-matrix",
+    "title": "Reports · Answer matrix",
+    "note": "Keep full answer text, result filtering, autosaved answer previews, and presentation mode.",
+    "section": "reports"
+  },
+  {
+    "id": "20-question-analytics",
+    "title": "Reports · Question analytics",
+    "note": "Retain counts, distributions, average timing, answer keys, and correct/incorrect respondent lists.",
+    "section": "reports"
+  },
+  {
+    "id": "21-templates",
+    "title": "Organization templates",
+    "note": "Preserve creation from four built-ins, default selection, revisions, update, duplication, archive, read-only archived access.",
+    "section": "templates"
+  },
+  {
+    "id": "22-file-library",
+    "title": "Files & image chooser",
+    "note": "Keep search, grid/list, metadata, previews, download, visibility, usage references, upload retry/progress, removal and cleanup.",
+    "section": "files"
+  },
+  {
+    "id": "23-workspace-settings",
+    "title": "Workspace journey",
+    "note": "Preserve exam-first / standard and top-level app selection. Global account and unrelated admin settings are outside this review.",
+    "section": "settings"
+  },
+  {
+    "id": "24-important-states",
+    "title": "Important admin states",
+    "note": "Draft retention, errors, locks, role restrictions, empty results, and conflicts deserve designed states.",
+    "section": "editor"
+  }
+]
