@@ -5,6 +5,7 @@ import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { postsApi, type Post } from '@/lib/api/posts';
 import { examsApi, type ExamDefinition, type ExamReport } from '@/lib/api/exams';
+import { BookContentProvider } from './hydratedContent/BookContentProvider';
 
 /**
  * Hydrated Content Provider status lifecycle
@@ -342,7 +343,7 @@ export function HydratedContentProvider({ children }: { children: React.ReactNod
 
   return (
     <HydratedContentContext.Provider value={value}>
-      {children}
+      <BookContentProvider>{children}</BookContentProvider>
     </HydratedContentContext.Provider>
   );
 }

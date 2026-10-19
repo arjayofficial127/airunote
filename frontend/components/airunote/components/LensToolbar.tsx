@@ -83,6 +83,7 @@ export function LensToolbar({
     >
       <div className={placement === 'fixed' ? 'min-w-[22rem]' : 'w-full'}>
         <ViewSwitcher
+          bookFolderId={folderId}
           viewMode={viewMode}
           selectedLensId={selectedLensId}
           lenses={availableLenses}

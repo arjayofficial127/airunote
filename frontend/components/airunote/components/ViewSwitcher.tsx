@@ -11,8 +11,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 import { CreateEntryActions } from './CreateEntryActions';
+import { BookViewLink } from '@/components/book/BookViewLink';
 
 interface ViewSwitcherProps {
+  bookFolderId?: string | null;
   viewMode: 'grid' | 'tree' | 'lens';
   selectedLensId: string | null;
   lenses: AiruLens[];
@@ -38,6 +40,7 @@ const typeLabels: Record<string, string> = {
 };
 
 export function ViewSwitcher({
+  bookFolderId = null,
   viewMode,
   selectedLensId,
   lenses,
@@ -148,14 +151,14 @@ export function ViewSwitcher({
             const isActive = viewMode === 'lens' && selectedLensId === lens.id;
             return (
               <div key={lens.id} className="flex items-center gap-1">
-                <button
+                {lens.type === 'book' && bookFolderId ? <BookViewLink folderId={bookFolderId} className={getSegmentClass(isActive, true)} /> : <button
                   type="button"
                   onClick={() => handleViewSelect('lens', lens.id)}
                   className={getSegmentClass(isActive, true)}
                   title={lens.name}
                 >
                   <span>{typeLabels[lens.type] || lens.type}</span>
-                </button>
+                </button>}
 
                 {isActive && hasManagementActions ? (
                   <button
@@ -180,6 +183,7 @@ export function ViewSwitcher({
             );
           })}
 
+          {!availableLenses.some(lens => lens.type === 'book') && <BookViewLink folderId={bookFolderId} className={getSegmentClass(false, true)} />}
           {onCreateLens ? (
             <button
               type="button"

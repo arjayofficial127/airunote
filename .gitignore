@@ -42,4 +42,4 @@ docker-compose.override.yml
 
 # Disposable integration-test database configuration and fixtures
 /backend-node/.smoke/
-
+/output/book-integration/
