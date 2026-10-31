@@ -13,7 +13,7 @@ import type { BookWorkspaceModel } from './useBookWorkspace';
 function Intentions({ model, plan, label, items }: { model: BookWorkspaceModel; plan: CalendarPlan; label: string; items: BookItem[] }) {
   return <DropZone id={`period:${JSON.stringify(plan)}`} target={{ kind: 'plan', plan }} className="ab-intentions"><details open><summary>{label} <span className="ab-count">{items.length}</span></summary><CalendarRows items={items} model={model} /></details><button className="ab-link" onClick={() => model.add(plan)}>+ Add intention</button></DropZone>;
 }
-export function CalendarPane({ model, embedded = false }: { model: BookWorkspaceModel; embedded?: boolean }) {
+export function CalendarPane({ model, embedded = false, onShowAll }: { model: BookWorkspaceModel; embedded?: boolean; onShowAll?: () => void }) {
   const [monthGrid, setMonthGrid] = useState(false); const [sprintId, setSprintId] = useState('');
   const week = monday(model.date); const month = model.date.slice(0, 7); const year = Number(model.date.slice(0, 4));
   const selectedSprint = model.config.sprints.find(sprint => sprint.id === sprintId);
@@ -26,6 +26,8 @@ export function CalendarPane({ model, embedded = false }: { model: BookWorkspace
     const ownRange = planRange(item.planning.plan, model.planningConfig); return ownRange && ownRange.start <= range.end && ownRange.end >= range.start;
   }) : [];
   const dated = items.filter(item => item.planning.plan.kind === 'day' && range && item.planning.plan.date >= range.start && item.planning.plan.date <= range.end);
+  // Day uses an unplanned period placeholder; those entries are not scheduled on the day.
+  const scheduledCount = dated.length + overlapping.length + (model.period === 'day' ? 0 : exactPlans.length);
   function shift(direction: number) {
     if (model.period === 'month') model.setDate(monthShift(model.date, direction));
     else if (model.period === 'year') model.setDate(`${year + direction}-01-01`);
@@ -34,6 +36,7 @@ export function CalendarPane({ model, embedded = false }: { model: BookWorkspace
   const title = model.period === 'year' ? String(year) : model.period === 'month' ? formatDay(`${month}-01`, { month: 'long', year: 'numeric' }) : model.period === 'week' ? `${formatDay(week)} to ${formatDay(addDays(week, 6))} ${year}` : model.period === 'sprint' ? selectedSprint?.name ?? 'Choose a sprint' : model.period === 'unplanned' ? 'No calendar placement' : formatDay(model.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const plot = model.plot === 'hours' && !['day', 'week'].includes(model.period) ? 'items' : model.plot;
   return <section className={`ab-pane ab-calendar ${embedded ? 'an-calendar-embedded' : ''}`} hidden={!model.shownPanels.includes('calendar')} aria-label={embedded ? 'Calendar view' : '03 Calendar'}>{!embedded && <PaneHeading panel="calendar" model={model}><small>Singapore time</small></PaneHeading>}
+    {embedded && <div className="an-scope-summary"><small>{model.period === 'unplanned' ? `${exactPlans.length} unplanned` : range ? `${scheduledCount} scheduled in this ${model.period}` : 'Choose a sprint'} · {items.length} {items.length === 1 ? 'note' : 'notes'} in scope{model.query.trim() ? ' matching your search' : ''}</small>{onShowAll && <button className="ab-link" onClick={onShowAll}>See all notes</button>}</div>}
     <div className="ab-calendar-toolbar"><select aria-label="Calendar period" value={model.period} onChange={event => { const period = ['day', 'week', 'sprint', 'month', 'year', 'unplanned'].find(value => value === event.target.value); if (period) model.setPeriod(period as Period); }}><option value="day">Day</option><option value="week">Week</option><option value="sprint">Sprint</option><option value="month">Month</option><option value="year">Year</option><option value="unplanned">Unplanned</option></select>{!['sprint', 'unplanned'].includes(model.period) && <button aria-label="Previous period" onClick={() => shift(-1)}>←</button>}<strong>{title}</strong>{!['sprint', 'unplanned'].includes(model.period) && <button aria-label="Next period" onClick={() => shift(1)}>→</button>}<button className="ab-link" onClick={() => model.setDate(today())}>Today</button><button aria-label="Add calendar entry" onClick={() => model.add(model.period === 'day' ? { kind: 'day', date: model.date, time: null, duration: null } : periodPlan)}>+</button><select aria-label="Calendar display" value={plot} onChange={event => model.setPlot(event.target.value === 'projects' ? 'projects' : event.target.value === 'hours' ? 'hours' : 'items')}><option value="items">Items</option><option value="projects">Projects</option>{['day', 'week'].includes(model.period) && <option value="hours">Hours</option>}</select></div>
     {model.period === 'sprint' && <SprintControls model={model} selected={sprintId} onSelect={setSprintId} />}
     {model.period === 'month' && <div className="ab-organizer-tools"><button aria-pressed={!monthGrid} onClick={() => setMonthGrid(false)}>Agenda</button><button aria-pressed={monthGrid} onClick={() => setMonthGrid(true)}>Grid</button></div>}
@@ -49,6 +52,6 @@ export function CalendarPane({ model, embedded = false }: { model: BookWorkspace
         {model.period === 'sprint' && selectedSprint && <><small>{selectedSprint.start} to {selectedSprint.end}{selectedSprint.closed ? ' · Closed' : ''}</small><CalendarRows model={model} items={dated} /><button className="ab-link" disabled={model.actions.busy} onClick={() => void model.actions.configure({ ...model.config, sprints: model.config.sprints.map(sprint => sprint.id === selectedSprint.id ? { ...sprint, closed: !sprint.closed } : sprint) })}>{selectedSprint.closed ? 'Reopen sprint' : 'Close sprint'}</button></>}
       </>}
     </div>
-    <footer><small>Plans stay where you place them. Nothing rolls forward automatically.</small></footer>
+    <footer><small>{embedded ? 'Singapore time · Plans stay where you place them.' : 'Plans stay where you place them. Nothing rolls forward automatically.'}</small></footer>
   </section>;
 }
