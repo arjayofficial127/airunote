@@ -4,9 +4,9 @@ import { useState, type ReactNode } from 'react';
 import type { CalendarPlan } from '@/lib/book';
 import type { BookWorkspaceModel } from './useBookWorkspace';
 export type BookDrop = { kind: 'folder'; folderId: string } | { kind: 'plan'; plan: CalendarPlan; preserveTime?: boolean } | { kind: 'inbox' };
-export function DropZone({ id, target, children, className = '' }: { id: string; target: BookDrop; children: ReactNode; className?: string }) {
+export function DropZone({ id, target, children, className = '', scrollKey }: { id: string; target: BookDrop; children: ReactNode; className?: string; scrollKey?: string }) {
   const { setNodeRef, isOver } = useDroppable({ id, data: { target } });
-  return <div ref={setNodeRef} className={`${className} ${isOver ? 'ab-drop-over' : ''}`}>{children}</div>;
+  return <div ref={setNodeRef} data-scroll-key={scrollKey} className={`${className} ${isOver ? 'ab-drop-over' : ''}`}>{children}</div>;
 }
 export function BookDrag({ model, children }: { model: BookWorkspaceModel; children: ReactNode }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 6 } }), useSensor(KeyboardSensor));
@@ -29,7 +29,7 @@ export function BookDrag({ model, children }: { model: BookWorkspaceModel; child
         }
         const checked = planSchema.safeParse(plan);
         if (!checked.success) { model.actions.setError(checked.error.issues[0]?.message ?? 'This time does not fit the duration'); return; }
-        void model.actions.update(item, { planning: { ...model.actions.fields(item), plan: checked.data } });
+        void model.actions.update(item, { planning: { ...model.actions.fields(item), plan: checked.data, ...(model.natural ? { processed: true } : {}) } });
       }
     }
   }

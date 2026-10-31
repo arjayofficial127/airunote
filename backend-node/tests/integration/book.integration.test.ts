@@ -57,6 +57,16 @@ integration('Book isolated PostgreSQL integration', () => {
     await client`UPDATE airu_documents SET type='RTF' WHERE id=${id}`;
     await expect(service.update(scope, id, { rootFolderId: root, expectedUpdatedAt: at, content: 'Do not flatten' })).rejects.toMatchObject({ code: 'RICH_TEXT_EDITOR_REQUIRED' });
   });
+  test('explicit rich-text editing preserves HTML, format, shared edits and stale-save protection', async () => {
+    await client`UPDATE airu_documents SET type='RTF' WHERE id=${id}`;
+    const content = '<p class="custom"><strong>Formatted</strong></p><table><tr><td>Cell</td></tr></table>';
+    const saved = await service.update(scope, id, { rootFolderId: root, expectedUpdatedAt: at, content, contentType: 'RTF' });
+    expect(saved.type).toBe('RTF'); expect(saved.canonicalContent).toBe(content); expect(saved.sharedContent).toBe('Pending shared edit');
+    expect((await client`SELECT content FROM airu_document_revisions WHERE document_id=${id}`)[0]?.content).toBe(content);
+    await expect(service.update(scope, id, { rootFolderId: root, expectedUpdatedAt: at, content: '<p>Stale</p>', contentType: 'RTF' })).rejects.toMatchObject({ statusCode: 409 });
+    expect((await client`SELECT canonical_content FROM airu_documents WHERE id=${id}`)[0]?.canonical_content).toBe(content);
+    await expect(service.update(scope, second, { rootFolderId: root, expectedUpdatedAt: at, content, contentType: 'RTF' })).rejects.toMatchObject({ code: 'DOCUMENT_FORMAT_CHANGED' });
+  });
   test('configuration merges and uses a revision guard', async () => {
     await service.configure(scope, root, { expectedRevision: 0, config: { sprints: [], views: [], templates: [] } });
     expect((await client`SELECT metadata FROM airu_folders WHERE id=${root}`)[0]?.metadata).toMatchObject({ unrelated: { keep: true }, airunoteBook: { revision: 1 } });

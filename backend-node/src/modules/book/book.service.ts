@@ -45,7 +45,8 @@ export class BookService {
       const config = readBookConfig(root.metadata);
       if (!config) throw new AppError('Unsupported Book configuration', 409, 'UNSUPPORTED_BOOK_VERSION');
       if (update.folderId) await this.repository.withinRoot(tx, scope, update.folderId, root.id);
-      if (update.content !== undefined && current.type === 'RTF') throw new AppError('Use the document editor to edit rich text', 400, 'RICH_TEXT_EDITOR_REQUIRED');
+      if (update.contentType && current.type !== update.contentType) throw new AppError('The note format changed. Reload before saving.', 409, 'DOCUMENT_FORMAT_CHANGED');
+      if (update.content !== undefined && current.type === 'RTF' && update.contentType !== 'RTF') throw new AppError('Use the document editor to edit rich text', 400, 'RICH_TEXT_EDITOR_REQUIRED');
       if (update.planning?.plan.kind === 'sprint') {
         const sprintId = update.planning.plan.sprintId;
         if (!await this.repository.hasSprint(tx, scope, update.folderId ?? current.folderId, root.id, sprintId)) throw new AppError('Choose a sprint belonging to this folder or one of its parents', 400, 'INVALID_SPRINT');

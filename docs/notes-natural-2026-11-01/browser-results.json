@@ -1,0 +1,244 @@
+{
+  "checks": [
+    {
+      "name": "Initial Notes opens with Inbox, Folders, Plan"
+    },
+    {
+      "name": "Multiline Note capture preserves full content and opens fourth pane"
+    },
+    {
+      "name": "Direct writing autosaves; Undo, conditional close, Pin, selected-note resume and theme resume work"
+    },
+    {
+      "name": "Failed autosave retains draft across reload, blocks close, and succeeds on explicit retry"
+    },
+    {
+      "name": "Real concurrent version conflict keeps both the newer saved revision and local draft; discard returns to refreshed saved content"
+    },
+    {
+      "name": "Inbox Today/Later decisions advance the queue and appear on Today/Tomorrow across the week boundary"
+    },
+    {
+      "name": "Dragging from Inbox to Tomorrow schedules and processes the note"
+    },
+    {
+      "name": "Optional review handles notes with Keep and tasks with Done, then exits when empty"
+    },
+    {
+      "name": "Advanced Calendar and List remain available from Views"
+    },
+    {
+      "name": "Existing Canvas, Board and Study views open from the global Views catalog"
+    },
+    {
+      "name": "View selection and folder scroll position resume after reload"
+    },
+    {
+      "name": "Five widths in both themes keep one horizontal row, contained overflow and visible composer",
+      "overflow": [
+        {
+          "theme": "dark",
+          "width": 1920,
+          "pageWidth": 1920,
+          "panes": 1848,
+          "container": 1848,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "dark",
+          "width": 1440,
+          "pageWidth": 1440,
+          "panes": 1368,
+          "container": 1368,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "dark",
+          "width": 1024,
+          "pageWidth": 1024,
+          "panes": 1333,
+          "container": 952,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "dark",
+          "width": 768,
+          "pageWidth": 768,
+          "panes": 1333,
+          "container": 696,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "dark",
+          "width": 390,
+          "pageWidth": 390,
+          "panes": 1283,
+          "container": 318,
+          "composer": 800,
+          "height": 844,
+          "rows": [
+            107,
+            107,
+            107,
+            107
+          ]
+        },
+        {
+          "theme": "light",
+          "width": 1920,
+          "pageWidth": 1920,
+          "panes": 1853,
+          "container": 1853,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "light",
+          "width": 1440,
+          "pageWidth": 1440,
+          "panes": 1368,
+          "container": 1368,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "light",
+          "width": 1024,
+          "pageWidth": 1024,
+          "panes": 1333,
+          "container": 952,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "light",
+          "width": 768,
+          "pageWidth": 768,
+          "panes": 1333,
+          "container": 696,
+          "composer": 1034,
+          "height": 1080,
+          "rows": [
+            60,
+            60,
+            60,
+            60
+          ]
+        },
+        {
+          "theme": "light",
+          "width": 390,
+          "pageWidth": 390,
+          "panes": 1283,
+          "container": 318,
+          "composer": 800,
+          "height": 844,
+          "rows": [
+            107,
+            107,
+            107,
+            107
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Canvas, Board and Study complete loading without view errors",
+      "renderedViews": [
+        {
+          "view": "Canvas 1",
+          "text": "12 items · Drag cards to arrange\nTidy layout\n📦\nBook\nOpen\n📦\nLessons\nOpen\n📦\nJ Operating System v1\nOpen\n📦\nAll\nOpen\nTXT\nUX smoke captured note\nOpen\nTXT\nNotes workspace local verification\nOpen\nTXT\nNatural flow smoke 2026-11-01\nOpen\nTXT\nNew D"
+        },
+        {
+          "view": "Board",
+          "text": "12 items in this view · Drag a handle or choose a stage on any card\n\nMoves save automatically\nUnassigned\n11\n⠿\nTXT\nUX smoke captured note\nDocument\nUnassigned\nTo do\nIn progress\nDone\n⠿\nTXT\nNatural flow smoke 2026-11-01\nDocument\nUnassigned\nTo d"
+        },
+        {
+          "view": "Study",
+          "text": "⌕\nLoad\nFilter\nArrange\n📘\nBook\nBook\n📘\nLessons\nBook\n📚\nJ Operating System v1\nCollection\n📚\nAll\nCollection\n▶\n≡\n▶\n≡\n▶\n≡\n▶\n≡\n▶\n≡\n▶\n≡\n▶\n≡\n▶\n≡"
+        }
+      ]
+    },
+    {
+      "name": "Preserved the original rich-text fixture while correcting the discovered integration restriction"
+    },
+    {
+      "name": "Rich-text correction verified: editing preserves bold, emphasis and table through save/reload"
+    },
+    {
+      "name": "Custom rich-text markup uses exact source editing without losing formatting"
+    },
+    {
+      "name": "Capture focus correction verified: Enter saves and focus returns to the ready composer"
+    },
+    {
+      "name": "Partial paste-list failure retains only unsaved items across reload, retry creates no duplicate"
+    },
+    {
+      "name": "Exam editor renders mobile question and date previews"
+    },
+    {
+      "name": "Actual mobile participant flow saves choice/date answers and confirms final submission with no page overflow"
+    },
+    {
+      "name": "Final smoke complete: two discovered issues corrected and targeted checks passed; no JavaScript page errors"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Capture focus after save",
+      "detail": "Textarea retained the thought correctly but lost focus after the request."
+    },
+    {
+      "name": "Rich-text editor",
+      "detail": "Existing API rejected rich-text saves, and toggling editor state emitted an unwanted normalization update. Corrected with an explicit RTF format guard and silent editor state changes."
+    }
+  ],
+  "errors": []
+}

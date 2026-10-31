@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import './notes-app-rail.css';
 
@@ -10,5 +11,5 @@ function AppIcon({ kind }: { kind: 'notes' | 'exams' | 'manage' }) {
 export function NotesAppRail({ orgId, isAdmin, onProfile, onLogout, initials }: { orgId: string; isAdmin: boolean; onProfile: () => void; onLogout: () => void; initials: string }) {
   const pathname = usePathname();
   const entries = [{ key: 'notes' as const, title: 'Notes', href: `/orgs/${orgId}/airunote`, active: pathname.includes('/airunote') }, { key: 'exams' as const, title: 'Exams', href: `/orgs/${orgId}/exams`, active: pathname.includes('/exams') }, ...(isAdmin ? [{ key: 'manage' as const, title: 'Manage', href: `/orgs/${orgId}/manage`, active: /\/(manage|settings|members|files)(\/|$)/.test(pathname) }] : [])];
-  return <aside className="an-app-rail" aria-label="Apps"><Link className="an-brand" href={`/orgs/${orgId}/airunote`} aria-label="Airunote Notes">∿</Link><nav>{entries.map(entry => <Link key={entry.key} href={entry.href} aria-current={entry.active ? 'page' : undefined}><AppIcon kind={entry.key} /><span>{entry.title}</span></Link>)}</nav><div className="an-rail-account"><button aria-label="Your account" onClick={onProfile}>{initials}</button><Link href="/orgs" title="Switch workspace" aria-label="Switch workspace">⇄</Link><button title="Sign out" aria-label="Sign out" onClick={onLogout}>↪</button></div></aside>;
+  return <aside className="an-app-rail" aria-label="Apps"><Link className="an-brand" href={`/orgs/${orgId}/airunote`} aria-label="Airunote Notes"><Image src="/airunote/airunote_logo.png" alt="" width={28} height={28} priority /></Link><nav>{entries.map(entry => <Link key={entry.key} href={entry.href} aria-current={entry.active ? 'page' : undefined}><AppIcon kind={entry.key} /><span>{entry.title}</span></Link>)}</nav><div className="an-rail-account"><button aria-label="Your account" onClick={onProfile}>{initials}</button><Link href="/orgs" title="Switch workspace" aria-label="Switch workspace">⇄</Link><button title="Sign out" aria-label="Sign out" onClick={onLogout}>↪</button></div></aside>;
 }

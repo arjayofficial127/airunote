@@ -14,12 +14,12 @@ function ContextEditor({ model, document }: { model: BookWorkspaceModel; documen
   const current = model.selected;
   const [name, setName] = useState(document?.name ?? ''); const [content, setContent] = useState(document?.canonicalContent ?? document?.content ?? '');
   const [folderId, setFolderId] = useState(document?.folderId ?? model.captureFolderId);
-  const [fields, setFields] = useState<PlanningFields>(() => current ? model.actions.fields(current) : { ...editablePlanning(defaultPlanning('task', false)), plan: model.capturePlan });
+  const [fields, setFields] = useState<PlanningFields>(() => current ? model.actions.fields(current) : { ...editablePlanning(defaultPlanning(model.natural ? 'note' : 'task', false)), plan: model.capturePlan });
   const [step, setStep] = useState(''); const [note, setNote] = useState(''); const [templateName, setTemplateName] = useState('');
   const expected = useRef(document ? new Date(document.updatedAt).toISOString() : '');
   function reset() {
     setName(document?.name ?? ''); setContent(document?.canonicalContent ?? document?.content ?? ''); setFolderId(document?.folderId ?? model.captureFolderId);
-    const initial = current ? model.actions.fields(current) : editablePlanning(defaultPlanning('task', false));
+    const initial = current ? model.actions.fields(current) : editablePlanning(defaultPlanning(model.natural ? 'note' : 'task', false));
     setFields({ ...initial, plan: current ? initial.plan : model.capturePlan });
     expected.current = document ? new Date(document.updatedAt).toISOString() : '';
     model.setDirty(false); setStep(''); setNote('');
@@ -56,12 +56,12 @@ function ContextEditor({ model, document }: { model: BookWorkspaceModel; documen
     {current && <><Link className="ab-link" href={`/orgs/${model.orgId}/airunote/document/${current.id}?bookFolderId=${model.rootFolderId}`}>Open in document editor ↗</Link><details><summary>Activity · {current.planning.history.length}</summary>{!current.planning.history.length && <p className="ab-empty">No Book changes recorded yet.</p>}{[...current.planning.history].reverse().map(event => <p key={event.id}>{event.action}<small>{new Date(event.at).toLocaleString('en-SG', { timeZone: 'Asia/Singapore' })} · {event.actorId === model.userId ? 'You' : event.actorId}</small></p>)}</details><details><summary>Save as a template</summary><label>Template name<input maxLength={100} value={templateName} onChange={event => setTemplateName(event.target.value)} /></label><button type="button" disabled={!templateName.trim() || model.actions.busy || model.dirty} onClick={() => void model.actions.configure({ ...model.config, templates: [...model.config.templates, { id: crypto.randomUUID(), name: templateName.trim(), kind: fields.kind, content, steps: fields.checklist.map(check => check.text) }] }).then(saved => { if (saved) setTemplateName(''); })}>Save template</button><small>Creates fresh steps. Dates, status, ownership, and history are excluded.</small></details></>}
   </form>;
 }
-export function ContextPane({ model }: { model: BookWorkspaceModel }) {
+export function ContextPane({ model, onClose }: { model: BookWorkspaceModel; onClose?: () => void }) {
   const loader = useBookContent();
   const selectedId = model.selected?.id; const { load } = loader;
   const document = useAirunoteStore(state => model.selected ? state.documentContentById.get(model.selected.id) ?? null : null);
   useEffect(() => { if (selectedId) void load(selectedId); }, [selectedId, load]);
-  return <section className="ab-pane ab-context" hidden={!model.shownPanels.includes('context')} aria-label="04 Context"><PaneHeading panel="context" model={model}><button aria-label="Clear Context" onClick={() => { if (model.dirty) { model.actions.setError('Save or discard your Context draft first.'); return; } model.setSelectedId(null); model.setCreating(false); }}>×</button></PaneHeading>
+  return <section className="ab-pane ab-context" hidden={!model.shownPanels.includes('context')} aria-label={model.natural ? "Note details" : "04 Context"}><PaneHeading panel="context" title={model.natural ? "Note details" : undefined} model={model}><button aria-label="Clear Context" onClick={() => { if (model.dirty) { model.actions.setError('Save or discard your Context draft first.'); return; } if (onClose) onClose(); else { model.setSelectedId(null); model.setCreating(false); } }}>×</button></PaneHeading>
     <div className="ab-scroll">{model.selected && !document ? <div><p role={loader.error ? 'alert' : 'status'}>{loader.error ?? 'Loading this item…'}</p>{loader.error && <button onClick={() => void loader.load(model.selected?.id ?? '', true)}>Retry</button>}</div> : model.creating || (model.selected && document) ? <ContextEditor key={model.selected?.id ?? 'new'} model={model} document={document} /> : <div className="ab-context-empty"><div className="ab-orbit" aria-hidden="true">·</div><p>One thing at a time.</p><small>Choose an item to open its context here.</small><button className="ab-link" onClick={() => model.add()}>+ Write with context</button></div>}</div>
   </section>;
 }

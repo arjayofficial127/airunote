@@ -22,3 +22,5 @@
 .workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail .an-brand { color:#b2acff; }
 .workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail nav a:hover,
 .workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail nav a[aria-current] { background:#36364d; color:#c3beff; }
+
+.workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail .an-brand img { filter:brightness(0) invert(1); }

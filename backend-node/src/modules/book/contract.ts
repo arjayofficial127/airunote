@@ -34,6 +34,7 @@ export const updateBookDocumentSchema = z.object({
   name: z.string().trim().min(1).max(255).optional(),
   content: z.string().max(1000000).optional(), folderId: z.string().uuid().optional(),
   planning: planningFieldsSchema.optional(),
+  contentType: z.literal('RTF').optional(),
 }).strict().refine(value => value.name !== undefined || value.content !== undefined || value.folderId !== undefined || value.planning !== undefined, 'Nothing to save');
 export const createBookDocumentSchema = z.object({ rootFolderId: z.string().uuid(), folderId: z.string().uuid(), name: z.string().trim().min(1).max(255), content: z.string().max(1000000), planning: planningFieldsSchema }).strict();
 export type BookDocumentCreate = z.infer<typeof createBookDocumentSchema>;

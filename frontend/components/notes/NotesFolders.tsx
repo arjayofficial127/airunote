@@ -9,7 +9,7 @@ import type { NotesModel } from './useNotesWorkspace';
 import { NotesIcon } from './NotesIcon';
 
 function FolderRow({ folder, notes, depth, ancestors }: { folder: AiruFolder; notes: NotesModel; depth: number; ancestors: Set<string> }) {
-  const [open, setOpen] = useState(true);
+  const open = !notes.collapsedFolders.includes(folder.id);
   const { model } = notes;
   if (ancestors.has(folder.id)) return null;
   const visited = new Set([...ancestors, folder.id]);
@@ -18,7 +18,7 @@ function FolderRow({ folder, notes, depth, ancestors }: { folder: AiruFolder; no
   return <div className="an-folder-branch">
     <DropZone id={`notes-folder:${folder.id}`} target={{ kind: 'folder', folderId: folder.id }}>
       <div className="an-folder-row" style={{ paddingLeft: Math.min(depth, 6) * 12 }} data-selected={notes.folderId === folder.id}>
-        <button className="an-disclosure" aria-label={`${open ? 'Collapse' : 'Expand'} ${folderLabel(folder.humanId)}`} aria-expanded={open} onClick={() => setOpen(value => !value)}>{open ? '⌄' : '›'}</button>
+        <button className="an-disclosure" aria-label={`${open ? 'Collapse' : 'Expand'} ${folderLabel(folder.humanId)}`} aria-expanded={open} onClick={() => notes.setCollapsedFolders(previous => open ? [...previous, folder.id] : previous.filter(id => id !== folder.id))}>{open ? '⌄' : '›'}</button>
         <button className="an-folder-select" onClick={() => notes.selectFolder(folder.id)} title={folderLabel(folder.humanId)}><NotesIcon name="folder" /><span>{folderLabel(folder.humanId)}</span>{items.length > 0 && <small>{items.length}</small>}</button>
         <button className="an-focus-folder" title="Focus on this folder" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => { notes.setFocusId(folder.id); notes.selectFolder(folder.id); }}>↗</button>
       </div>
@@ -33,13 +33,13 @@ export function NotesFolders({ notes }: { notes: NotesModel }) {
   useEffect(() => { setDraftFlag('notes-folder', adding && !!name.trim()); return () => setDraftFlag('notes-folder', false); }, [adding, name, setDraftFlag]);
   const roots = notes.focusId ? model.folders.filter(folder => folder.id === notes.focusId) : model.folders.filter(folder => folder.parentFolderId === model.rootFolderId && folder.id !== model.rootFolderId);
   const loose = model.filtered.filter(item => item.folderId === model.rootFolderId && (model.closed || item.planning.status === 'open'));
-  return <section className="ab-pane an-folders" hidden={!model.shownPanels.includes('organizer')} aria-label="02 Folders">
+  return <section className="ab-pane an-folders" hidden={!model.shownPanels.includes('organizer')} aria-label="Folders">
     <PaneHeading panel="organizer" title="Folders" model={model}><button aria-label="Add folder" aria-expanded={adding} onClick={() => setAdding(value => !value)}>+ Folder</button></PaneHeading>
-    <div className="an-folder-toolbar"><button className="an-root-folder" aria-pressed={!notes.focusId && notes.folderId === model.rootFolderId} onClick={notes.root}><NotesIcon name="home" />All folders</button><label><input type="checkbox" checked={model.closed} onChange={event => model.setClosed(event.target.checked)} /> Closed</label></div>
+    <div className="an-folder-toolbar"><button className="an-root-folder" aria-pressed={!notes.focusId && notes.folderId === model.rootFolderId} onClick={notes.root}><NotesIcon name="home" />Workspace</button><label><input type="checkbox" checked={model.closed} onChange={event => model.setClosed(event.target.checked)} /> Done / cancelled</label></div>
     {notes.focusId && <p className="an-scope-caption">Focused: {folderLabel(model.folders.find(folder => folder.id === notes.focusId)?.humanId)}</p>}
     {adding && <form className="ab-small-form" onSubmit={event => { event.preventDefault(); void model.actions.createFolder(notes.folderId, name.trim()).then(saved => { if (saved) { setAdding(false); setName(''); } }); }}><small>Inside {folderLabel(model.folders.find(folder => folder.id === notes.folderId)?.humanId)}</small><label>Folder name<input required maxLength={255} value={name} onChange={event => setName(event.target.value)} /></label><button disabled={model.actions.busy || !name.trim()}>Create folder</button><button type="button" onClick={() => setAdding(false)}>Cancel</button></form>}
-    <div className="ab-scroll">{roots.map(folder => <FolderRow key={folder.id} folder={folder} notes={notes} depth={0} ancestors={new Set()} />)}
-      {!notes.focusId && <DropZone id="notes-root" target={{ kind: 'folder', folderId: model.rootFolderId }}><details open><summary>At root <small>{loose.length}</small></summary>{loose.map(item => <BookItemRow key={item.id} item={item} model={model} compact />)}</details></DropZone>}
+    <div className="ab-scroll" data-scroll-key="folders">{roots.map(folder => <FolderRow key={folder.id} folder={folder} notes={notes} depth={0} ancestors={new Set()} />)}
+      {!notes.focusId && <DropZone id="notes-root" target={{ kind: 'folder', folderId: model.rootFolderId }}><details open><summary>Loose notes <small>({loose.length})</small></summary>{loose.map(item => <BookItemRow key={item.id} item={item} model={model} compact />)}</details></DropZone>}
       {!roots.length && !loose.length && <p className="ab-empty">Start with a thought or add a folder.</p>}
     </div>
   </section>;

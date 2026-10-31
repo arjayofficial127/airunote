@@ -5,7 +5,7 @@ import { readBookConfig, type CalendarPlan, type WorkspaceView } from '@/lib/boo
 import { subtree, bookItems, today, panels, type Panel, type Period, type Plot, type BookItem } from './domain';
 import { useBookActions } from './useBookActions';
 
-export function useBookWorkspace(rootFolderId: string, orgId: string, userId: string) {
+export function useBookWorkspace(rootFolderId: string, orgId: string, userId: string, natural = false) {
   const store = useAirunoteStore(); const root = store.foldersById.get(rootFolderId);
   const folders = useMemo(() => Array.from(store.foldersById.values()).filter(folder => folder.orgId === orgId && folder.ownerUserId === userId), [store.foldersById, orgId, userId]);
   const ids = useMemo(() => subtree(folders, rootFolderId), [folders, rootFolderId]);
@@ -14,7 +14,7 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
   const parsedConfig = readBookConfig(root?.metadata);
   const config = parsedConfig ?? { version: 1 as const, revision: 0, sprints: [], views: [], templates: [] };
   const actions = useBookActions(orgId, userId, rootFolderId, config);
-  const [visible, setVisible] = useState<Panel[]>([...panels]);
+  const [visible, setVisible] = useState<Panel[]>(natural ? ['inbox', 'organizer', 'calendar'] : [...panels]);
   const [expandedPanel, setExpandedPanel] = useState<Panel | null>(null);
   const [contextReveal, setContextReveal] = useState(0);
   const [folderFilter, setFolderFilter] = useState<string[] | null>(null);
@@ -34,11 +34,11 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
   const shownPanels = expandedPanel && visible.includes(expandedPanel) ? [expandedPanel] : visible;
   function reveal() { setContextReveal(value => value + 1); setVisible(previous => previous.includes('context') ? previous : [...previous, 'context']); if (expandedPanel) setExpandedPanel('context'); }
   function open(item: BookItem) {
-    if (dirty) { actions.setError('Save or discard your Context draft before opening another item.'); return; }
+    if (dirty) { actions.setError('Save or discard your note draft before opening another item.'); return; }
     setSelectedId(item.id); setCreating(false); reveal();
   }
   function add(plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId) {
-    if (dirty) { actions.setError('Save or discard your Context draft before starting another item.'); return; }
+    if (dirty) { actions.setError('Save or discard your note draft before starting another item.'); return; }
     setSelectedId(null); setCreating(true); setCapturePlan(plan); setCaptureFolderId(folderId); reveal();
   }
   function applyView(view: WorkspaceView) { setExpandedPanel(null); setVisible(panels.filter(panel => view.panels.includes(panel))); setFolderFilter(view.folders); setPeriod(view.period); setDate(view.date); setPlot(view.plot); setHours(view.hours); setLayout(view.layout); setClosed(view.closed); }
@@ -49,11 +49,11 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
     const navigate = (event: MouseEvent) => {
       if (!(event.target instanceof Element)) return;
       const link = event.target.closest('a[href]'); if (!link || link.getAttribute('target') === '_blank') return;
-      if (!window.confirm('Leave this page and discard your unsaved Book draft?')) { event.preventDefault(); event.stopPropagation(); }
+      if (!window.confirm('Leave this page with unsaved changes?')) { event.preventDefault(); event.stopPropagation(); }
     };
     window.addEventListener('beforeunload', unload); document.addEventListener('click', navigate, true);
     return () => { window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigate, true); };
   }, [dirty, draftFlags.length]);
-  return { root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, dirty, setDirty, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
+  return { natural, root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, dirty, setDirty, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
 }
 export type BookWorkspaceModel = ReturnType<typeof useBookWorkspace>;

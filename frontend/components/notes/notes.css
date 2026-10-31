@@ -144,3 +144,74 @@
   .airunote-notes .an-reading h1 { font-size:26px; }
 }
 @media(prefers-reduced-motion:reduce) { .airunote-notes * { scroll-behavior:auto; } }
+
+/* The everyday workspace keeps capture anchored and gives the plan the remaining room. */
+.airunote-notes .ab-panes[data-panels="inbox,organizer,calendar"] { grid-template-columns:minmax(285px,.85fr) minmax(300px,.95fr) minmax(440px,2fr); }
+.airunote-notes .ab-panes[data-count="4"] { grid-template-columns:minmax(285px,.85fr) minmax(285px,.9fr) minmax(400px,1.45fr) minmax(360px,1.4fr); }
+.airunote-notes .ab-inbox > header { margin-bottom:3px; }
+.airunote-notes .an-inbox-caption { display:flex; align-items:center; justify-content:space-between; min-height:30px; color:var(--ab-muted); }
+.airunote-notes .an-inbox-caption button { font-size:13px; min-height:28px; }
+.airunote-notes .ab-inbox-list { margin-top:8px; padding-bottom:14px; }
+.airunote-notes .an-inbox-card { position:relative; border:1px solid var(--ab-border); border-radius:9px; margin:10px 0; }
+.airunote-notes .an-inbox-card > .ab-item { margin:0; border:0; padding-right:25px; }
+.airunote-notes .an-inbox-card .ab-item-title { font-size:14px; }
+.airunote-notes .an-inbox-card .ab-item-title small { font-size:12px; }
+.airunote-notes .an-decide-toggle { position:absolute; right:3px; top:8px; border:0; padding:2px; font-size:10px; color:var(--ab-muted); min-height:26px; }
+.airunote-notes .an-decision-buttons { display:flex; border-top:1px solid var(--ab-border); }
+.airunote-notes .an-decision-buttons button { flex:1; font-size:12px; border:0; border-radius:0; background:none; min-height:34px; padding:4px; }
+.airunote-notes .an-decision-buttons button + button { border-left:1px solid var(--ab-border); }
+.airunote-notes .an-decision-form { padding:10px; display:flex; gap:7px; flex-wrap:wrap; border-top:1px solid var(--ab-border); }
+.airunote-notes .an-decision-form label { display:flex; flex-direction:column; align-items:stretch; width:100%; font-size:12px; gap:6px; }
+.airunote-notes .an-decision-form button { font-size:12px; }
+.airunote-notes .an-inbox-hint { font-size:12px; color:var(--ab-muted); margin:18px 2px; }
+.airunote-notes .an-composer-footer { display:flex; flex-direction:column; gap:8px; flex-shrink:0; padding-top:10px; }
+.airunote-notes .an-composer-footer > button { font-size:12px; align-self:flex-start; min-height:25px; }
+.airunote-notes .an-composer { background:var(--ab-bg); box-shadow:0 2px 8px #14234305; border-radius:14px; }
+.airunote-notes .an-composer:focus-within { border-color:var(--ab-accent); }
+.airunote-notes .an-composer textarea { background:transparent; resize:none; min-height:108px; max-height:30vh; width:100%; font-size:14px; }
+.airunote-notes .an-composer > div { display:flex; align-items:center; padding:6px 10px 10px; }
+.airunote-notes .an-composer select { background:var(--ab-surface); border:1px solid var(--ab-border); min-height:28px; max-width:100px; }
+.airunote-notes .an-composer .ab-link { font-size:12px; padding:4px; }
+.airunote-notes .an-composer .an-capture-send { border-radius:50%; width:34px; height:34px; min-height:34px; padding:0; margin-left:auto; font-size:23px; background:var(--ab-accent); color:var(--ab-surface); border:0; }
+.airunote-notes .an-capture-send:disabled { opacity:.45; }
+.airunote-notes .an-composer-footer > small { font-size:11px; }
+.airunote-notes .an-composer-footer .ab-import { max-height:180px; overflow:auto; text-align:left; }
+.airunote-notes .ab-import ol { list-style:decimal; padding-left:20px; overflow-wrap:anywhere; font-size:13px; }
+.airunote-notes .an-folder-toolbar { flex-wrap:wrap; gap:4px; }
+.airunote-notes .an-folder-toolbar label { font-size:11px; }
+.airunote-notes .an-agenda-nav { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:0 0 18px; }
+.airunote-notes .an-agenda-nav strong { flex:1; text-align:center; font-size:14px; }
+.airunote-notes .an-agenda-nav button { min-width:30px; font-size:14px; }
+.airunote-notes .an-agenda-day { padding:16px 12px 20px; border-bottom:1px solid var(--ab-border); }
+.airunote-notes .an-agenda-today { border:1px solid var(--ab-border); border-radius:10px; background:var(--ab-selected); margin-bottom:10px; }
+.airunote-notes .an-agenda-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.airunote-notes .an-agenda-heading h3 { font-size:19px; font-weight:600; display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; }
+.airunote-notes .an-agenda-heading small { font-size:12px; font-weight:400; color:var(--ab-muted); }
+.airunote-notes .an-agenda-heading button { font-size:12px; white-space:nowrap; }
+.airunote-notes .an-agenda-empty { color:var(--ab-muted); font-size:14px; padding:10px 0; line-height:1.6; }
+.airunote-notes .an-agenda-group { border-bottom:1px solid var(--ab-border); padding:16px 12px; }
+.airunote-notes .an-agenda-group summary { font-size:14px; cursor:pointer; }
+.airunote-notes .an-agenda-group summary small { margin-left:5px; font-size:12px; color:var(--ab-muted); }
+.airunote-notes .an-agenda-group > button { font-size:13px; margin-top:8px; }
+.airunote-notes .an-view > footer { flex-shrink:0; border-top:1px solid var(--ab-border); padding-top:10px; margin-top:12px; color:var(--ab-muted); }
+.airunote-notes .an-view > footer small { font-size:11px; }
+.airunote-notes .an-writing { margin-top:18px; }
+.airunote-notes .an-writing-tools { display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:12px; margin:8px 0; }
+.airunote-notes .an-writing-tools > small { margin-right:auto; color:var(--ab-muted); }
+.airunote-notes .an-writing-tools button { font-size:12px; min-height:28px; }
+.airunote-notes .an-writing .an-prose { margin-top:10px; min-height:120px; cursor:text; }
+.airunote-notes .an-inline-text { font:inherit; font-size:16px; line-height:1.8; border:1px solid var(--ab-border); width:100%; resize:vertical; padding:12px; min-height:180px; background:var(--ab-surface); }
+.airunote-notes .an-prose .tiptap { min-height:120px; outline:none; }
+.airunote-notes .an-prose .tiptap[contenteditable=true] { border:1px solid var(--ab-border); padding:12px; border-radius:8px; }
+.airunote-notes .an-prose table { border-collapse:collapse; width:100%; }
+.airunote-notes .an-prose td,.airunote-notes .an-prose th { border:1px solid var(--ab-border); padding:6px; }
+.airunote-notes .an-draft-recovery { padding:12px; border:1px solid var(--ab-border); border-radius:8px; background:var(--ab-bg); font-size:13px; }
+.airunote-notes .an-draft-recovery button { font-size:12px; margin:8px 6px 0 0; }
+.airunote-notes .an-edit-hint { font-size:13px; color:var(--ab-muted); }
+.airunote-notes [hidden] { display:none!important; }
+@media(max-width:640px) {
+  .airunote-notes .ab-panes[data-panels="inbox,organizer,calendar"] { grid-template-columns:280px 300px 360px; }
+  .airunote-notes .ab-panes[data-count="4"] { grid-template-columns:280px 300px 360px 340px; }
+  .airunote-notes .an-composer textarea { min-height:92px; }
+  .airunote-notes .an-composer-footer > small { font-size:10px; }
+}
