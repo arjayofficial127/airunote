@@ -118,6 +118,8 @@ router.post(
         503
       );
     if (!r.file) throw new AppearanceError('Choose a file.');
+    const originalName: unknown = r.file.originalname;
+    if (typeof originalName !== 'string') throw new AppearanceError('Invalid file name.');
     const mime = detectType(r.file.buffer);
     if (!mime)
       throw new AppearanceError('Use PNG, JPEG, WebP, or PDF. Uploaded SVG is not supported.');
@@ -155,7 +157,7 @@ router.post(
             storageProvider: provider,
             storageKey: key,
             url: '',
-            fileName: Array.from(uploaded.originalname)
+            fileName: Array.from(originalName)
               .filter((character) => character.charCodeAt(0) >= 32)
               .join('')
               .slice(0, 255),

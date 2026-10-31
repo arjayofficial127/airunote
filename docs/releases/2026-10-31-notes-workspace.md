@@ -29,3 +29,7 @@ Builds ran in a temporary source copy to preserve the running localhost:4320 fro
 ## Limits
 
 Workspace navigation and appearance are session-local. These checks do not certify every device, concurrent edit or drag gesture. Remaining warnings are technical debt, not a claim of a warning-free codebase. Live deployment and browser results are recorded separately after publication.
+
+## Render build follow-up
+
+Render's isolated npm build exposed an upload-filename inference error that did not occur in the pnpm workspace. The upload boundary now verifies that the original filename is a string before filtering control characters. An isolated npm installation/build, workspace backend type check, targeted lint and whitespace checks pass. The guard preserves valid filenames and rejects malformed input before storage or database writes.
