@@ -2,12 +2,27 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import { airuDocumentsTable, airuFoldersTable, airuDocumentRevisionsTable, orgsTable } from '../../infrastructure/db/drizzle/schema';
 import { NotFoundError } from '../../core/errors/AppError';
+import { readBookConfig } from './contract';
 
 export type BookScope = { orgId: string; userId: string };
 export type BookTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type StoredBookDocument = typeof airuDocumentsTable.$inferSelect;
 export class BookRepository {
   transaction<T>(work: (tx: BookTransaction) => Promise<T>): Promise<T> { return db.transaction(work); }
+
+  async hasSprint(tx: BookTransaction, scope: BookScope, folderId: string, rootId: string, sprintId: string) {
+    // A root Notes workspace can edit an existing nested Book without copying its configuration.
+    // Only ancestors of the target folder, up to this workspace root, can supply its sprint.
+    const rows = await tx.execute<{ metadata: unknown }>(sql`
+      WITH RECURSIVE ancestors AS (
+        SELECT id, parent_folder_id, metadata FROM airu_folders
+        WHERE id = ${folderId}::uuid AND org_id = ${scope.orgId}::uuid AND owner_user_id = ${scope.userId}::uuid
+        UNION
+        SELECT p.id, p.parent_folder_id, p.metadata FROM airu_folders p JOIN ancestors a ON p.id = a.parent_folder_id
+        WHERE a.id <> ${rootId}::uuid AND p.org_id = ${scope.orgId}::uuid AND p.owner_user_id = ${scope.userId}::uuid
+      ) SELECT metadata FROM ancestors`);
+    return rows.some(row => readBookConfig(row.metadata)?.sprints.some(sprint => sprint.id === sprintId));
+  }
 
   async folder(tx: BookTransaction, scope: BookScope, id: string, lock = false) {
     const query = tx.select().from(airuFoldersTable).where(and(eq(airuFoldersTable.id, id), eq(airuFoldersTable.orgId, scope.orgId), eq(airuFoldersTable.ownerUserId, scope.userId)));

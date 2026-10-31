@@ -6,14 +6,15 @@ import postgres from 'postgres';
 import * as schema from './schema';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { existsSync } from 'node:fs';
 
 // Load .env file from backend-node directory
 // Try current directory first, then parent (for monorepo)
 const envPath = path.resolve(process.cwd(), '.env');
 const parentEnvPath = path.resolve(process.cwd(), '..', '.env');
-if (require('fs').existsSync(envPath)) {
+if (existsSync(envPath)) {
   dotenv.config({ path: envPath });
-} else if (require('fs').existsSync(parentEnvPath)) {
+} else if (existsSync(parentEnvPath)) {
   dotenv.config({ path: parentEnvPath });
 } else {
   // Fallback to default dotenv behavior

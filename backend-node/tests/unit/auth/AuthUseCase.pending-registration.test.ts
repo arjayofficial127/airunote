@@ -1,5 +1,5 @@
+/// <reference types="jest" />
 import 'reflect-metadata';
-import { beforeEach, describe, expect, it } from '@jest/globals';
 import { AuthUseCase } from '../../../src/application/use-cases/AuthUseCase';
 import { IUserRepository } from '../../../src/application/interfaces/IUserRepository';
 import {
@@ -133,6 +133,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
             pendingUser.id,
             pendingUser.registrationSessionId,
             pendingUser.email,
+            pendingUser.ipAddress,
+            pendingUser.userAgentHash,
             pendingUser.verificationCodeHash,
             pendingUser.codeExpiresAt,
             pendingUser.attempts,
@@ -207,6 +209,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
           pendingUser.id,
           pendingUser.registrationSessionId,
           pendingUser.email,
+          pendingUser.ipAddress,
+          pendingUser.userAgentHash,
           pendingUser.verificationCodeHash,
           pendingUser.codeExpiresAt,
           pendingUser.attempts,
@@ -229,6 +233,8 @@ class InMemoryPendingUserRepository implements IPendingUserRepository {
           pendingUser.id,
           pendingUser.registrationSessionId,
           pendingUser.email,
+          pendingUser.ipAddress,
+          pendingUser.userAgentHash,
           pendingUser.verificationCodeHash,
           pendingUser.codeExpiresAt,
           pendingUser.attempts,
@@ -443,6 +449,9 @@ class FakePasswordHasher implements IPasswordHasherService {
 }
 
 class FakeTokenService implements ITokenService {
+  generatePasswordResetToken(): string { throw new Error('Unexpected password reset in registration test'); }
+  verifyPasswordResetToken(): null { throw new Error('Unexpected password reset in registration test'); }
+
   generateAccessToken(payload: { userId: string; email: string }): string {
     return `access:${payload.userId}`;
   }
@@ -505,6 +514,8 @@ class FakeTokenService implements ITokenService {
 }
 
 class FakeEmailService implements IEmailService {
+  async sendPasswordResetEmail(): Promise<never> { throw new Error('Unexpected password reset in registration test'); }
+
   async sendOrgCreatedEmail(): Promise<{ success: boolean; message: string }> {
     return { success: true, message: 'ok' };
   }
@@ -529,6 +540,11 @@ describe('AuthUseCase pending registration flow', () => {
     authUseCase = new AuthUseCase(
       userRepository,
       pendingUserRepository,
+      {
+        createRequest: async () => { throw new Error('Unexpected password reset in registration test'); },
+        findValidByTokenHash: async () => { throw new Error('Unexpected password reset in registration test'); },
+        markUsed: async () => { throw new Error('Unexpected password reset in registration test'); },
+      },
       new FakeAppSettingRepository(),
       new FakePasswordHasher(),
       new FakeTokenService(),

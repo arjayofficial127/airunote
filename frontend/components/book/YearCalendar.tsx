@@ -8,7 +8,7 @@ export function YearCalendar({ model, items }: { model: BookWorkspaceModel; item
     const dated = items.filter(item => item.planning.plan.kind === 'day' && item.planning.plan.date.startsWith(month));
     const plans = items.filter(item => {
       if (['day', 'year', 'unplanned'].includes(item.planning.plan.kind)) return false;
-      const range = planRange(item.planning.plan, model.config);
+      const range = planRange(item.planning.plan, model.planningConfig);
       return range !== null && range.start <= `${month}-31` && range.end >= `${month}-01`;
     });
     const populated = new Set(dated.flatMap(item => item.planning.plan.kind === 'day' ? [item.planning.plan.date] : []));

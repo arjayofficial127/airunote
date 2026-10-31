@@ -19,7 +19,7 @@ import { DeleteConfirmationModal } from '@/components/airunote/components/Delete
 import { DocumentEditorSkeleton } from '@/components/airunote/components/LoadingSkeleton';
 import { ErrorState } from '@/components/airunote/components/ErrorState';
 import type { AiruDocument } from '@/components/airunote/types';
-import Link from 'next/link';
+import { DocumentBreadcrumbs } from '@/components/airunote/components/DocumentBreadcrumbs';
 
 export default function DocumentViewPage() {
   const params = useParams();
@@ -294,9 +294,10 @@ export default function DocumentViewPage() {
 
   if (document.type === 'RTF') {
     return (
-      <div className="h-screen flex flex-col">
+      <div className="flex h-full min-h-[600px] min-w-0 flex-col">
+        <DocumentBreadcrumbs document={document} orgId={orgId} userId={userId} />
         <DocumentViewer
-          document={document || originalDocument!}
+          document={document}
           onEdit={() => setIsEditMode(true)}
           onCancel={handleCancel}
           onDelete={async () => { setIsDeleteModalOpen(true); }}
@@ -322,9 +323,10 @@ export default function DocumentViewPage() {
   // TXT/MD documents: always in editor mode
   // RTF documents: editor mode (after clicking Edit)
   return (
-    <div className="h-screen flex flex-col">
+    <div className="flex h-full min-h-[600px] min-w-0 flex-col">
+      <DocumentBreadcrumbs document={document} orgId={orgId} userId={userId} />
       <DocumentEditor
-        document={document || originalDocument!}
+        document={document}
         onSave={handleSave}
         onDelete={async () => { setIsDeleteModalOpen(true); }}
         onRename={handleRename}

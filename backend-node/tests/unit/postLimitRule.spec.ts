@@ -1,7 +1,8 @@
+/// <reference types="jest" />
+import 'reflect-metadata';
 import { PostUseCase } from '../../src/application/use-cases/PostUseCase';
 import { IPostRepository } from '../../src/application/interfaces/IPostRepository';
 import { IOrgRepository } from '../../src/application/interfaces/IOrgRepository';
-import { Result } from '../../src/core/result/Result';
 import { ValidationError } from '../../src/core/errors/AppError';
 
 describe('PostUseCase - 3 Post Limit Rule', () => {
@@ -23,7 +24,9 @@ describe('PostUseCase - 3 Post Limit Rule', () => {
       findById: jest.fn(),
     } as any;
 
-    postUseCase = new PostUseCase(mockPostRepository, mockOrgRepository);
+    postUseCase = new PostUseCase(mockPostRepository, mockOrgRepository, {
+      create: jest.fn(), createMany: jest.fn(), findByPostId: jest.fn(), delete: jest.fn(),
+    });
   });
 
   it('should allow creating first post', async () => {
@@ -116,9 +119,9 @@ describe('PostUseCase - 3 Post Limit Rule', () => {
     });
 
     expect(result.isErr()).toBe(true);
-    const error = result.unwrap();
-    expect(error).toBeInstanceOf(ValidationError);
-    expect((error as ValidationError).message).toContain('Maximum 3 posts');
+    if (!result.isErr()) throw new Error('Expected the post limit to reject creation');
+    expect(result.error).toBeInstanceOf(ValidationError);
+    expect(result.error.message).toContain('Maximum 3 posts');
   });
 });
 

@@ -8,7 +8,7 @@
 'use client';
 
 import { create } from 'zustand';
-import type { AiruFolder, AiruDocumentMetadata, AiruDocument } from '../types';
+import type { AiruFolder, AiruDocumentMetadata, AiruDocument, FolderViewSummary } from '../types';
 
 // Layer 1: Metadata Store State
 interface MetadataStoreState {
@@ -17,6 +17,7 @@ interface MetadataStoreState {
   documentsById: Map<string, AiruDocumentMetadata>;
   childrenByParentId: Map<string | null, string[]>; // folder IDs by parent (null = root)
   lensCounts: Record<string, number>; // folderId -> lens count
+  folderViews: FolderViewSummary[];
 
   // Loading state
   isLoading: boolean;
@@ -27,7 +28,10 @@ interface MetadataStoreState {
   searchQuery: string;
 
   // Actions
-  setMetadata: (folders: AiruFolder[], documents: AiruDocumentMetadata[], lensCounts: Record<string, number>) => void;
+  setMetadata: (folders: AiruFolder[], documents: AiruDocumentMetadata[], lensCounts: Record<string, number>, folderViews?: FolderViewSummary[]) => void;
+  upsertFolderView: (view: FolderViewSummary) => void;
+  removeFolderView: (viewId: string) => void;
+  setDefaultFolderView: (folderId: string, viewId: string) => void;
   addFolder: (folder: AiruFolder) => void;
   updateFolder: (folder: AiruFolder) => void;
   removeFolder: (folderId: string) => void;
@@ -88,6 +92,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   documentsById: new Map(),
   childrenByParentId: new Map(),
   lensCounts: {},
+  folderViews: [],
   isLoading: false,
   error: null,
   lastFetched: null,
@@ -102,7 +107,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
   // =====================================================
   // Metadata Store Actions
   // =====================================================
-  setMetadata: (folders, documents, lensCounts) => {
+  setMetadata: (folders, documents, lensCounts, folderViews = []) => {
     const foldersById = new Map<string, AiruFolder>();
     const documentsById = new Map<string, AiruDocumentMetadata>();
     const childrenByParentId = new Map<string | null, string[]>();
@@ -132,11 +137,23 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
       documentsById,
       childrenByParentId,
       lensCounts: lensCounts || {},
+      folderViews,
       lastFetched: new Date(),
       isLoading: false,
       error: null,
     });
   },
+
+  upsertFolderView: (view) => set(state => {
+    if (!state.foldersById.has(view.folderId)) return state;
+    return { folderViews: [...state.folderViews.filter(item => item.id !== view.id).map(item =>
+      view.isDefault && item.folderId === view.folderId ? { ...item, isDefault: false } : item
+    ), view] };
+  }),
+  removeFolderView: (viewId) => set(state => ({ folderViews: state.folderViews.filter(view => view.id !== viewId) })),
+  setDefaultFolderView: (folderId, viewId) => set(state => ({ folderViews: state.folderViews.map(view =>
+    view.folderId === folderId ? { ...view, isDefault: view.id === viewId } : view
+  ) })),
 
   addFolder: (folder) => {
     const { foldersById, childrenByParentId } = get();
@@ -288,6 +305,7 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
       documentsById: new Map(),
       childrenByParentId: new Map(),
       lensCounts: {},
+      folderViews: [],
       documentContentById: new Map(),
       loadingDocumentIds: new Set(),
       isLoading: false,

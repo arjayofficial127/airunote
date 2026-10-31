@@ -249,7 +249,7 @@ export class AirunoteDomainService {
       const userRoot = await this.ensureUserRootExists(orgId, userId, userId);
 
       // If parentFolderId is empty or invalid, use user root as parent
-      let actualParentFolderId = parentFolderId?.trim() || userRoot.id;
+      const actualParentFolderId = parentFolderId?.trim() || userRoot.id;
 
       // Verify parent folder belongs to user and org
       const parent = await this.repository.findFolderById(actualParentFolderId, tx);

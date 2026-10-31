@@ -184,8 +184,9 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
   });
   const [error, setError] = useState<string | null>(null);
   
-  // Check if we're on an Airunote route (skip collections/files loading)
-  const isAirunoteRoute = pathname?.includes('/airunote') ?? false;
+  // Legacy collection metadata is only needed by collection/record screens.
+  // Notes, Exams and Manage must not request the unavailable legacy endpoint.
+  const isCollectionsRoute = /\/(collections|records)(\/|$)/.test(pathname ?? '');
 
   // Request deduplication: cache in-flight request promise per key
   const inFlightRequestsRef = useRef<Record<string, Promise<void>>>({});
@@ -303,8 +304,7 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
             break;
           }
           case 'collections': {
-            // Skip collections loading on Airunote routes (endpoints return 404)
-            if (isAirunoteRoute) {
+            if (!isCollectionsRoute) {
               break;
             }
             const res = await collectionsApi.list(orgId).catch((err) => {
@@ -353,7 +353,7 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     // Store in-flight request
     inFlightRequestsRef.current[requestKey] = requestPromise;
     await requestPromise;
-  }, [isAirunoteRoute]);
+  }, [isCollectionsRoute]);
 
   /**
    * Load all metadata
@@ -386,14 +386,14 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
         }
 
         // Load all metadata in parallel
-        // Skip collections/files on Airunote routes (endpoints return 404)
+        // Keep unrelated legacy collections out of the primary app workspace.
         const loadPromises = [
           loadMetadataKey(orgId, 'posts'),
           loadMetadataKey(orgId, 'exams'),
           loadMetadataKey(orgId, 'examSettings'),
           loadMetadataKey(orgId, 'files'),
         ];
-        if (!isAirunoteRoute) {
+        if (isCollectionsRoute) {
           loadPromises.push(
             loadMetadataKey(orgId, 'collections')
           );
@@ -414,7 +414,7 @@ export function MetadataIndexProvider({ children }: { children: React.ReactNode 
     // Store in-flight request
     inFlightRequestsRef.current[requestKey] = requestPromise;
     await requestPromise;
-  }, [loadMetadataKey, isAirunoteRoute]);
+  }, [loadMetadataKey, isCollectionsRoute]);
 
   /**
    * Refresh all metadata

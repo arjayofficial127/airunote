@@ -15,6 +15,7 @@ import type { AiruDocument, AiruDocumentMetadata, AiruFolder } from '../types';
 
 interface StudyLensRendererProps {
   folderId: string;
+  onOpenDocument?: (id: string) => void;
 }
 
 interface StudyMeta {
@@ -366,7 +367,7 @@ function NoteRow({
   );
 }
 
-export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
+export function StudyLensRenderer({ folderId, onOpenDocument }: StudyLensRendererProps) {
   const orgSession = useOrgSession();
   const authSession = useAuthSession();
   const { getDocumentsByFolder, getDocumentContentById, getFoldersByParent, setDocumentContent } = useAirunoteStore();
@@ -696,7 +697,8 @@ export function StudyLensRenderer({ folderId }: StudyLensRendererProps) {
 
   const handleSelect = useCallback((documentId: string) => {
     setSelectedDocId(documentId);
-  }, []);
+    onOpenDocument?.(documentId);
+  }, [onOpenDocument]);
 
   const handleTagClick = useCallback((tag: string) => {
     setActiveTag((previous) => (previous === tag ? null : tag));

@@ -1,0 +1,14 @@
+.workspace-focus-shell { min-width: 0; }
+.workspace-focus-shell .workspace-stage { min-width: 0; }
+.workspace-focus-shell .workspace-stage > main { min-width: 0; }
+.workspace-focus-shell[data-workspace-focus="on"] > nav,
+.workspace-focus-shell[data-workspace-focus="on"] .workspace-home-overview,
+.workspace-focus-shell[data-workspace-focus="on"] .workspace-stage > aside,
+.workspace-focus-shell[data-workspace-focus="on"] .workspace-sidebar-overlay { display: none; }
+.workspace-focus-shell[data-workspace-focus="on"] .workspace-stage { padding-top: 0; }
+.workspace-focus-shell[data-workspace-focus="on"] .workspace-stage > main { margin-left: 0; }
+.workspace-focus-button { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 7px 11px; border: 1px solid #d7e0ec; border-radius: 9px; background: white; color: #334155; font-family: inherit; font-size: 13px; font-weight: 500; line-height: 1.3; white-space: nowrap; }
+.workspace-focus-button:hover { background: #eff6ff; border-color: #93b4e7; color: #1d4ed8; }
+.workspace-focus-button[aria-pressed="true"] { background: #eff6ff; color: #1d4ed8; border-color: #bfd4f6; }
+.workspace-focus-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+@media (max-width: 640px) { .workspace-focus-button { min-height: 42px; } }

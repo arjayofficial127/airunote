@@ -333,6 +333,7 @@ export interface FullMetadataResponse {
   folders: AiruFolder[];
   documents: AiruDocumentMetadata[];
   lensCounts: Record<string, number>; // folderId -> lens count
+  folderViews: Array<{ id: string; folderId: string; name: string; type: string; isDefault: boolean }>;
 }
 
 @injectable()
@@ -2449,6 +2450,7 @@ export class AirunoteRepository {
         folders: mappedFolders,
         documents: [],
         lensCounts,
+        folderViews: [],
       };
     }
 
@@ -2497,8 +2499,12 @@ export class AirunoteRepository {
       size: doc.size ?? undefined,
     }));
 
-    // Query lens counts per folder
-    // Build lensCounts map: folderId -> count
+    // One lightweight index for browsing folder views, scoped to the same owned folders.
+    // Layouts and item content remain lazy-loaded through the existing lens detail endpoint.
+    const folderViews = await dbInstance.select({
+      id: airuLensesTable.id, folderId: airuLensesTable.folderId,
+      name: airuLensesTable.name, type: airuLensesTable.type, isDefault: airuLensesTable.isDefault,
+    }).from(airuLensesTable).where(inArray(airuLensesTable.folderId, folderIdList));
     const lensCountsMap: Record<string, number> = {};
     
     // Initialize all folders with 0 lens count
@@ -2506,34 +2512,13 @@ export class AirunoteRepository {
       lensCountsMap[folder.id] = 0;
     });
     
-    // Only query if we have folders
-    if (folderIdList.length > 0) {
-      const lensCounts = await dbInstance
-        .select({
-          folderId: airuLensesTable.folderId,
-          count: sql<number>`COUNT(*)::int`,
-        })
-        .from(airuLensesTable)
-        .where(
-          and(
-            inArray(airuLensesTable.folderId, folderIdList),
-            isNotNull(airuLensesTable.folderId) // Only count folder lenses, not desktop/saved lenses
-          )
-        )
-        .groupBy(airuLensesTable.folderId);
-
-      // Update lensCounts map with actual counts
-      lensCounts.forEach((row) => {
-        if (row.folderId) {
-          lensCountsMap[row.folderId] = row.count;
-        }
-      });
-    }
+    folderViews.forEach(view => { if (view.folderId) lensCountsMap[view.folderId] = (lensCountsMap[view.folderId] ?? 0) + 1; });
 
     return {
       folders: mappedFolders,
       documents: mappedDocuments,
       lensCounts: lensCountsMap,
+      folderViews: folderViews.flatMap(view => view.folderId ? [{ ...view, folderId: view.folderId }] : []),
     };
   }
 
@@ -3121,7 +3106,7 @@ export class AirunoteRepository {
     const result = { ...target };
 
     for (const key in source) {
-      if (source.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
         const sourceValue = source[key];
         const targetValue = result[key];
 

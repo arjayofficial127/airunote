@@ -62,10 +62,19 @@ export interface AiruDocumentMetadata {
   size?: number; // Optional: content size in bytes if available
 }
 
+export interface FolderViewSummary {
+  id: string;
+  folderId: string;
+  name: string;
+  type: string;
+  isDefault: boolean;
+}
+
 export interface FullMetadataResponse {
   folders: AiruFolder[];
   documents: AiruDocumentMetadata[];
   lensCounts: Record<string, number>; // folderId -> lens count
+  folderViews?: FolderViewSummary[];
 }
 
 export interface FolderTreeResponse {

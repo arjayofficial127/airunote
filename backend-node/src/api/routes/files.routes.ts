@@ -155,7 +155,10 @@ router.post(
             storageProvider: provider,
             storageKey: key,
             url: '',
-            fileName: uploaded.originalname.replace(/[\x00-\x1f]/g, '').slice(0, 255),
+            fileName: Array.from(uploaded.originalname)
+              .filter((character) => character.charCodeAt(0) >= 32)
+              .join('')
+              .slice(0, 255),
             mimeType: mime,
             sizeBytes: uploaded.size,
             checksum,

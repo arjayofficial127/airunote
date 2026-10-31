@@ -12,6 +12,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 import { CreateEntryActions } from './CreateEntryActions';
 import { BookViewLink } from '@/components/book/BookViewLink';
+import { WorkspaceFocusButton } from '@/components/layout/WorkspaceFocus';
+import { LENS_TYPE_LABELS as typeLabels, LENS_DESCRIPTIONS, lensDisplayName } from '../utils/lensPresentation';
 
 interface ViewSwitcherProps {
   bookFolderId?: string | null;
@@ -29,15 +31,6 @@ interface ViewSwitcherProps {
   onPasteDock?: () => void;
 }
 
-const typeLabels: Record<string, string> = {
-  box: 'Box',
-  board: 'Board',
-  canvas: 'Canvas',
-  book: 'Book',
-  study: 'Study',
-  desktop: 'Desktop',
-  saved: 'Saved',
-};
 
 export function ViewSwitcher({
   bookFolderId = null,
@@ -89,7 +82,7 @@ export function ViewSwitcher({
 
       const triggerRect = activeLensMenuButtonRef.current.getBoundingClientRect();
       setMenuPosition({
-        left: triggerRect.left,
+        left: Math.max(8, Math.min(triggerRect.left, window.innerWidth - 232)),
         top: triggerRect.bottom + 8,
       });
     };
@@ -108,7 +101,8 @@ export function ViewSwitcher({
     };
   }, [isActionsMenuOpen]);
 
-  const availableLenses = lenses;
+  // Every Book lens opens the same folder workspace, so offer one canonical entry.
+  const availableLenses = lenses.filter((lens) => lens.type !== 'book');
 
   const handleViewSelect = (view: 'grid' | 'tree' | 'lens', lensId?: string | null) => {
     onViewChange(view, lensId);
@@ -118,24 +112,26 @@ export function ViewSwitcher({
     'inline-flex items-center justify-center whitespace-nowrap rounded-xl px-3.5 py-2 text-sm font-medium transition-all duration-150';
   const getSegmentClass = (isActive: boolean, isLens = false) => {
     if (isActive && isLens) {
-      return `${baseButtonClass} bg-black text-white shadow-sm hover:bg-black hover:text-white`;
+      return `${baseButtonClass} bg-slate-900 text-white shadow-sm hover:bg-slate-800`;
     }
 
     if (isActive) {
-      return `${baseButtonClass} bg-gray-100 text-gray-900`;
+      return `${baseButtonClass} bg-slate-100 text-slate-900`;
     }
 
-    return `${baseButtonClass} bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900`;
+    return `${baseButtonClass} bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900`;
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 py-2 transition-all duration-150">
-      <div className="min-w-0 flex flex-1 items-center gap-1">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 py-2 transition-all duration-150">
+      <div className="flex min-w-0 basis-full items-center gap-1 sm:flex-1 sm:basis-0">
         <div ref={railRef} className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto">
           <button
             type="button"
             onClick={() => handleViewSelect('grid')}
             className={getSegmentClass(viewMode === 'grid')}
+            aria-pressed={viewMode === 'grid'}
+            title="Browse folders and documents as cards"
           >
             Grid
           </button>
@@ -143,6 +139,8 @@ export function ViewSwitcher({
             type="button"
             onClick={() => handleViewSelect('tree')}
             className={getSegmentClass(viewMode === 'tree')}
+            aria-pressed={viewMode === 'tree'}
+            title="Explore your folder hierarchy"
           >
             Tree
           </button>
@@ -151,14 +149,16 @@ export function ViewSwitcher({
             const isActive = viewMode === 'lens' && selectedLensId === lens.id;
             return (
               <div key={lens.id} className="flex items-center gap-1">
-                {lens.type === 'book' && bookFolderId ? <BookViewLink folderId={bookFolderId} className={getSegmentClass(isActive, true)} /> : <button
+                <button
                   type="button"
                   onClick={() => handleViewSelect('lens', lens.id)}
                   className={getSegmentClass(isActive, true)}
-                  title={lens.name}
+                  title={`${lens.name}: ${LENS_DESCRIPTIONS[lens.type]}`}
+                  aria-pressed={isActive}
                 >
-                  <span>{typeLabels[lens.type] || lens.type}</span>
-                </button>}
+                  <span className="max-w-[160px] truncate">{lensDisplayName(lens, availableLenses)}</span>
+                  {lens.name.trim().toLowerCase() !== typeLabels[lens.type].toLowerCase() && <span className={`ml-1.5 text-[10px] ${isActive ? 'text-slate-300' : 'text-slate-400'}`}>{typeLabels[lens.type]}</span>}
+                </button>
 
                 {isActive && hasManagementActions ? (
                   <button
@@ -183,7 +183,7 @@ export function ViewSwitcher({
             );
           })}
 
-          {!availableLenses.some(lens => lens.type === 'book') && <BookViewLink folderId={bookFolderId} className={getSegmentClass(false, true)} />}
+          <BookViewLink folderId={bookFolderId} className={getSegmentClass(false, true)} />
           {onCreateLens ? (
             <button
               type="button"
@@ -191,13 +191,14 @@ export function ViewSwitcher({
               className="inline-flex h-10 items-center justify-center rounded-lg px-3 text-sm font-medium text-gray-600 transition-all duration-150 hover:bg-gray-100 hover:text-gray-900"
               title="Create lens"
             >
-              + Lens
+              + View
             </button>
           ) : null}
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <WorkspaceFocusButton />
         {onCreateFolder && onCreateDocument ? (
           <CreateEntryActions
             onCreateFolder={onCreateFolder}

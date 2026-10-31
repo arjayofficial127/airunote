@@ -1,6 +1,8 @@
 import type { RequestHandler } from 'express';
 
 declare global {
+  // Extend Express's ambient request interface, not a runtime namespace.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request { rateLimitUserId?: string }
   }

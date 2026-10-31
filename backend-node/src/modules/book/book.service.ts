@@ -15,7 +15,7 @@ export class BookService {
       const config = readBookConfig(root.metadata);
       if (!config) throw new AppError('Unsupported Book configuration', 409, 'UNSUPPORTED_BOOK_VERSION');
       const plan = input.planning.plan;
-      if (plan.kind === 'sprint' && !config.sprints.some(sprint => sprint.id === plan.sprintId)) throw new AppError('Choose a sprint from this Book', 400, 'INVALID_SPRINT');
+      if (plan.kind === 'sprint' && !await this.repository.hasSprint(tx, scope, folder.id, root.id, plan.sprintId)) throw new AppError('Choose a sprint belonging to this folder or one of its parents', 400, 'INVALID_SPRINT');
       const schema = record(record(folder.metadata).schema);
       for (const [key, field] of Object.entries(schema)) {
         const rule = record(field);
@@ -48,7 +48,7 @@ export class BookService {
       if (update.content !== undefined && current.type === 'RTF') throw new AppError('Use the document editor to edit rich text', 400, 'RICH_TEXT_EDITOR_REQUIRED');
       if (update.planning?.plan.kind === 'sprint') {
         const sprintId = update.planning.plan.sprintId;
-        if (!config.sprints.some(sprint => sprint.id === sprintId)) throw new AppError('Choose a sprint from this Book', 400, 'INVALID_SPRINT');
+        if (!await this.repository.hasSprint(tx, scope, update.folderId ?? current.folderId, root.id, sprintId)) throw new AppError('Choose a sprint belonging to this folder or one of its parents', 400, 'INVALID_SPRINT');
       }
       const action = [update.name !== undefined && update.name !== current.name ? 'Renamed' : '', update.content !== undefined && update.content !== current.canonicalContent ? 'Updated brief' : '', update.folderId && update.folderId !== current.folderId ? 'Moved folder' : '', update.planning ? 'Updated planning' : ''].filter(Boolean).join('; ');
       if (!action) return { ...current, content: current.canonicalContent };

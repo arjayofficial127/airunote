@@ -42,6 +42,7 @@ import {
 } from '@/components/airunote/lenses/CanvasLens';
 import { StudyLensRenderer } from '@/components/airunote/lenses/StudyLensRenderer';
 import { LensToolbar } from '@/components/airunote/components/LensToolbar';
+import { compareContentItems, type ContentFilter, type ContentSort } from '@/components/airunote/utils/contentViewOptions';
 import { FolderCanvasTopOverlay } from './_components/FolderCanvasTopOverlay';
 import {
   type CanvasArrangePreset,
@@ -175,6 +176,8 @@ export default function FolderViewPage() {
     getFilteredDocuments,
     getFoldersByParent,
     getDocumentsByFolder,
+    foldersById,
+    documentsById,
     isLoading,
     error,
   } = useAirunoteStore();
@@ -249,6 +252,10 @@ export default function FolderViewPage() {
   // Hook for setting default lens for this folder
   const setFolderDefaultLens = useSetFolderDefaultLens(orgId || undefined, folderId || undefined);
 
+  const [lensSearch, setLensSearch] = useState('');
+  const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
+  const [sortOrder, setSortOrder] = useState<ContentSort>('updated');
+
   // Build lens projection when lens data is available
   const lensProjection = useMemo(() => {
     if (!lensData || !selectedLensId) return null;
@@ -268,10 +275,9 @@ export default function FolderViewPage() {
   const boardChildren = useMemo(() => {
     if (!folderId) return [];
     
-    // Use direct store methods instead of filtered versions to ensure we get all items
-    // Filtered versions might be affected by search query or other state
-    const folders = getFoldersByParent(folderId);
-    const documents = getDocumentsByFolder(folderId);
+    // Read reactive metadata maps: store getter identities stay stable during hydration.
+    const folders = Array.from(foldersById.values()).filter((folder) => folder.parentFolderId === folderId && folder.id !== folderId && folder.humanId !== '__org_root__');
+    const documents = Array.from(documentsById.values()).filter((document) => document.folderId === folderId);
 
     return [
       ...folders.map((f) => ({
@@ -279,15 +285,26 @@ export default function FolderViewPage() {
         type: 'folder' as const,
         title: f.humanId,
         humanId: f.humanId,
+        createdAt: f.createdAt,
       })),
       ...documents.map((d) => ({
         id: d.id,
         type: 'document' as const,
         title: d.name,
         name: d.name,
+        createdAt: d.createdAt,
+        updatedAt: d.updatedAt,
       })),
     ];
-  }, [folderId, getFoldersByParent, getDocumentsByFolder]);
+  }, [folderId, foldersById, documentsById]);
+
+  const visibleBoardChildren = useMemo(() => {
+    const query = lensSearch.trim().toLowerCase();
+    return boardChildren.filter((item) =>
+      (contentFilter === 'all' || (contentFilter === 'documents' ? item.type === 'document' : item.type === 'folder')) &&
+      (!query || item.title.toLowerCase().includes(query))
+    ).sort((a, b) => compareContentItems(a, b, sortOrder));
+  }, [boardChildren, contentFilter, lensSearch, sortOrder]);
 
   // Handle persist for board lens
   const handleBoardPersist = useCallback(async (items: LensItemInput[]) => {
@@ -1092,13 +1109,17 @@ export default function FolderViewPage() {
               onCreateFolder={() => setIsCreateFolderModalOpen(true)}
               onCreateDocument={() => setIsCreateDocumentModalOpen(true)}
               onPasteDock={() => setIsPasteDockOpen(true)}
+              searchValue={lensSearch} onSearchChange={setLensSearch}
+              contentFilter={contentFilter} onContentFilterChange={setContentFilter}
+              sortOrder={sortOrder} onSortOrderChange={setSortOrder}
+              resultCount={visibleBoardChildren.length}
             />
           </div>
           <div className={`${pageShellClassName} pt-6`}>
             <BoardLens
               orgId={orgId || orgIdFromParams}
               lens={lensData.lens}
-              items={boardChildren}
+              items={visibleBoardChildren}
               lensItems={lensData.items}
               onPersist={handleBoardPersist}
             />
@@ -1115,6 +1136,7 @@ export default function FolderViewPage() {
               folderId={folderId}
               orgId={orgId || orgIdFromParams}
               placement="inline"
+              showSearchRow={false}
               onViewChange={handleViewChangeFromToolbar}
               onCreateLens={() => setIsCreateLensModalOpen(true)}
               onEditLens={handleEditLensRequest}

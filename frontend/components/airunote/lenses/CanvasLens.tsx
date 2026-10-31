@@ -20,6 +20,8 @@ import { useParams, useRouter } from 'next/navigation';
 import type { AiruLens, AiruLensItem, ViewMode } from '@/lib/api/airunoteLensesApi';
 import type { LensItemInput } from '@/lib/api/airunoteLensesApi';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
+import { toast } from '@/lib/toast';
+import { initialCanvasPositions } from '../utils/canvasInitialLayout';
 import { FileTypeChip } from '../components/FileTypeChip';
 import {
   InlineCanvasDocumentCard,
@@ -112,6 +114,7 @@ interface CanvasNavigatorPanelConfig {
 }
 
 interface CanvasLensProps {
+  onOpenItem?: (id: string, type: 'document' | 'folder') => void;
   orgId: string;
   lens: AiruLens;
   canvasTheme?: LensCanvasTheme;
@@ -335,7 +338,8 @@ function buildCanvasItemState(
   child: CanvasLensItem,
   lensItem: AiruLensItem | undefined,
   lensDefaultView: ViewMode | undefined,
-  globalDefaultView: ViewMode
+  globalDefaultView: ViewMode,
+  defaultPosition: { x: number; y: number }
 ): CanvasItemState {
   const fallbackSize = getDefaultCanvasCardSize(child.type, lensItem?.viewMode ?? lensDefaultView ?? globalDefaultView);
 
@@ -345,8 +349,8 @@ function buildCanvasItemState(
 
     return {
       id: child.id,
-      x: normalizeCanvasCoordinate(lensItem.x ?? 50),
-      y: normalizeCanvasCoordinate(lensItem.y ?? 50),
+      x: defaultPosition.x,
+      y: defaultPosition.y,
       viewMode: resolveDocumentViewMode({
         lensItemViewMode: lensItem.viewMode,
         lensDefaultView,
@@ -358,15 +362,14 @@ function buildCanvasItemState(
     };
   }
 
-  const x = Math.random() * 250 + 50;
-  const y = Math.random() * 250 + 50;
-  const size = getDefaultCanvasCardSize(child.type, globalDefaultView);
+  const resolvedView = resolveDocumentViewMode({ lensDefaultView, globalDefaultView });
+  const size = getDefaultCanvasCardSize(child.type, resolvedView);
 
   return {
     id: child.id,
-    x: Math.round(x),
-    y: Math.round(y),
-    viewMode: globalDefaultView,
+    x: defaultPosition.x,
+    y: defaultPosition.y,
+    viewMode: resolvedView,
     width: size.width,
     height: size.height,
     metadata: {},
@@ -381,9 +384,16 @@ function buildCanvasStateMap(
 ): Map<string, CanvasItemState> {
   const itemsMap = new Map<string, CanvasItemState>();
 
+  const savedItems = new Map(lensItems.map((item) => [item.entityId, item]));
+  const positions = initialCanvasPositions(children.map((child) => {
+    const saved = savedItems.get(child.id);
+    const view = resolveDocumentViewMode({ lensItemViewMode: saved?.viewMode, lensDefaultView, globalDefaultView });
+    const size = readCanvasCardSize(isRecord(saved?.metadata) ? saved.metadata : {}, getDefaultCanvasCardSize(child.type, view));
+    return { id: child.id, ...size, x: saved?.x, y: saved?.y };
+  }));
   children.forEach((child) => {
-    const lensItem = lensItems.find((item) => item.entityId === child.id);
-    itemsMap.set(child.id, buildCanvasItemState(child, lensItem, lensDefaultView, globalDefaultView));
+    const position = positions.get(child.id) ?? { x: 40, y: 72 };
+    itemsMap.set(child.id, buildCanvasItemState(child, savedItems.get(child.id), lensDefaultView, globalDefaultView, position));
   });
 
   return itemsMap;
@@ -1124,6 +1134,7 @@ function CanvasItem({
 }
 
 export function CanvasLens({
+  onOpenItem,
   orgId,
   lens,
   canvasTheme,
@@ -1148,6 +1159,7 @@ export function CanvasLens({
 }: CanvasLensProps) {
   const router = useRouter();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isTidying, setIsTidying] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedUtilityId, setSelectedUtilityId] = useState<string | null>(null);
   const [navigatorHighlightItemId, setNavigatorHighlightItemId] = useState<string | null>(null);
@@ -2317,6 +2329,8 @@ export function CanvasLens({
 
   const handleOpenRequest = useCallback(
     (href: string) => {
+      const item = children.find(candidate => href.endsWith(`/${candidate.id}`));
+      if (onOpenItem && item && dirtyEditingItemIds.length === 0) { onOpenItem(item.id, item.type); return; }
       if (dirtyEditingItemIds.length === 0) {
         router.push(href);
         return;
@@ -2331,7 +2345,7 @@ export function CanvasLens({
         navigationHref: href,
       });
     },
-    [dirtyEditingItemIds, requestInlineAction, router]
+    [children, onOpenItem, dirtyEditingItemIds, requestInlineAction, router]
   );
 
   const navigatorPanelFolders = useMemo(
@@ -2344,6 +2358,36 @@ export function CanvasLens({
   );
   const isCompactNavigatorPanel = navigatorPanel?.mode === 'compact';
   const isPreviewNavigatorPanel = navigatorPanel?.mode === 'preview';
+
+  const handleTidyLayout = async () => {
+    if (isTidying || children.length === 0) return;
+    const previous = stagedItems;
+    const arranged = computeCanvasArrangement('tidy-grid', children, {
+      viewportWidth: containerRef.current?.clientWidth,
+      viewportHeight: containerRef.current?.clientHeight,
+    });
+    const next = new Map(stagedItems);
+    arranged.forEach((position, itemId) => {
+      const state = next.get(itemId);
+      if (state) {
+        const size = getDefaultCanvasCardSize(children.find((item) => item.id === itemId)?.type ?? 'document', position.viewMode);
+        next.set(itemId, { ...state, ...position, ...size });
+      }
+    });
+    setStagedItems(next);
+    setIsTidying(true);
+    try {
+      await onPersist(children.flatMap((item) => {
+        const state = next.get(item.id);
+        return state ? [buildLensItemInput(item, state)] : [];
+      }));
+      setPersistedItems(new Map(next));
+      toast('Canvas arranged and saved', 'success');
+    } catch (error) {
+      setStagedItems(previous);
+      toast(error instanceof Error ? error.message : 'Could not arrange the canvas. Your layout has been restored.', 'error');
+    } finally { setIsTidying(false); }
+  };
 
   return (
     <DndContext
@@ -2391,6 +2435,12 @@ export function CanvasLens({
             </div>
           </div>
         )}
+        {persistenceMode === 'immediate' && (
+          <div className="sticky left-4 top-3 z-30 mx-4 my-3 flex w-fit max-w-[calc(100%-2rem)] flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-sm">
+            <span className="text-xs text-slate-500">{children.length} {children.length === 1 ? 'item' : 'items'} · Drag cards to arrange</span>
+            <button type="button" aria-label="Tidy canvas layout" disabled={isTidying || children.length === 0} onClick={() => void handleTidyLayout()} className="min-h-9 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-40">{isTidying ? 'Saving layout…' : 'Tidy layout'}</button>
+          </div>
+        )}
         <div
           className={`relative min-h-full min-w-full overflow-hidden bg-transparent ${canvasSurfaceTheme.surfaceClassName}`}
           style={{
@@ -2407,8 +2457,8 @@ export function CanvasLens({
             onPointerDown={handleCanvasBackgroundPointerDown}
           >
             <div className={`text-center ${canvasSurfaceTheme.emptyStateClassName}`}>
-              <p className="text-lg font-medium mb-2">No items in this folder</p>
-              <p className="text-sm">Add folders or documents to see them on the canvas</p>
+              <p className="text-lg font-medium mb-2">No content to display</p>
+              <p className="text-sm">Clear your search or add notes and folders to this workspace.</p>
             </div>
           </div>
         ) : (

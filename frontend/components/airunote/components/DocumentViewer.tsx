@@ -11,6 +11,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import type { AiruDocument } from '../types';
+import { DocumentMoreMenu } from './DocumentMoreMenu';
 
 interface DocumentViewerProps {
   document: AiruDocument;
@@ -113,8 +114,8 @@ export function DocumentViewer({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
             {isEditingName ? (
               <input
                 type="text"
@@ -182,12 +183,7 @@ export function DocumentViewer({
                 Edit
               </button>
             )}
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            >
-              Delete
-            </button>
+            <DocumentMoreMenu onDelete={handleDelete} />
           </div>
         </div>
       </div>

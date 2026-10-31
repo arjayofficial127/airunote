@@ -16,6 +16,7 @@ import { DocumentList } from './DocumentList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LensToolbar } from './LensToolbar';
 import { getFolderTypeIcon } from '../utils/folderTypeIcon';
+import { compareContentItems, type ContentFilter, type ContentSort } from '../utils/contentViewOptions';
 import { useUpdateFolder } from '../hooks/useUpdateFolder';
 import { useMoveDocument } from '../hooks/useMoveDocument';
 import { CreateFolderLensModal } from './CreateFolderLensModal';
@@ -114,6 +115,8 @@ export function FolderViewLayout({
   const [isCreateLensModalOpen, setIsCreateLensModalOpen] = useState(false);
   const [activeDraggedDocumentId, setActiveDraggedDocumentId] = useState<string | null>(null);
   const [searchInputValue, setSearchInputValue] = useState('');
+  const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
+  const [sortOrder, setSortOrder] = useState<ContentSort>('updated');
   const updateFolder = useUpdateFolder();
   const moveDocument = useMoveDocument();
   const sensors = useSensors(
@@ -217,11 +220,14 @@ export function FolderViewLayout({
   };
 
   // Get direct children (filtered by search)
-  const childFolders = folderId ? getFilteredFolders(folderId) : [];
-  const documents = folderId ? getFilteredDocuments(folderId) : [];
+  const matchingFolders = folderId ? getFilteredFolders(folderId) : [];
+  const matchingDocuments = folderId ? getFilteredDocuments(folderId) : [];
+  const childFolders = contentFilter === 'documents' ? [] : [...matchingFolders].sort((a, b) => compareContentItems(a, b, sortOrder));
+  const documents = contentFilter === 'folders' ? [] : [...matchingDocuments].sort((a, b) => compareContentItems(a, b, sortOrder));
+  const hasActiveFilter = Boolean(searchInputValue.trim()) || contentFilter !== 'all';
 
   const shouldShowViewHeader = !!folderId;
-  const pageShellClassName = 'mx-auto w-full max-w-[1400px] overflow-y-auto px-6 py-8 lg:px-8';
+  const pageShellClassName = 'mx-auto w-full min-w-0 max-w-[1600px] px-4 py-5 sm:px-6 lg:px-8';
   const activeDraggedDocument = activeDraggedDocumentId ? documentsById.get(activeDraggedDocumentId) : null;
   const folderTypeLabel = formatFolderTypeLabel(currentFolder?.type);
   const folderTypeIcon = getFolderTypeIcon(currentFolder?.type);
@@ -468,6 +474,11 @@ export function FolderViewLayout({
             onPasteDock={onPasteDock}
             searchValue={searchInputValue}
             onSearchChange={setSearchInputValue}
+            contentFilter={contentFilter}
+            onContentFilterChange={setContentFilter}
+            sortOrder={sortOrder}
+            onSortOrderChange={setSortOrder}
+            resultCount={childFolders.length + documents.length}
           />
         </div>
       )}
@@ -548,10 +559,10 @@ export function FolderViewLayout({
 
       {childFolders.length === 0 && documents.length === 0 && (
         <EmptyState
-          title="Empty folder"
-          message="Create a folder or document to get started."
-          actionLabel="Create folder"
-          onAction={onCreateFolder}
+          title={hasActiveFilter ? 'No matching content' : 'Your next idea starts here'}
+          message={hasActiveFilter ? 'Try a different search or show all content in this folder.' : 'Create a note or folder, then choose a view that fits your work.'}
+          actionLabel={hasActiveFilter ? 'Clear filters' : 'Create folder'}
+          onAction={hasActiveFilter ? () => { setSearchInputValue(''); setContentFilter('all'); } : onCreateFolder}
         />
       )}
 

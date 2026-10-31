@@ -5,6 +5,8 @@ import { TYPES } from '../../core/di/types';
 import { UnauthorizedError } from '../../core/errors/AppError';
 
 declare global {
+  // Express exposes this global interface for request declaration merging.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: {

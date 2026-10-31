@@ -1,4 +1,5 @@
 /// <reference types="jest" />
+import 'reflect-metadata';
 import type { BookService } from '../../src/modules/book/book.service';
 import type postgres from 'postgres';
 import { defaultPlanning, editablePlanning } from '../../src/modules/book/contract';
@@ -21,12 +22,13 @@ integration('Book isolated PostgreSQL integration', () => {
       CREATE TABLE IF NOT EXISTS airu_documents (id uuid PRIMARY KEY, folder_id uuid NOT NULL REFERENCES airu_folders(id), owner_user_id uuid NOT NULL, type varchar(5) NOT NULL, name varchar(255) NOT NULL, content text, canonical_content text NOT NULL DEFAULT '', shared_content text, visibility varchar(20) NOT NULL DEFAULT 'private', state varchar(20) NOT NULL DEFAULT 'active', attributes jsonb NOT NULL DEFAULT '{}', created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(), UNIQUE(folder_id,name));
       CREATE TABLE IF NOT EXISTS airu_document_revisions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), document_id uuid NOT NULL REFERENCES airu_documents(id), content_type varchar(20) NOT NULL, content text NOT NULL, created_by_user_id uuid NOT NULL, created_at timestamp NOT NULL DEFAULT now());
       CREATE TABLE IF NOT EXISTS exams (id uuid PRIMARY KEY, title text); INSERT INTO exams VALUES ('90000000-0000-4000-8000-000000000001','Protected exam fixture') ON CONFLICT DO NOTHING;`);
-    await client.unsafe(`ALTER TABLE airu_documents ALTER COLUMN id SET DEFAULT gen_random_uuid(); CREATE TABLE IF NOT EXISTS orgs (id uuid PRIMARY KEY, plan varchar(20) NOT NULL);`);
+    await client.unsafe(`ALTER TABLE airu_documents ALTER COLUMN id SET DEFAULT gen_random_uuid(); CREATE TABLE IF NOT EXISTS orgs (id uuid PRIMARY KEY, plan varchar(20) NOT NULL);
+      CREATE TABLE IF NOT EXISTS airu_lenses (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), folder_id uuid REFERENCES airu_folders(id), name varchar(255) NOT NULL, type varchar(50) NOT NULL, is_default boolean NOT NULL DEFAULT false, metadata jsonb, query jsonb, created_at timestamp DEFAULT now(), updated_at timestamp DEFAULT now());`);
     const module = await import('../../src/modules/book/book.service'); service = new module.BookService();
   });
   beforeEach(async () => {
     await client`INSERT INTO orgs (id,plan) VALUES (${org},'pro'),(${otherOrg},'pro') ON CONFLICT (id) DO UPDATE SET plan='pro'`;
-    await client`TRUNCATE airu_document_revisions, airu_documents, airu_folders`;
+    await client`TRUNCATE airu_document_revisions, airu_documents, airu_lenses, airu_folders`;
     for (const [folderId, orgId, owner, parent] of [[root, org, user, root], [child, org, user, root], [outsider, otherOrg, user, outsider]]) {
       await client`INSERT INTO airu_folders (id,org_id,owner_user_id,parent_folder_id,human_id,metadata) VALUES (${folderId},${orgId},${owner},${parent},'Folder',${client.json({ unrelated: { keep: true } })})`;
     }
@@ -86,5 +88,37 @@ integration('Book isolated PostgreSQL integration', () => {
     await service.update(scope, id, { rootFolderId: root, expectedUpdatedAt: at, content: '' });
     const [row] = await client`SELECT content, canonical_content FROM airu_documents WHERE id=${id}`;
     expect(row).toMatchObject({ content: '', canonical_content: '' });
+  });
+
+  test('root Notes preserves nested Book sprints for capture, edit and atomic batch', async () => {
+    const sprintId = '50000000-0000-4000-8000-000000000001';
+    const config = { sprints: [{ id: sprintId, name: 'Nested sprint', start: '2026-10-26', end: '2026-11-08', closed: false }], views: [], templates: [] };
+    await service.configure(scope, child, { expectedRevision: 0, config });
+    const fields = { ...editablePlanning(defaultPlanning('task')), plan: { kind: 'sprint' as const, sprintId } };
+    const captured = await service.create(scope, { rootFolderId: root, folderId: child, name: 'Nested plan', content: 'Keep this', planning: fields });
+    const edited = await service.update(scope, captured.id, { rootFolderId: root, expectedUpdatedAt: captured.updatedAt.toISOString(), planning: { ...fields, priority: true } });
+    const batch = await service.batch(scope, { rootFolderId: root, entries: [{ id: edited.id, expectedUpdatedAt: edited.updatedAt.toISOString() }], change: { kind: 'status', status: 'complete' } });
+    expect(batch[0]?.attributes).toMatchObject({ airunoteBook: { status: 'complete', plan: fields.plan } });
+    expect((await client`SELECT metadata FROM airu_folders WHERE id=${root}`)[0]?.metadata).toEqual({ unrelated: { keep: true } });
+    await expect(service.create(scope, { rootFolderId: root, folderId: root, name: 'Wrong branch', content: '', planning: fields })).rejects.toMatchObject({ code: 'INVALID_SPRINT' });
+    const completed = batch[0]; if (!completed) throw new Error('Batch returned no document');
+    await expect(service.update(scope, edited.id, { rootFolderId: root, folderId: root, expectedUpdatedAt: completed.updatedAt.toISOString(), planning: fields })).rejects.toMatchObject({ code: 'INVALID_SPRINT' });
+  });
+
+  test('view index includes nested views but excludes other owners, organizations and layouts', async () => {
+    const foreign = '30000000-0000-4000-8000-000000000004';
+    await client`INSERT INTO airu_folders (id,org_id,owner_user_id,parent_folder_id,human_id) VALUES (${foreign},${org},${otherUser},${foreign},'Someone else')`;
+    for (const [folderId, name, type] of [[root, 'Root canvas', 'canvas'], [child, 'Nested board', 'board'], [outsider, 'Other org', 'canvas'], [foreign, 'Other owner', 'board']]) {
+      await client`INSERT INTO airu_lenses (folder_id,name,type,metadata,query) VALUES (${folderId},${name},${type},${client.json({ privateLayout: true })},${client.json({ privateQuery: true })})`;
+    }
+    const { AirunoteRepository } = await import('../../src/modules/airunote/airunote.repository');
+    const repo = new AirunoteRepository();
+    const result = await repo.getFullMetadata(org, user);
+    expect(result.folderViews.map(view => view.name).sort()).toEqual(['Nested board', 'Root canvas']);
+    expect(result.folderViews.every(view => !('metadata' in view) && !('query' in view))).toBe(true);
+    expect(result.lensCounts).toMatchObject({ [root]: 1, [child]: 1 });
+    expect(result.documents.every(document => !('content' in document) && !('canonicalContent' in document))).toBe(true);
+    expect((await repo.getFullMetadata(otherOrg, otherUser)).folderViews).toEqual([]);
+    expect((await client`SELECT * FROM exams`)).toEqual([expect.objectContaining({ title: 'Protected exam fixture' })]);
   });
 });

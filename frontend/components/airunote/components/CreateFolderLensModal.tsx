@@ -10,6 +10,7 @@ import { airunoteApi } from '../services/airunoteApi';
 import { useAirunoteStore } from '../stores/airunoteStore';
 import { toast } from '@/lib/toast';
 import type { AiruLens } from '@/lib/api/airunoteLensesApi';
+import { LENS_DESCRIPTIONS } from '../utils/lensPresentation';
 
 interface CreateFolderLensModalProps {
   isOpen: boolean;
@@ -70,6 +71,11 @@ export function CreateFolderLensModal({
       });
 
       if (response.success) {
+        const lens = response.data.lens;
+        const currentStore = useAirunoteStore.getState();
+        if (currentStore.foldersById.get(folderId)?.orgId === orgId) {
+          currentStore.upsertFolderView({ id: lens.id, folderId, name: lens.name, type: lens.type, isDefault: lens.isDefault });
+        }
         // Update store: increment lens count for this folder
         store.incrementLensCount(folderId);
         toast('Lens created successfully', 'success');
@@ -96,12 +102,13 @@ export function CreateFolderLensModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="create-lens-title" onKeyDown={(event) => { if (event.key === 'Escape' && !isCreating) onClose(); }}>
+      <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create Lens</h2>
+          <h2 id="create-lens-title" className="text-xl font-semibold text-gray-900 dark:text-white">Create a view</h2>
           <button
             onClick={onClose}
+            aria-label="Close create view"
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
             disabled={isCreating}
           >
@@ -111,6 +118,7 @@ export function CreateFolderLensModal({
           </button>
         </div>
 
+        <p className="mb-5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">See the same content in a different way. Your notes stay in their folders.</p>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="lens-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -139,15 +147,17 @@ export function CreateFolderLensModal({
                   type="button"
                   onClick={() => handleTypeChange(lensType)}
                   className={`
-                    px-4 py-2 rounded-md text-sm font-medium transition-colors
+                    px-3 py-3 rounded-xl text-left text-sm font-medium transition-colors
                     ${type === lensType
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }
                   `}
                   disabled={isCreating}
+                  aria-pressed={type === lensType}
                 >
-                  {LENS_TYPE_LABELS[lensType]}
+                  <span className="block">{LENS_TYPE_LABELS[lensType]}</span>
+                  <span className={`mt-1 block text-xs font-normal leading-relaxed ${type === lensType ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>{LENS_DESCRIPTIONS[lensType]}</span>
                 </button>
               ))}
             </div>

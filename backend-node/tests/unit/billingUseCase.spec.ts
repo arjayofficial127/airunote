@@ -1,5 +1,5 @@
+/// <reference types="jest" />
 import 'reflect-metadata';
-import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { BillingUseCase } from '../../src/application/use-cases/BillingUseCase';
 import { IBillingIntentRepository } from '../../src/application/interfaces/IBillingIntentRepository';
 import { IOrgRepository } from '../../src/application/interfaces/IOrgRepository';

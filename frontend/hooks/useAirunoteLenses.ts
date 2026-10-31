@@ -5,6 +5,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import {
   fetchFolderLenses,
   fetchDesktopLenses,
@@ -137,9 +138,13 @@ export function useUpdateFolderLens(orgId?: string, folderId?: string) {
       }
       return response.data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: ({ lens }, variables) => {
       // Invalidate folder lenses and lens queries
       if (orgId && folderId) {
+        const store = useAirunoteStore.getState();
+        if (store.foldersById.get(folderId)?.orgId === orgId) {
+          store.upsertFolderView({ id: lens.id, folderId, name: lens.name, type: lens.type, isDefault: lens.isDefault });
+        }
         queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });
         queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
       }
@@ -170,6 +175,10 @@ export function useSetFolderDefaultLens(orgId?: string, folderId?: string) {
     },
     onSuccess: (_, variables) => {
       if (orgId && folderId) {
+        const store = useAirunoteStore.getState();
+        if (store.foldersById.get(folderId)?.orgId === orgId) {
+          store.setDefaultFolderView(folderId, variables.lensId);
+        }
         queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });
         // Also invalidate the specific lens, in case default-related metadata is used
         queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
@@ -232,6 +241,7 @@ export function useDeleteLens(orgId?: string, folderId?: string) {
     onSuccess: (_, variables) => {
       // Invalidate folder lenses and lens queries
       if (orgId) {
+        useAirunoteStore.getState().removeFolderView(variables.lensId);
         queryClient.invalidateQueries({ queryKey: ['lens', orgId, variables.lensId] });
         if (folderId) {
           queryClient.invalidateQueries({ queryKey: ['folder-lenses', orgId, folderId] });

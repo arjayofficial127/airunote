@@ -19,6 +19,8 @@ import { useMetadataIndex } from '@/providers/MetadataIndexProvider';
 import { useSuperAdmin } from '@/hooks/useSuperAdmin';
 import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 import { PlanBadge } from '@/components/payments/PlanBadge';
+import { WorkspaceFocusFrame } from '@/components/layout/WorkspaceFocus';
+import { NotesAppRail } from '@/components/layout/NotesAppRail';
 
 export default function DashboardLayout({
   children,
@@ -275,7 +277,8 @@ export default function DashboardLayout({
         <SessionAppStoreProvider>
       <ErrorBoundary>
         <OrgAccessChecker>
-        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+        <WorkspaceFocusFrame enabled={Boolean(pathname?.includes('/airunote'))} appRail={Boolean(isInOrgContext)} notesHome={pathname === `/orgs/${orgId}/airunote`}>
+          {isInOrgContext && orgId && <NotesAppRail orgId={orgId} isAdmin={isAdmin} initials={getUserInitials()} onProfile={() => setIsProfileModalOpen(true)} onLogout={() => void handleLogout()} />}
           {!isOrgsOnboardingPage && (
           <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
             <div
@@ -341,7 +344,7 @@ export default function DashboardLayout({
                   <div className="hidden h-full w-px flex-shrink-0 bg-gradient-to-t from-slate-200/70 via-slate-200/70 to-slate-200/10 md:block lg:hidden" />
 
                   {isInOrgContext && org && (
-                    <div className="min-w-0 flex-1 items-center md:flex">
+                    <div className="hidden min-w-0 flex-1 items-center sm:flex">
                       <div className="flex min-w-0 items-start gap-1.5">
                         <span className="truncate text-sm font-semibold text-slate-900 sm:text-[15px] lg:max-w-[300px]">
                           {org.name}
@@ -453,11 +456,11 @@ export default function DashboardLayout({
           </nav>
           )}
           <ErrorBoundary>
-            <div className={`flex-1 overflow-hidden min-h-0 flex relative ${!isOrgsOnboardingPage ? 'pt-14 sm:pt-16' : ''}`}>
+            <div className={`workspace-stage flex-1 overflow-hidden min-h-0 flex relative ${!isOrgsOnboardingPage ? 'pt-14 sm:pt-16' : ''}`}>
               {/* Overlay backdrop - only on mobile when sidebar is open */}
               {sidebarOpen && !isEditorMode && !isViewingApp && !isOrgsOnboardingPage && (
                 <div
-                  className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+                  className="workspace-sidebar-overlay lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
                   onClick={() => setSidebarOpen(false)}
                   style={{ top: '3.5rem' }} // Account for top nav bar
                 />
@@ -465,7 +468,7 @@ export default function DashboardLayout({
               
               {appSidebarOpen && isViewingApp && (
                 <div
-                  className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+                  className="workspace-sidebar-overlay lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
                   onClick={() => setAppSidebarOpen(false)}
                   style={{ top: '3.5rem' }} // Account for top nav bar
                 />
@@ -523,7 +526,7 @@ export default function DashboardLayout({
               await refetchAuth();
             }}
           />
-        </div>
+        </WorkspaceFocusFrame>
         </OrgAccessChecker>
       </ErrorBoundary>
     </SessionAppStoreProvider>

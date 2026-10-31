@@ -4,7 +4,7 @@ import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { errorMessage } from './services';
 import { useBookServices } from './BookServicesContext';
-import { editablePlanning } from '@/lib/book';
+import { editablePlanning, readBookConfig } from '@/lib/book';
 import { defaultPlanning, type PlanningFields, type CalendarPlan, type BookConfig, type BookConfigFields, type BookDocumentUpdate, type BookBatch } from '@/lib/book';
 import type { BookItem } from './domain';
 import type { AiruDocument } from '@/components/airunote/types';
@@ -40,9 +40,11 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
       const document = await services.capture(orgId, userId, folderId, name, planning, content, rootFolderId); commit(document); setNotice('Captured'); return document;
     });
   }
-  async function configure(fields: BookConfigFields) {
+  async function configure(fields: BookConfigFields, folderId = rootFolderId) {
     return run(async () => {
-      const folder = await services.configure(orgId, rootFolderId, { expectedRevision: config.revision, config: { sprints: fields.sprints, views: fields.views, templates: fields.templates } });
+      const current = folderId === rootFolderId ? config : readBookConfig(useAirunoteStore.getState().foldersById.get(folderId)?.metadata);
+      if (!current) throw new Error('Existing planning settings could not be read.');
+      const folder = await services.configure(orgId, folderId, { expectedRevision: current.revision, config: { sprints: fields.sprints, views: fields.views, templates: fields.templates } });
       if (available()) useAirunoteStore.getState().updateFolder(folder); setNotice('Book settings saved'); return folder;
     });
   }

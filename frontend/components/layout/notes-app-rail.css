@@ -1,0 +1,24 @@
+.an-app-rail { position:fixed; z-index:35; inset:0 auto 0 0; width:72px; background:#f7f8fb; border-right:1px solid #e3e7ee; color:#53617b; display:flex; flex-direction:column; align-items:center; padding:12px 6px; gap:24px; }
+.an-app-rail .an-brand { font-size:36px; line-height:32px; color:#234ba0; padding:4px; }
+.an-app-rail nav { display:flex; flex-direction:column; width:100%; gap:8px; }
+.an-app-rail nav a { display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 2px; border-radius:10px; font-size:11px; font-weight:400; }
+.an-app-rail nav a:hover { background:#edf1f8; }
+.an-app-rail nav a[aria-current] { color:#2348a1; background:#e7edfc; }
+.an-rail-account { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:14px; font-size:17px; }
+.an-rail-account button:first-child { border-radius:50%; background:#223451; color:white; width:34px; height:34px; font-size:12px; }
+.an-app-rail :focus-visible { outline:2px solid #345edb; outline-offset:2px; }
+.workspace-focus-shell[data-app-rail="on"] > nav { left:72px; }
+.workspace-focus-shell[data-app-rail="on"] .workspace-stage > aside,
+.workspace-focus-shell[data-app-rail="on"] .workspace-sidebar-overlay { display:none; }
+.workspace-focus-shell[data-app-rail="on"] .workspace-stage > main { margin-left:72px; }
+.workspace-focus-shell[data-notes-home="on"] > nav { display:none; }
+.workspace-focus-shell[data-notes-home="on"] .workspace-stage { padding-top:0; }
+.workspace-focus-shell[data-notes-home="on"] .workspace-stage > main { overflow:hidden; }
+@media(max-width:640px) { .an-app-rail { width:56px; padding-inline:3px; }.an-app-rail nav a { font-size:10px; }.workspace-focus-shell[data-app-rail="on"] > nav { left:56px; }.workspace-focus-shell[data-app-rail="on"] .workspace-stage > main { margin-left:56px; } }
+
+.workspace-focus-shell[data-app-rail="on"] > nav button[aria-label="Toggle sidebar"] { display:none; }
+
+.workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail { background:#202126; border-color:#3d3f49; color:#c2c4d0; }
+.workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail .an-brand { color:#b2acff; }
+.workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail nav a:hover,
+.workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail nav a[aria-current] { background:#36364d; color:#c3beff; }

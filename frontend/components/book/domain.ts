@@ -6,6 +6,7 @@ export type Panel = 'inbox' | 'organizer' | 'calendar' | 'context';
 export type Period = 'day' | 'week' | 'sprint' | 'month' | 'year' | 'unplanned';
 export type Plot = 'items' | 'projects' | 'hours';
 export const panels: Panel[] = ['inbox', 'organizer', 'calendar', 'context'];
+export function folderLabel(name: string | null | undefined) { return !name || name === '__user_root__' ? 'Home' : name; }
 export function today() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Singapore', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
   return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type)?.value ?? '').join('-');
