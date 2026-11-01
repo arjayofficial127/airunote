@@ -1,0 +1,30 @@
+{
+  "checks": [
+    "light 1912 compact Inbox rows",
+    "light 1912 adjacent Spaces and Pane",
+    "light 1912 active tab is raised",
+    "light 1912 page contains overflow",
+    "light 320 compact Inbox rows",
+    "light 320 adjacent Spaces and Pane",
+    "light 320 active tab is raised",
+    "light 320 page contains overflow",
+    "dark 1912 compact Inbox rows",
+    "dark 1912 adjacent Spaces and Pane",
+    "dark 1912 active tab is raised",
+    "dark 1912 page contains overflow",
+    "dark 320 compact Inbox rows",
+    "dark 320 adjacent Spaces and Pane",
+    "dark 320 active tab is raised",
+    "dark 320 page contains overflow",
+    "Review expands only on demand",
+    "Delete and Archive still accessible",
+    "Draft survives tab switch",
+    "Unfreeze preserves separate capture draft",
+    "Unfreeze protects unsaved Space details",
+    "Layout closes on outside click",
+    "Panels closes with Escape",
+    "Panels stable widths survive hiding a view",
+    "No JavaScript errors"
+  ],
+  "errors": []
+}

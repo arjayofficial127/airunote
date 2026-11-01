@@ -27,7 +27,7 @@ const LENS_TYPE_LABELS: Record<LensType, string> = {
   box: 'Box',
   board: 'Board',
   canvas: 'Canvas',
-  book: 'Book',
+  book: 'Calendar',
   study: 'Study',
 };
 
@@ -49,7 +49,7 @@ export function CreateFolderLensModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast('Please enter a lens name', 'error');
+      toast('Please enter a view name', 'error');
       return;
     }
 
@@ -78,16 +78,16 @@ export function CreateFolderLensModal({
         }
         // Update store: increment lens count for this folder
         store.incrementLensCount(folderId);
-        toast('Lens created successfully', 'success');
+        toast('View created successfully', 'success');
         onSuccess(response.data.lens);
         setName('');
         setType('board');
         onClose();
       } else {
-        toast(response.error?.message || 'Failed to create lens', 'error');
+        toast(response.error?.message || 'Failed to create view', 'error');
       }
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Failed to create lens', 'error');
+      toast(error instanceof Error ? error.message : 'Failed to create view', 'error');
     } finally {
       setIsCreating(false);
     }
@@ -118,7 +118,7 @@ export function CreateFolderLensModal({
           </button>
         </div>
 
-        <p className="mb-5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">See the same content in a different way. Your notes stay in their folders.</p>
+        <p className="mb-5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">See the same content in a different way. Your notes stay in their Spaces.</p>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="lens-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -130,7 +130,7 @@ export function CreateFolderLensModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter lens name"
+              placeholder="Enter view name"
               disabled={isCreating}
               autoFocus
             />

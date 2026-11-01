@@ -11,6 +11,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import lifecycleRoutes from './airunote.lifecycle.routes';
+import spaceLinksRoutes from './airunote.space-links.routes';
 import { eq, sql } from 'drizzle-orm';
 import { container } from '../../core/di/container';
 import { TYPES } from '../../core/di/types';
@@ -29,6 +30,7 @@ const router: ReturnType<typeof Router> = Router({ mergeParams: true });
 router.use(authMiddleware);
 router.use(requireOrgMembership);
 router.use('/lifecycle', lifecycleRoutes);
+router.use(spaceLinksRoutes);
 
 /**
  * Validation helpers

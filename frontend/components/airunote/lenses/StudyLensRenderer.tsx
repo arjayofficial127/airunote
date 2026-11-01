@@ -15,6 +15,8 @@ import type { AiruDocument, AiruDocumentMetadata, AiruFolder } from '../types';
 
 interface StudyLensRendererProps {
   folderId: string;
+  documentIds?: string[];
+  folderIds?: string[];
   onOpenDocument?: (id: string) => void;
 }
 
@@ -131,6 +133,7 @@ function getToolbarButtonClass(isActive: boolean, tone: 'neutral' | 'success' = 
 }
 
 interface NoteRowProps {
+  sourceLabel?: string;
   document: StudyLensDocument;
   level: number;
   isExpanded: boolean;
@@ -154,6 +157,7 @@ interface NoteRowProps {
 }
 
 function NoteRow({
+  sourceLabel,
   document,
   level,
   isExpanded,
@@ -307,6 +311,7 @@ function NoteRow({
                 </span>
               ) : null}
             </div>
+            {sourceLabel && <small className="block text-xs text-slate-500">↗ From {sourceLabel}</small>}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {tags.map((tag) => {
                 const isActive = activeTag === tag;
@@ -367,10 +372,10 @@ function NoteRow({
   );
 }
 
-export function StudyLensRenderer({ folderId, onOpenDocument }: StudyLensRendererProps) {
+export function StudyLensRenderer({ folderId, documentIds, folderIds, onOpenDocument }: StudyLensRendererProps) {
   const orgSession = useOrgSession();
   const authSession = useAuthSession();
-  const { getDocumentsByFolder, getDocumentContentById, getFoldersByParent, setDocumentContent } = useAirunoteStore();
+  const { getDocumentsByFolder, getDocumentContentById, getFoldersByParent, setDocumentContent, documentsById: metadataById, foldersById } = useAirunoteStore();
   const updateDocument = useUpdateDocument();
   const orgId = orgSession.activeOrgId;
   const userId = authSession.user?.id;
@@ -384,8 +389,8 @@ export function StudyLensRenderer({ folderId, onOpenDocument }: StudyLensRendere
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [isBulkLoadingData, setIsBulkLoadingData] = useState(false);
 
-  const folderDocuments = getDocumentsByFolder(folderId);
-  const folderChildren = getFoldersByParent(folderId) as AiruFolder[];
+  const folderDocuments = documentIds ? documentIds.flatMap(id => { const item = metadataById.get(id); return item ? [item] : []; }) : getDocumentsByFolder(folderId);
+  const folderChildren = folderIds ? folderIds.flatMap(id => { const item = foldersById.get(id); return item ? [item] : []; }) : getFoldersByParent(folderId) as AiruFolder[];
 
   const documents: StudyLensDocument[] = folderDocuments
     .map((metadata) => {
@@ -789,6 +794,7 @@ export function StudyLensRenderer({ folderId, onOpenDocument }: StudyLensRendere
       <NoteRow
         key={document.id}
         document={document}
+        sourceLabel={documentIds && document.document.folderId !== folderId ? foldersById.get(document.document.folderId)?.humanId ?? 'another Space' : undefined}
         level={level}
         isExpanded={expandedIds.has(document.id)}
         isSelected={selectedDocId === document.id}
@@ -813,7 +819,7 @@ export function StudyLensRenderer({ folderId, onOpenDocument }: StudyLensRendere
         </div>
       </NoteRow>
     );
-  }, [activeTag, arrangeMode, documentsById, expandedIds, getChildIds, getParentId, handleContentSave, handleDragOver, handleDragStart, handleDrop, handleParentClear, handleSelect, handleTagClick, handleTagsSave, handleTitleSave, handleToggleExpand, selectedDocId, visibleDocumentIds]);
+  }, [activeTag, arrangeMode, documentIds, folderId, foldersById, documentsById, expandedIds, getChildIds, getParentId, handleContentSave, handleDragOver, handleDragStart, handleDrop, handleParentClear, handleSelect, handleTagClick, handleTagsSave, handleTitleSave, handleToggleExpand, selectedDocId, visibleDocumentIds]);
 
   return (
     <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-4 px-6 py-4 lg:px-8">

@@ -20,9 +20,10 @@ type FolderContext = {
 function QuickAdd({ id, context }: { id: string; context: FolderContext }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
-  return <details className="ab-popover an-quick-add" ref={menu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }} onToggle={event => { if (event.currentTarget.open) { const rect = event.currentTarget.getBoundingClientRect(); setPosition({ top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 110)), left: Math.max(8, Math.min(rect.left, window.innerWidth - 165)) }); } }}><summary aria-label={`Add inside ${folderLabel(context.notes.model.folders.find(folder => folder.id === id)?.humanId)}`} title="New folder or note">+</summary><div style={position}>
-    <button onClick={() => { context.add(id, 'folder'); if (menu.current) menu.current.open = false; }}>New folder</button>
+  return <details className="ab-popover an-quick-add" ref={menu} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }} onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); } }} onToggle={event => { if (event.currentTarget.open) { const rect = event.currentTarget.getBoundingClientRect(); setPosition({ top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 110)), left: Math.max(8, Math.min(rect.left, window.innerWidth - 165)) }); } }}><summary aria-label={`Add inside ${folderLabel(context.notes.model.folders.find(folder => folder.id === id)?.humanId)}`} title="New Space or note">+</summary><div style={position}>
+    <button onClick={() => { context.add(id, 'folder'); if (menu.current) menu.current.open = false; }}>New Space</button>
     <button onClick={() => { context.add(id, 'note'); if (menu.current) menu.current.open = false; }}>New note</button>
+    <button onClick={() => { context.notes.links.open(id); if (menu.current) menu.current.open = false; }}>Add link</button>
   </div></details>;
 }
 function DraftRows({ parentId, context }: { parentId: string; context: FolderContext }) {
@@ -30,9 +31,9 @@ function DraftRows({ parentId, context }: { parentId: string; context: FolderCon
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { if (draft?.parentId === parentId) input.current?.focus(); }, [draft?.parentId, parentId]);
   return <>
-    {draft?.parentId === parentId && <form className="an-folder-draft" aria-label="New folder draft" onSubmit={event => { event.preventDefault(); void save(); }} onKeyDown={event => { if (event.key === 'Escape' && !model.actions.busy) setDraft(null); }}>
-      <NotesIcon name="folder" /><input ref={input} required maxLength={255} placeholder="Folder name" aria-label="New folder name" value={draft.name} disabled={model.actions.busy} onChange={event => setDraft({ ...draft, name: event.target.value })}/><small>Draft</small>
-      <button disabled={model.actions.busy || !draft.name.trim()} aria-label="Save new folder">✓</button><button type="button" disabled={model.actions.busy} aria-label="Cancel new folder" onClick={() => setDraft(null)}>×</button>
+    {draft?.parentId === parentId && <form className="an-folder-draft" aria-label="New Space draft" onSubmit={event => { event.preventDefault(); void save(); }} onKeyDown={event => { if (event.key === 'Escape' && !model.actions.busy) setDraft(null); }}>
+      <NotesIcon name="folder" /><input ref={input} required maxLength={255} placeholder="Space name" aria-label="New Space name" value={draft.name} disabled={model.actions.busy} onChange={event => setDraft({ ...draft, name: event.target.value })}/><small>Draft</small>
+      <button disabled={model.actions.busy || !draft.name.trim()} aria-label="Save new Space">✓</button><button type="button" disabled={model.actions.busy} aria-label="Cancel new Space" onClick={() => setDraft(null)}>×</button>
     </form>}
     {model.creating && (model.draftPreview?.folderId ?? model.captureFolderId) === parentId && <button className="an-note-draft" onClick={model.reveal}><NotesIcon name="note"/><span>{model.draftPreview?.name.trim() || 'Untitled note'}</span><small>Draft</small></button>}
   </>;
@@ -50,13 +51,13 @@ function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; 
     <DropZone id={`${pane.id}:folder:${folder.id}`} target={{ kind: 'folder', folderId: folder.id }}>
       <div className="an-folder-row" style={{ paddingInlineStart: `calc(${Math.min(depth, 6)} * var(--an-tree-step))` }} data-selected={pane.folderId === folder.id}>
         <button className="an-disclosure" aria-label={`${open ? 'Collapse' : 'Expand'} ${folderLabel(folder.humanId)}`} aria-expanded={open} onClick={() => notes.updateFolder(pane.id, { collapsedFolders: open ? [...pane.collapsedFolders, folder.id] : pane.collapsedFolders.filter(id => id !== folder.id) })}>{open ? '⌄' : '›'}</button>
-        <button className="ab-grip an-folder-grip" aria-label={`Move folder ${folderLabel(folder.humanId)}`} {...draggable.listeners} {...draggable.attributes}>⠿</button>
+        <button className="ab-grip an-folder-grip" aria-label={`Move Space ${folderLabel(folder.humanId)}`} {...draggable.listeners} {...draggable.attributes}>⠿</button>
         {renaming ? <><NotesIcon name="folder"/><RenameFolderForm folder={folder} model={model} onClose={() => { setRenaming(false); requestAnimationFrame(() => titleButton.current?.focus()); }}/></> : <>
           <button ref={titleButton} className="an-folder-select" onClick={() => context.select(folder.id)} title={folderLabel(folder.humanId)}><NotesIcon name="folder"/><span>{folderLabel(folder.humanId)}</span>{items.length > 0 && <small>{items.length}</small>}</button>
           {pane.folderId === folder.id && <QuickAdd id={folder.id} context={context}/>}
-          <button className="an-rename-folder" title="Rename folder" aria-label={`Rename ${folderLabel(folder.humanId)}`} onClick={() => setRenaming(true)}><NotesIcon name="edit" width="16" height="16"/></button>
-          <button className="an-item-actions" aria-label={`Actions for folder ${folderLabel(folder.humanId)}`} title="Archive or delete folder" disabled={model.actions.busy} onClick={() => notes.lifecycle.choose({ kind: 'folder', item: folder })}>⋯</button>
-          <button className="an-focus-folder" title="Focus on this folder" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => context.focus(folder.id)}>↗</button>
+          <button className="an-rename-folder" title="Rename Space" aria-label={`Rename ${folderLabel(folder.humanId)}`} onClick={() => setRenaming(true)}><NotesIcon name="edit" width="16" height="16"/></button>
+          <button className="an-item-actions" aria-label={`Actions for Space ${folderLabel(folder.humanId)}`} title="Archive or delete Space" disabled={model.actions.busy} onClick={() => notes.lifecycle.choose({ kind: 'folder', item: folder })}>⋯</button>
+          <button className="an-focus-folder" title="Focus on this Space" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => context.focus(folder.id)}>↗</button>
         </>}
       </div>
     </DropZone>
@@ -80,7 +81,7 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
   }
   function add(id: string, kind: 'folder' | 'note') {
     if (kind === 'folder') {
-      if (draft.draft) { model.actions.setError('Save or cancel the new folder first.'); return; }
+      if (draft.draft) { model.actions.setError('Save or cancel the new Space first.'); return; }
       draft.setDraft({ parentId: id, name: '' });
     } else { model.add(undefined, id); }
     revealFolder(id);
@@ -93,27 +94,27 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
   const context: FolderContext = { notes, pane, draft, select, focus, add };
   const roots = pane.focusId ? model.folders.filter(folder => folder.id === pane.focusId) : model.folders.filter(folder => folder.parentFolderId === model.rootFolderId && folder.id !== model.rootFolderId);
   const loose = model.filtered.filter(item => item.folderId === model.rootFolderId && (pane.closed || item.planning.status === 'open') && item.name.toLowerCase().includes(pane.query.toLowerCase()));
-  return <section ref={section} className="an-browser-pane an-folders" aria-label={`Folders pane ${index + 1}`} data-active={notes.panes.activeFolder === pane.id}>
-    <header><button className="an-pane-name" title="Activate this folder pane" onClick={() => select(pane.folderId)}>{pane.focusId ? folderLabel(model.folders.find(folder => folder.id === pane.focusId)?.humanId) : 'Workspace'}</button><small>{index + 1}</small><button aria-label={`Close folders pane ${index + 1}`} title={draft.draft ? 'Save or cancel the folder draft first' : 'Close pane'} disabled={notes.panes.folders.length === 1 || !!draft.draft} onClick={close}>×</button></header>
-    <nav className="an-breadcrumb" aria-label="Folder path"><button onClick={() => focus(null)}><NotesIcon name="home"/> Workspace</button>{pane.focusId && folderPath(model.folders, pane.focusId).filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => focus(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
-    <div className="an-folder-toolbar"><input aria-label={`Filter notes in folders pane ${index + 1}`} placeholder="Filter notes…" value={pane.query} onChange={event => notes.updateFolder(pane.id, { query: event.target.value })}/><label><input type="checkbox" checked={pane.closed} onChange={event => notes.updateFolder(pane.id, { closed: event.target.checked })}/> Done / cancelled</label>{pane.folderId === model.rootFolderId && <QuickAdd id={model.rootFolderId} context={context}/>}</div>
+  return <section ref={section} className="an-browser-pane an-folders" aria-label={`Spaces pane ${index + 1}`} data-active={notes.panes.activeFolder === pane.id}>
+    <header><button className="an-pane-name" title="Activate this Space pane" onClick={() => select(pane.folderId)}>{pane.focusId ? folderLabel(model.folders.find(folder => folder.id === pane.focusId)?.humanId) : 'Workspace'}</button><small>{index + 1}</small><button aria-label={`Close Spaces pane ${index + 1}`} title={draft.draft ? 'Save or cancel the folder draft first' : 'Close pane'} disabled={notes.panes.folders.length === 1 || !!draft.draft} onClick={close}>×</button></header>
+    <nav className="an-breadcrumb" aria-label="Space path"><button onClick={() => focus(null)}><NotesIcon name="home"/> Workspace</button>{pane.focusId && folderPath(model.folders, pane.focusId).filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => focus(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
+    <div className="an-folder-toolbar"><input aria-label={`Filter notes in Spaces pane ${index + 1}`} placeholder="Filter notes…" value={pane.query} onChange={event => notes.updateFolder(pane.id, { query: event.target.value })}/><label><input type="checkbox" checked={pane.closed} onChange={event => notes.updateFolder(pane.id, { closed: event.target.checked })}/> Done / cancelled</label>{pane.folderId === model.rootFolderId && <QuickAdd id={model.rootFolderId} context={context}/>}</div>
     <div className="ab-scroll" data-scroll-key={`folders:${pane.id}`}>
       {!pane.focusId && <DraftRows parentId={model.rootFolderId} context={context}/>}
       {roots.map(folder => <FolderRow key={folder.id} folder={folder} context={context} depth={0} ancestors={new Set()}/>)}
       {!pane.focusId && <DropZone id={`${pane.id}:root`} target={{ kind: 'folder', folderId: model.rootFolderId }}><details open><summary>Loose notes <small>({loose.length})</small></summary>{loose.map(item => <BookItemRow key={item.id} item={item} model={model} compact/>)}</details></DropZone>}
-      {!roots.length && !loose.length && <p className="ab-empty">Start with a thought or use + to add a folder.</p>}
+      {!roots.length && !loose.length && <p className="ab-empty">Start with a thought or use + to add a Space.</p>}
     </div>
-    {draft.draft && <button className="ab-link an-draft-location" onClick={() => { focus(draft.draft?.parentId === model.rootFolderId ? null : draft.draft?.parentId ?? null); if (draft.draft) revealFolder(draft.draft.parentId); }}>New folder draft · {folderLabel(model.folders.find(folder => folder.id === draft.draft?.parentId)?.humanId)}</button>}
+    {draft.draft && <button className="ab-link an-draft-location" onClick={() => { focus(draft.draft?.parentId === model.rootFolderId ? null : draft.draft?.parentId ?? null); if (draft.draft) revealFolder(draft.draft.parentId); }}>New Space draft · {folderLabel(model.folders.find(folder => folder.id === draft.draft?.parentId)?.humanId)}</button>}
   </section>;
 }
 export function AddFolderPaneButton({ notes }: { notes: NotesModel }) {
-  return <button className="an-add-folder-pane" type="button" title="Add folders pane" disabled={notes.panes.folders.length >= 4} onClick={() => {
+  return <button className="an-add-folder-pane" type="button" title="Add Spaces pane" disabled={notes.panes.folders.length >= 4} onClick={() => {
     if (notes.workspace.preset === 'cards') notes.setWorkspace(previous => ({ ...previous, navigation: 'folders' }));
     notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()));
   }}>+ Pane</button>;
 }
 export function NotesFolders({ notes }: { notes: NotesModel }) {
-  return <PaneGroup title="Folders" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} compact={notes.workspace.preset === 'cards' && notes.panes.folders.length === 1}
+  return <PaneGroup title="Spaces" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} compact={notes.workspace.preset === 'cards' && notes.panes.folders.length === 1}
     actions={notes.workspace.preset === 'panels' && <AddFolderPaneButton notes={notes} />}>
     {notes.panes.folders.map((pane, index) => <FolderBrowser key={pane.id} notes={notes} pane={pane} index={index}/>)}
   </PaneGroup>;

@@ -18,8 +18,7 @@ export const panesSchema = z.object({
   folderWidth: z.number().min(300).max(4000).nullable(), lensWidth: z.number().min(380).max(5000).nullable(),
 }).refine(value => new Set(value.folders.map(pane => pane.id)).size === value.folders.length
   && new Set(value.lenses.map(pane => pane.id)).size === value.lenses.length
-  && value.folders.some(pane => pane.id === value.activeFolder)
-  && value.lenses.every((pane, index) => pane.frozen === (index < value.lenses.length - 1)));
+  && value.folders.some(pane => pane.id === value.activeFolder));
 export type FolderPane = z.infer<typeof folderPaneSchema>;
 export type LensPane = z.infer<typeof lensPaneSchema>;
 export type NotesPanes = z.infer<typeof panesSchema>;
@@ -40,10 +39,25 @@ export function removeFolderPane(state: NotesPanes, id: string, viewForFolder: (
   const active = folders.find(pane => pane.id === next.activeFolder);
   return state.activeFolder === id && active ? followFolder(next, active.id, active.folderId, viewForFolder(active.folderId)) : next;
 }
+// Freezing is independent of pane creation; legacy frozen/following arrays remain valid.
 export function freezeLens(state: NotesPanes, id: string): NotesPanes {
-  const following = state.lenses[state.lenses.length - 1];
-  if (!following || state.lenses.length >= 4) return state;
-  return { ...state, lensWidth: null, lenses: [...state.lenses.slice(0, -1), { ...following, frozen: true }, { ...following, id }] };
+  return { ...state, lenses: state.lenses.map(pane => pane.id === id ? { ...pane, frozen: true } : pane) };
+}
+export function unfreezeLens(state: NotesPanes, id: string, folderId: string, viewId: string): NotesPanes {
+  return { ...state, lenses: state.lenses.map(pane => pane.id === id ? {
+    ...pane, frozen: false, folderId,
+    viewId: pane.folderId === folderId ? pane.viewId : viewId,
+    asList: pane.folderId === folderId ? pane.asList : false,
+  } : pane) };
+}
+export function addLensPane(state: NotesPanes, id: string, folderId: string, viewId: string): NotesPanes {
+  if (state.lenses.length >= 4 || state.lenses.some(pane => pane.id === id)) return state;
+  const pane = initialPanes(folderId).lenses[0]!;
+  return { ...state, lensWidth: null, lenses: [...state.lenses, { ...pane, id, viewId }] };
+}
+export function removeLensPane(state: NotesPanes, id: string): NotesPanes {
+  if (state.lenses.length <= 1 || !state.lenses.some(pane => pane.id === id)) return state;
+  return { ...state, lensWidth: null, lenses: state.lenses.filter(pane => pane.id !== id) };
 }
 export function followFolder(state: NotesPanes, paneId: string, folderId: string, viewId: string): NotesPanes {
   return { ...state, activeFolder: paneId,

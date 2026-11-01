@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "Exam editor opens",
+    "Exam preview opens",
+    "Two mobile exam answers saved",
+    "Mobile question fits",
+    "Participant submission and reload confirmed"
+  ],
+  "errors": []
+}
