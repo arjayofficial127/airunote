@@ -9,6 +9,7 @@ import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import type { BookWorkspaceModel } from '@/components/book/useBookWorkspace';
 import { NotesIcon } from './NotesIcon';
 import { NotesWriting } from './NotesWriting';
+import { NoteQuickDetails } from './NoteQuickDetails';
 
 export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWorkspaceModel; pinned: boolean; onPin: () => void; onClose: () => void }) {
   const [editTarget, setEditTarget] = useState<'note' | 'folder' | 'planning' | null>(null);
@@ -29,7 +30,7 @@ export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWor
   }
   if (editTarget || model.creating) return <div ref={editorContainer} className="an-content-editor" hidden={!model.shownPanels.includes('context')}>
     {!model.creating && <button className="an-back-reading" onClick={() => { if (model.dirty) { model.actions.setError('Save or discard your draft before reading.'); return; } setEditTarget(null); }}>← Read note</button>}
-    <ContextPane model={model} onClose={onClose} />
+    {!model.creating && item && (editTarget === 'folder' || editTarget === 'planning') ? <NoteQuickDetails key={item.id + editTarget} model={model} target={editTarget} close={() => setEditTarget(null)} allDetails={() => setEditTarget('note')}/> : <ContextPane model={model} onClose={onClose} />}
   </div>;
   return <section className="ab-pane ab-context" hidden={!model.shownPanels.includes('context')} aria-label="Note"><PaneHeading panel="context" title="Note" model={model}><button className="ab-link" aria-pressed={pinned} onClick={onPin}>{pinned ? 'Unpin' : 'Pin'}</button><button aria-label="Close note" onClick={onClose}>×</button></PaneHeading>
     <div className="ab-scroll an-reading" data-scroll-key="note">{!id ? <div className="an-content-empty"><NotesIcon name="note" width="36" height="36" /><h3>Choose a note to start.</h3><p>Select a note in Inbox, Folders or a view. Its text and next steps appear here.</p><button className="ab-link" onClick={() => model.add()}>Write a new note</button></div> : !document ? <div role={error ? 'alert' : 'status'}>{error ?? 'Opening note…'}{error && <button onClick={() => void load(id, true)}>Retry</button>}</div> : <>
@@ -43,7 +44,7 @@ export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWor
           void model.actions.update(item, { planning: { ...model.actions.fields(item), checklist: item.planning.checklist.map(check => check.id === step.id ? { ...check, done } : check) } });
         }} /><span>{step.text}</span></label>)}</section>}
         {item.planning.notes.length > 0 && <section className="an-reading-notes"><h2>Notes</h2>{item.planning.notes.map(note => <p key={note.id}>{note.text}</p>)}</section>}
-        <details className="an-note-details"><summary>Planning & details</summary><p>{item.planning.plan.kind === 'unplanned' ? 'Not scheduled' : planLabel(item.planning.plan, model.planningConfig)} · {item.planning.status}</p><button onClick={() => details('planning')}>Edit planning and context</button></details>
+        <details className="an-note-details"><summary>Planning & details</summary><p>{item.planning.plan.kind === 'unplanned' ? 'Not scheduled' : planLabel(item.planning.plan, model.planningConfig)} · {item.planning.status}</p><button onClick={() => details('note')}>Edit planning and context</button></details>
       </>}
     </>}</div>
     {id && document && <footer className="an-reading-footer"><small>Updated {new Date(document.updatedAt).toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore', day: 'numeric', month: 'short', year: 'numeric' })}</small></footer>}

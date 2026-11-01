@@ -1,0 +1,46 @@
+/* Keep state visible and the primary reading/writing surface quiet. */
+.airunote-notes .an-search-status { display:flex; align-items:center; gap:12px; flex-shrink:0; padding:6px 12px; background:var(--ab-selected); font-size:12px; }
+.airunote-notes .an-search-status > span { display:flex; gap:5px; flex:1; min-width:0; white-space:nowrap; }
+.airunote-notes .an-search-status strong { overflow:hidden; text-overflow:ellipsis; }
+.airunote-notes .an-search-status button { flex-shrink:0; min-height:30px; border:0; background:transparent; color:var(--ab-accent); }
+.airunote-notes .an-quick-details { padding:20px; overflow:auto; min-height:0; }
+.airunote-notes .an-quick-details h2 { font-size:20px; margin:0 0 6px; }
+.airunote-notes .an-quick-note-title { color:var(--ab-muted); font-size:13px; overflow-wrap:anywhere; margin:0 0 20px; }
+.airunote-notes .an-quick-details form,.airunote-notes .an-quick-details fieldset { display:grid; min-width:0; gap:14px; }
+.airunote-notes .an-quick-details label { display:grid; min-width:0; gap:6px; font-size:13px; }
+.airunote-notes .an-quick-details select,.airunote-notes .an-quick-details input { width:100%; min-width:0; }
+.airunote-notes .an-quick-details small { color:var(--ab-muted); font-size:12px; }
+.airunote-notes .an-quick-actions,.airunote-notes .an-schedule-shortcuts { display:flex; flex-wrap:wrap; gap:6px; }
+.airunote-notes .an-quick-details > .ab-link { margin-top:22px; }
+.airunote-notes .an-library-empty { padding:8px 2px; color:var(--ab-muted); line-height:1.5; }
+.airunote-notes .an-library-empty p { margin:0 0 5px; }
+.airunote-notes .an-library-empty button { color:var(--ab-accent); }
+.airunote-notes .an-library-controls .an-pane-menu > summary { font-size:20px; width:32px; }
+.airunote-notes .an-book-pages-label { font-size:12px; padding:6px 8px; }
+.airunote-notes .an-book-pages button { border:0; background:transparent; min-height:36px; padding:8px; }
+.airunote-notes .an-book-pages [aria-current=page] { background:var(--ab-selected); font-weight:600; }
+.airunote-notes .an-book-page-heading { gap:8px; }
+.airunote-notes .an-book-page-heading h2 { flex:1 1 100%; margin:0; font-size:22px; line-height:1.35; overflow-wrap:anywhere; }
+.airunote-notes .an-book-page-heading > .an-pane-menu { margin-left:auto; }
+.airunote-notes .an-reference-row { flex-wrap:nowrap; min-height:52px; padding:4px 0; }
+.airunote-notes .an-reference-row > button:first-child { flex:1 1 0; }
+.airunote-notes .an-reference-row > button:first-child span { font-size:13px; }
+.airunote-notes .an-reference-read { border:0; background:transparent; color:var(--ab-accent); font-size:12px; padding:4px 6px; }
+.airunote-notes .an-context-workspace { container-type:inline-size; }
+@container(max-width:420px) {
+  .airunote-notes[data-workspace=cards] .an-reading { padding:16px 12px; }
+  .airunote-notes .an-reading > h1 { font-size:22px; line-height:1.3; margin-bottom:10px; }
+  .airunote-notes .an-reading-folder { font-size:12px; margin-bottom:10px; }
+  .airunote-notes .an-note-meta { font-size:12px; gap:6px; margin:8px 0; }
+  .airunote-notes .an-note-actions { gap:8px; padding:8px 0 12px; }
+  .airunote-notes .an-note-actions button { font-size:12px; gap:5px; }
+  .airunote-notes .an-writing { padding-top:14px; }
+  .airunote-notes .an-quick-details { padding:16px 12px; }
+  .airunote-notes .an-quick-details .ab-form-pair { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+  .airunote-notes .an-search-status { padding:5px 8px; gap:4px; }
+  .airunote-notes .an-search-status > span { display:block; overflow:hidden; text-overflow:ellipsis; }
+  .airunote-notes .an-book-pages-label { flex-shrink:0; align-self:center; }
+  .airunote-notes .an-reference-read { min-height:36px; }
+}

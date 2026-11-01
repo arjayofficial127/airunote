@@ -24,6 +24,7 @@ import './collections.css';
 import './navigator.css';
 import './destinations.css';
 import './calendar.css';
+import './refinements.css';
 import { DestinationTabs, WorkspaceLibrary } from './WorkspaceDestinations';
 
 export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: string; orgId: string; userId: string }) {
@@ -79,6 +80,7 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
   const foldersShown = focused ? workspace.navigation === 'folders' : visible.includes('organizer');
   return <div ref={container} className="airunote-book airunote-notes" data-theme={notes.theme} data-workspace={workspace.preset} role="region" aria-label="Notes workspace">
     <NotesToolbar notes={notes} />
+    {model.query.trim() && <div className="an-search-status" role="region" aria-label="Active note search"><span>Filtering notes: <strong title={model.query}>{model.query}</strong></span><button onClick={() => model.setQuery('')}>Clear search</button></div>}
     {model.actions.error && <p role="alert" className="ab-error">{model.actions.error}<button onClick={() => model.actions.setError(null)}>Dismiss</button></p>}
     {model.actions.notice && <p role="status" className="ab-notice">{model.actions.notice}</p>}
     {model.configError && <p role="alert" className="ab-error">Existing planning settings could not be read. They have been preserved.</p>}
