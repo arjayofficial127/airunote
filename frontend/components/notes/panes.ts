@@ -7,7 +7,7 @@ const folderPaneSchema = z.object({
 });
 const lensPaneSchema = z.object({
   id: z.string(), folderId: z.string(), viewId: z.string(), asList: z.boolean(), frozen: z.boolean(),
-  query: z.string(), closed: z.boolean(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(`${value}T12:00:00Z`); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }),
+  query: z.string(), closed: z.boolean(), descendants: z.boolean().optional(), planningFolderId: z.string().nullable().optional(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(`${value}T12:00:00Z`); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }),
   period: z.enum(['day', 'week', 'sprint', 'month', 'year', 'unplanned']),
   plot: z.enum(['items', 'projects', 'hours']), hours: z.enum(['24', '12', '8']),
 });

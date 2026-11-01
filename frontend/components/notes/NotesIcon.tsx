@@ -1,7 +1,12 @@
 import type { SVGProps } from 'react';
 
-type Icon = 'folder' | 'home' | 'search' | 'sun' | 'moon' | 'more' | 'calendar' | 'note' | 'edit';
+type Icon = 'folder' | 'home' | 'search' | 'sun' | 'moon' | 'more' | 'calendar' | 'note' | 'edit' | 'book' | 'canvas' | 'board' | 'study';
+export const collectionIcon = { pages: 'book', canvas: 'canvas', board: 'board', study: 'study' } as const;
 const paths: Record<Icon, string> = {
+  book: 'M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Zm0 0v16',
+  canvas: 'M3 3h18v18H3Zm3 4h6v6H6Zm8 5h4v6h-4Z',
+  board: 'M3 3h18v18H3Zm6 0v18m6-18v18M5 7h2m4 4h2m4-4h2',
+  study: 'm2 8 10-5 10 5-10 5L2 8Zm4 3v7c4 3 8 3 12 0v-7m4-3v10',
   folder: 'M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z',
   home: 'm3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9',
   search: 'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z',

@@ -12,7 +12,7 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
     if (notes.folderContextId && !folder && !notes.folderDirty) notes.closeFolderDetails();
   });
   const tab = folder && (notes.contextTab === 'folder' || !noteOpen) ? 'folder' : 'note';
-  return <section className="an-context-workspace" aria-label="Note and Space details">
+  return <section className="an-context-workspace" aria-label="Note and Folder details">
     <header className="an-context-tabs">
       <div role="tablist" aria-label="Context tabs">
         {noteOpen && <span><button role="tab" id={id + '-note'} aria-controls={id + '-note-panel'} aria-selected={tab === 'note'} onClick={() => notes.setContextTab('note')}>Note</button><button aria-label="Close Note tab" onClick={notes.closeNote}>×</button></span>}
@@ -25,7 +25,7 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
     <div className="an-context-body" role="tabpanel" id={id + '-note-panel'} aria-labelledby={id + '-note'} hidden={tab !== 'note' || !noteOpen}>
       <NotesContent model={notes.contentModel} pinned={notes.pinned} onPin={() => notes.setPinned(value => !value)} onClose={notes.closeNote} />
     </div>
-    {!noteOpen && !folder && <div className="an-view-empty"><h2>Choose a note</h2><p>Open a note or Space details to work here.</p><button onClick={() => notes.model.add()}>Create a note</button></div>}
+    {!noteOpen && !folder && <div className="an-view-empty"><h2>Choose a note</h2><p>Open a note or Folder details to work here.</p><button onClick={() => notes.model.add()}>Create a note</button></div>}
     <div className="an-context-body" role="tabpanel" id={id + '-folder-panel'} aria-labelledby={id + '-folder'} hidden={tab !== 'folder'}>
       {folder && <NotesFolderDetails key={folder.id} notes={notes} folder={folder} />}
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,6 +32,9 @@ export default function UserProfileModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const dialog = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose), loadingRef = useRef(loading);
+  closeRef.current = onClose; loadingRef.current = loading;
 
   // Ensure component is mounted (for portal)
   useEffect(() => {
@@ -55,7 +58,24 @@ export default function UserProfileModal({
     if (user) {
       reset({ name: user.name });
     }
-  }, [user, reset]);
+  }, [user, reset, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !mounted) return;
+    const previous = document.activeElement;
+    dialog.current?.querySelector<HTMLInputElement>('#name')?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!loadingRef.current) closeRef.current(); }
+      if (event.key === 'Tab') {
+        const items = Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled)') ?? []);
+        const first = items[0], last = items.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    document.addEventListener('keydown', keyboard, true);
+    return () => { document.removeEventListener('keydown', keyboard, true); if (previous instanceof HTMLElement) previous.focus(); };
+  }, [isOpen, mounted]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -98,20 +118,26 @@ export default function UserProfileModal({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4 sm:p-6"
       onClick={(e) => {
         // Close modal when clicking the backdrop
-        if (e.target === e.currentTarget) {
+        if (e.target === e.currentTarget && !loading) {
           onClose();
         }
       }}
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
       <div 
-        className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        ref={dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-dialog-title"
+        className="an-profile-dialog bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 sm:p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Edit Profile</h2>
+            <h2 id="profile-dialog-title" className="text-2xl font-bold text-gray-900">Edit Profile</h2>
             <button
+              aria-label="Close profile"
+              disabled={loading}
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition"
             >
@@ -171,6 +197,7 @@ export default function UserProfileModal({
             <div className="flex space-x-4 pt-4">
               <button
                 type="button"
+                disabled={loading}
                 onClick={onClose}
                 className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
               >

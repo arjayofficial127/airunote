@@ -1,0 +1,31 @@
+{
+  "checks": [
+    "Desktop settings opens beside sidebar",
+    "light 1912 profile fits",
+    "Profile starts at name field",
+    "Profile keyboard focus stays inside dialog",
+    "Profile returns focus to account",
+    "light 390 profile fits",
+    "Profile starts at name field",
+    "Profile keyboard focus stays inside dialog",
+    "Profile returns focus to account",
+    "light 320 profile fits",
+    "Profile starts at name field",
+    "Profile keyboard focus stays inside dialog",
+    "Profile returns focus to account",
+    "dark 1912 profile fits",
+    "Profile starts at name field",
+    "Profile keyboard focus stays inside dialog",
+    "Profile returns focus to account",
+    "dark 390 profile fits",
+    "Profile starts at name field",
+    "Profile keyboard focus stays inside dialog",
+    "Profile returns focus to account",
+    "dark 320 profile fits",
+    "Profile starts at name field",
+    "Profile keyboard focus stays inside dialog",
+    "Profile returns focus to account",
+    "Phone settings scrolls to all controls",
+    "No document overflow"
+  ]
+}

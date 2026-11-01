@@ -11,7 +11,7 @@ export function RenameFolderForm({ folder, model, onClose }: {
   onClose: () => void;
 }) {
   const updateFolder = useUpdateFolder();
-  return <InlineRename name={folder.humanId} label="Space name" onClose={onClose} setDraftFlag={model.setDraftFlag}
+  return <InlineRename name={folder.humanId} label="Folder name" onClose={onClose} setDraftFlag={model.setDraftFlag}
     error={updateFolder.error?.message} onSave={async humanId => {
       await updateFolder.mutateAsync({ folderId: folder.id, orgId: model.orgId, userId: model.userId, humanId });
       return true;

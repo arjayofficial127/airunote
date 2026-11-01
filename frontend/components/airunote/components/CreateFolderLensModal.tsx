@@ -13,6 +13,7 @@ import type { AiruLens } from '@/lib/api/airunoteLensesApi';
 import { LENS_DESCRIPTIONS } from '../utils/lensPresentation';
 
 interface CreateFolderLensModalProps {
+  allowedTypes?: LensType[];
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (lens: AiruLens) => void;
@@ -32,6 +33,7 @@ const LENS_TYPE_LABELS: Record<LensType, string> = {
 };
 
 export function CreateFolderLensModal({
+  allowedTypes,
   isOpen,
   onClose,
   onSuccess,
@@ -141,7 +143,7 @@ export function CreateFolderLensModal({
               Type
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(LENS_TYPE_LABELS) as LensType[]).map((lensType) => (
+              {(allowedTypes ?? Object.keys(LENS_TYPE_LABELS) as LensType[]).map((lensType) => (
                 <button
                   key={lensType}
                   type="button"

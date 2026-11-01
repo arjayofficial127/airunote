@@ -1,6 +1,6 @@
 'use client';
 import { ClosedItemsSwitch } from './ClosedItemsSwitch';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useLens, useUpdateLensItems } from '@/hooks/useAirunoteLenses';
 import { CanvasLens } from '@/components/airunote/lenses/CanvasLens';
 import { BoardLens } from '@/components/airunote/lenses/BoardLens';
@@ -16,8 +16,12 @@ import { folderPath, viewLabel, viewOptionLabel, type NotesModel } from './useNo
 import { NotesIcon } from './NotesIcon';
 import { NotesAgenda } from './NotesAgenda';
 import { SpaceLinksList } from './SpaceLinksList';
+import { FolderContents } from './FolderContents';
+import { CollectionPane } from './CollectionPane';
+import { NewCollectionDialog, FolderChoice } from './CollectionDialogs';
+import { collectionLabels, type CollectionKind } from '@/lib/collections';
 
-function SavedView({ notes }: { notes: NotesLensModel }) {
+function SavedView({ notes, workspace, paneId }: { notes: NotesLensModel; workspace: NotesModel; paneId: string }) {
   const { model, selectedView } = notes;
   const detail = useLens(model.orgId, selectedView?.id);
   const update = useUpdateLensItems(model.orgId, selectedView?.id);
@@ -35,17 +39,7 @@ function SavedView({ notes }: { notes: NotesLensModel }) {
   if (lens.type === 'canvas') return <CanvasLens key={lens.id} orgId={model.orgId} lens={lens} items={items} lensItems={placements} onPersist={async items => { await update.mutateAsync({ items }); }} onOpenItem={open} />;
   if (lens.type === 'board') return <BoardLens key={lens.id} orgId={model.orgId} lens={lens} items={items} lensItems={placements} onPersist={async items => { await update.mutateAsync({ items }); }} onOpenItem={open} />;
   if (lens.type === 'study') return <StudyLensRenderer key={lens.id} folderId={notes.folderId} documentIds={notes.viewModel.filtered.map(item => item.id)} folderIds={notes.folders.map(folder => folder.id)} onOpenDocument={id => open(id, 'document')} />;
-  return <NotesList notes={notes} />;
-}
-
-function NotesList({ notes }: { notes: NotesLensModel }) {
-  const { model, viewModel } = notes;
-  const folders = notes.folders;
-  return <div className="an-note-list">
-    {folders.map(folder => <button key={folder.id} className="an-list-folder" onClick={() => notes.selectFolder(folder.id)}><NotesIcon name="folder" />{notes.linkedSpaces.has(folder.id) && <small>↗</small>}{folderLabel(folder.humanId)} <span>›</span></button>)}
-    {viewModel.filtered.map(item => <div key={item.id}>{notes.linkedNotes.has(item.id) && <small className="an-link-source">↗ From {folderPath(model.folders, item.folderId).map(folder => folderLabel(folder.humanId)).join(" / ")}</small>}<BookItemRow item={item} model={model} showActions={!notes.linkedNotes.has(item.id)} /></div>)}
-    {!viewModel.filtered.length && !folders.length && <p className="ab-empty">{model.query ? 'No notes match your search.' : 'This Space is empty. Create a note or add a link.'}</p>}
-  </div>;
+  return <FolderContents workspace={workspace} notes={notes} paneId={paneId} mode="box" />;
 }
 
 function AddViewPane({ notes }: { notes: NotesModel }) {
@@ -58,16 +52,18 @@ function AddViewPane({ notes }: { notes: NotesModel }) {
 function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: LensPane; index: number }) {
   const notes = useNotesLens(workspace, pane);
   const section = useRef<HTMLElement>(null);
+  const [newKind, setNewKind] = useState<CollectionKind | 'folder' | null>(null);
   function close() {
     if (section.current?.querySelector('.ab-inline-rename')) { workspace.model.actions.setError('Save or cancel the inline edit before closing this pane.'); return; }
     workspace.setPanes(previous => removeLensPane(previous, pane.id));
   }
+  if (pane.viewId.startsWith('collection:')) return <CollectionPane key={pane.viewId} notes={workspace} pane={pane} id={pane.viewId.slice(11)} closePane={close}/>;
   const { model, selectedView } = notes;
   const agenda = !notes.asList && notes.viewId === 'agenda';
   const calendar = !notes.asList && (notes.viewId === 'calendar' || selectedView?.type === 'book');
-  return <section ref={section} className="an-browser-pane an-view" aria-label={`Space view ${index + 1}`} data-frozen={pane.frozen} data-scroll-scope={`lens:${pane.id}:${pane.folderId}:${pane.viewId}`}>
-    <header><strong className="an-space-title">{folderLabel(model.folders.find(folder => folder.id === pane.folderId)?.humanId)}</strong><button onClick={() => workspace.openFolderDetails(pane.folderId)}>Details</button><small className="an-lens-status">{pane.frozen ? 'Frozen' : 'Following'}</small>
-      <button aria-pressed={pane.frozen} title={pane.frozen ? 'Follow the selected Space again' : 'Keep this view on its Space; data stays live'} onClick={() => {
+  return <section ref={section} className="an-browser-pane an-view" aria-label={`Folder view ${index + 1}`} data-frozen={pane.frozen} data-scroll-scope={`lens:${pane.id}:${pane.folderId}:${pane.viewId}`}>
+    <header><strong className="an-space-title">{folderLabel(model.folders.find(folder => folder.id === pane.folderId)?.humanId)}</strong><small className="an-lens-status">{pane.frozen ? 'Frozen' : 'Following'}</small>
+      <button aria-pressed={pane.frozen} title={pane.frozen ? 'Follow the selected folder again' : 'Keep this view on its folder; data stays live'} onClick={() => {
         if (!pane.frozen) { workspace.setPanes(previous => freezeLens(previous, pane.id)); return; }
         if (model.dirty || workspace.folderDirty || section.current?.querySelector('.ab-inline-rename')) { model.actions.setError('Save or discard your edits before unfreezing this view.'); return; }
         const folderId = workspace.panes.folders.find(value => value.id === workspace.panes.activeFolder)?.folderId ?? model.rootFolderId;
@@ -75,24 +71,27 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
       }}>{pane.frozen ? 'Unfreeze' : 'Freeze'}</button>
       {workspace.panes.lenses.length > 1 && <button aria-label={`Close view ${index + 1}`} onClick={close}>×</button>}
       {workspace.panes.lenses.length === 1 && <AddViewPane notes={workspace} />}
-      {workspace.panes.lenses.length === 1 && <button aria-label="Expand Space view" onClick={() => model.setExpandedPanel(value => value === 'calendar' ? null : 'calendar')}>{model.expandedPanel === 'calendar' ? '↙' : '↗'}</button>}
+      {workspace.panes.lenses.length === 1 && <button aria-label="Expand Folder view" onClick={() => model.setExpandedPanel(value => value === 'calendar' ? null : 'calendar')}>{model.expandedPanel === 'calendar' ? '↙' : '↗'}</button>}
     </header>
-    {index === 0 && workspace.panes.lenses.every(value => value.frozen) && <small className="an-frozen-hint" role="status">All views are frozen. Unfreeze a view or add a pane to follow Spaces.</small>}
-    <nav className="an-breadcrumb" aria-label="Current Space path"><button onClick={notes.root}>Workspace</button>{notes.path.filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => notes.selectFolder(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
-    <div className="an-view-controls"><label className="an-view-choice">View<select aria-label="Space view" value={notes.viewId} onChange={event => { notes.setViewId(event.target.value); notes.setAsList(false); }}><option value="agenda">Plan</option><option value="calendar">Calendar</option><option value="list">List</option>{notes.availableViews.filter(view => view.folderId === notes.folderId).map(view => <option key={view.id} value={view.id}>{viewOptionLabel(view, notes.availableViews)}</option>)}</select></label>
-      {(selectedView || notes.asList) && <button aria-pressed={notes.asList} onClick={() => notes.setAsList(value => !value)}>{notes.asList ? 'Return to view' : 'Show as list'}</button>}<button onClick={() => notes.setCreatingView(true)}>+ View</button><button onClick={() => workspace.links.open(pane.folderId)}>+ Link</button><button onClick={() => model.add(undefined, pane.folderId)}>+ Note</button><button aria-expanded={notes.browse} onClick={() => notes.setBrowse(value => !value)}>All views</button>
+    {index === 0 && workspace.panes.lenses.every(value => value.frozen) && <small className="an-frozen-hint" role="status">All views are frozen. Unfreeze a view or add a pane to follow Folders.</small>}
+    <nav className="an-breadcrumb" aria-label="Current Folder path"><button onClick={notes.root}>Workspace</button>{notes.path.filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => notes.selectFolder(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
+    <div className="an-view-controls"><label className="an-view-choice"><span className="sr-only">Change view</span><select aria-label="Folder view" value={notes.viewId} onChange={event => { notes.setViewId(event.target.value); notes.setAsList(false); }}><option value="box">Box</option><option value="list">List</option><option value="details">Details</option><option value="cards">Cards</option><option value="agenda">Plan</option><option value="calendar">Calendar</option>{notes.availableViews.filter(view => view.folderId === notes.folderId).map(view => <option key={view.id} value={view.id}>{viewOptionLabel(view, notes.availableViews)}</option>)}</select></label>
+      <details className="ab-popover"><summary>+ New</summary><div><button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); model.add(undefined, pane.folderId); }}>Note</button><button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setNewKind('folder'); }}>Folder</button>{(Object.keys(collectionLabels) as CollectionKind[]).map(kind => <button key={kind} onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); setNewKind(kind); }}>{collectionLabels[kind]}</button>)}</div></details>
+      <details className="ab-popover"><summary aria-label="Folder view actions">⋯</summary><div><button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); workspace.openFolderDetails(pane.folderId); }}>Folder settings</button><button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); workspace.links.open(pane.folderId); }}>Add link…</button><button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); notes.setCreatingView(true); }}>Save a folder view…</button><button onClick={event => { event.currentTarget.closest('details')?.removeAttribute('open'); notes.setBrowse(value => !value); }}>All saved views</button><button disabled={workspace.panes.defaults[pane.folderId] === pane.viewId} onClick={() => workspace.setPanes(previous => ({ ...previous, defaults: { ...previous.defaults, [pane.folderId]: pane.viewId } }))}>Use as folder default</button></div></details>
     </div>
-    <details className="an-lens-options"><summary>Filter & default</summary><input aria-label="Filter notes in this view" placeholder="Filter notes…" value={pane.query} onChange={event => workspace.updateLens(pane.id, { query: event.target.value })}/><ClosedItemsSwitch checked={pane.closed} onChange={closed => workspace.updateLens(pane.id, { closed })} /><button disabled={workspace.panes.defaults[pane.folderId] === pane.viewId} onClick={() => workspace.setPanes(previous => ({ ...previous, defaults: { ...previous.defaults, [pane.folderId]: pane.viewId } }))}>Use this view when opening this Space</button><small>Remembered on this browser.</small></details>
-    {notes.browse && <div className="an-view-browser"><label>Views in all Spaces<input autoFocus placeholder="Find a view or Space…" value={notes.viewQuery} onChange={event => notes.setViewQuery(event.target.value)} /></label><div className="an-view-results">{notes.viewResults.map(view => <button key={view.id} onClick={() => notes.openView(view)}><strong>{viewLabel(view, notes.availableViews)}</strong><span>{view.type === 'book' ? 'Calendar' : view.type} · {folderPath(model.folders, view.folderId).map(folder => folder.id === model.rootFolderId ? 'Root' : folderLabel(folder.humanId)).join(' / ')}</span></button>)}{!notes.viewResults.length && <p>No saved views found. Add one to any Space with + View.</p>}</div></div>}
+    {(agenda || calendar) && <div className="an-planning-scope"><FolderChoice notes={workspace} value={notes.planningFolderId ?? ''} onChange={id => workspace.updateLens(pane.id, { planningFolderId: id || null })} all label="Planning scope"/></div>}
+    <details className="an-lens-options"><summary>Filter</summary><input aria-label="Filter notes in this view" placeholder="Filter items…" value={pane.query} onChange={event => workspace.updateLens(pane.id, { query: event.target.value })}/><ClosedItemsSwitch checked={pane.closed} onChange={closed => workspace.updateLens(pane.id, { closed })}/>{!agenda && !calendar && <label><input type="checkbox" checked={notes.descendants} onChange={event => workspace.updateLens(pane.id, { descendants: event.target.checked })}/> Include descendants</label>}</details>
+    {notes.browse && <div className="an-view-browser"><label>Views in all Folders<input autoFocus placeholder="Find a view or folder…" value={notes.viewQuery} onChange={event => notes.setViewQuery(event.target.value)} /></label><div className="an-view-results">{notes.viewResults.map(view => <button key={view.id} onClick={() => notes.openView(view)}><strong>{viewLabel(view, notes.availableViews)}</strong><span>{view.type === 'book' ? 'Calendar' : view.type} · {folderPath(model.folders, view.folderId).map(folder => folder.id === model.rootFolderId ? 'Root' : folderLabel(folder.humanId)).join(' / ')}</span></button>)}{!notes.viewResults.length && <p>No saved views found. Add one to any folder from its view menu.</p>}</div></div>}
     <SpaceLinksList workspace={workspace} notes={notes}/>
-    {<div className="an-scope-summary"><small>{agenda ? "Your day, at your pace" : selectedView?.name ?? (calendar ? "Calendar" : "All notes")}</small><button className="ab-link" onClick={() => { notes.setViewId(agenda ? "list" : "agenda"); notes.setAsList(false); }}>{agenda ? "See all notes" : "Back to today"}</button></div>}
+    {(agenda || calendar) && <div className="an-scope-summary"><small>{agenda ? "Your day, at your pace" : selectedView?.name ?? (calendar ? "Calendar" : "All notes")}</small><button className="ab-link" onClick={() => { notes.setViewId(agenda ? "list" : "agenda"); notes.setAsList(false); }}>{agenda ? "See all notes" : "Back to today"}</button></div>}
     {agenda ? <NotesAgenda model={notes.viewModel} /> : calendar ? <CalendarPane model={notes.viewModel} embedded onShowAll={() => notes.setAsList(true)} /> : <div className="ab-scroll an-view-content" data-scroll-key="plan" onClickCapture={event => {
       if (!(event.target instanceof Element)) return;
       const anchor = event.target.closest('a[href]'); const href = anchor?.getAttribute('href');
       const folder = model.folders.find(folder => href === `/orgs/${model.orgId}/airunote/folder/${folder.id}`);
       if (folder && !event.ctrlKey && !event.metaKey) { event.preventDefault(); event.stopPropagation(); notes.selectFolder(folder.id); }
-    }}>{selectedView && !notes.asList ? <SavedView notes={notes} /> : <NotesList notes={notes} />}</div>}
-    <CreateFolderLensModal isOpen={notes.creatingView} onClose={() => notes.setCreatingView(false)} orgId={model.orgId} userId={model.userId} folderId={notes.folderId} onSuccess={lens => {
+    }}>{selectedView && !notes.asList ? <SavedView notes={notes} workspace={workspace} paneId={pane.id}/> : <FolderContents workspace={workspace} notes={notes} paneId={pane.id} mode={pane.viewId === 'cards' || pane.viewId === 'details' || pane.viewId === 'list' ? pane.viewId : 'box'}/>}</div>}
+    {newKind && <NewCollectionDialog notes={workspace} kind={newKind} folderId={pane.folderId} close={() => setNewKind(null)} open={(id, home) => workspace.openCollection(pane.id, id, home)}/>}
+    <CreateFolderLensModal allowedTypes={['box', 'board', 'book']} isOpen={notes.creatingView} onClose={() => notes.setCreatingView(false)} orgId={model.orgId} userId={model.userId} folderId={notes.folderId} onSuccess={lens => {
       if (!lens.folderId) return;
       const view = { id: lens.id, folderId: lens.folderId, name: lens.name, type: lens.type, isDefault: lens.isDefault };
       notes.upsertView(view); notes.openView(view);
@@ -101,7 +100,7 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
 }
 
 export function NotesViews({ notes }: { notes: NotesModel }) {
-  return <div className="an-space-view-group" data-single={notes.panes.lenses.length === 1}><PaneGroup title="Space views" panel="calendar" model={notes.model} count={notes.panes.lenses.length} layout={notes.panes.lensLayout} onLayout={value => notes.layout('lens', value)} compact={notes.workspace.preset === 'cards' && notes.panes.lenses.length === 1} actions={notes.panes.lenses.length > 1 ? <AddViewPane notes={notes} /> : null}>
+  return <div className="an-space-view-group" data-single={notes.panes.lenses.length === 1}><PaneGroup title="Folder views" panel="calendar" model={notes.model} count={notes.panes.lenses.length} layout={notes.panes.lensLayout} onLayout={value => notes.layout('lens', value)} compact={notes.workspace.preset === 'cards' && notes.panes.lenses.length === 1} actions={notes.panes.lenses.length > 1 ? <AddViewPane notes={notes} /> : null}>
     {notes.panes.lenses.map((pane, index) => <LensBrowser key={pane.id} workspace={notes} pane={pane} index={index}/>)}
   </PaneGroup></div>;
 }

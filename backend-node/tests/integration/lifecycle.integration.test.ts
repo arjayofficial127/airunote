@@ -27,6 +27,8 @@ integration('Recoverable Notes lifecycle in isolated PostgreSQL', () => {
     await client.unsafe(`CREATE TABLE IF NOT EXISTS airu_folders (id uuid PRIMARY KEY, org_id uuid NOT NULL, owner_user_id uuid NOT NULL, parent_folder_id uuid NOT NULL REFERENCES airu_folders(id) ON DELETE RESTRICT, human_id varchar(255) NOT NULL, visibility varchar(20) NOT NULL DEFAULT 'private', type varchar(50) NOT NULL DEFAULT 'box', metadata jsonb, default_lens_id uuid, created_at timestamp NOT NULL DEFAULT now(), UNIQUE(org_id,owner_user_id,parent_folder_id,human_id));
       CREATE TABLE IF NOT EXISTS airu_documents (id uuid PRIMARY KEY, folder_id uuid NOT NULL REFERENCES airu_folders(id) ON DELETE CASCADE, owner_user_id uuid NOT NULL, type varchar(5) NOT NULL, name varchar(255) NOT NULL, content text, canonical_content text NOT NULL DEFAULT '', shared_content text, visibility varchar(20) NOT NULL DEFAULT 'private', state varchar(20) NOT NULL DEFAULT 'active', attributes jsonb NOT NULL DEFAULT '{}', created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(), UNIQUE(folder_id,name));
       CREATE TABLE IF NOT EXISTS airu_lenses (id uuid PRIMARY KEY, folder_id uuid REFERENCES airu_folders(id), name text);
+      ALTER TABLE airu_lenses ADD COLUMN IF NOT EXISTS type varchar(20) NOT NULL DEFAULT 'canvas';
+      ALTER TABLE airu_lenses ADD COLUMN IF NOT EXISTS updated_at timestamp NOT NULL DEFAULT now();
       CREATE TABLE IF NOT EXISTS exams (id integer PRIMARY KEY, title text);
       INSERT INTO exams VALUES (1,'Protected exam') ON CONFLICT DO NOTHING;`);
     repository = new (await import('../../src/modules/airunote/lifecycle.repository')).AirunoteLifecycleRepository();
@@ -38,7 +40,7 @@ integration('Recoverable Notes lifecycle in isolated PostgreSQL', () => {
       await client`INSERT INTO airu_folders (id,org_id,owner_user_id,parent_folder_id,human_id,metadata) VALUES (${id},${org},${user},${parent},${name},${client.json(metadata)})`;
     }
     for (const [id, parent] of [[note, folder], [nested, grandchild]]) await client`INSERT INTO airu_documents (id,folder_id,owner_user_id,type,name,canonical_content,shared_content,attributes,updated_at) VALUES (${id},${parent},${user},'MD',${id},'Keep body','Keep shared edit',${client.json({ airunoteBook: plan, custom: 'keep' })},${at})`;
-    await client`INSERT INTO airu_lenses VALUES (${lens},${folder},'Keep canvas')`;
+    await client`INSERT INTO airu_lenses (id,folder_id,name) VALUES (${lens},${folder},'Keep canvas')`;
   });
   afterAll(async () => { await client?.end(); });
   test('archive keeps the entire branch together, preserves metadata and round-trips restore', async () => {

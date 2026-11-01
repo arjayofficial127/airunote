@@ -2504,7 +2504,7 @@ export class AirunoteRepository {
     const folderViews = await dbInstance.select({
       id: airuLensesTable.id, folderId: airuLensesTable.folderId,
       name: airuLensesTable.name, type: airuLensesTable.type, isDefault: airuLensesTable.isDefault,
-    }).from(airuLensesTable).where(inArray(airuLensesTable.folderId, folderIdList));
+    }).from(airuLensesTable).where(and(inArray(airuLensesTable.folderId, folderIdList), sql`${airuLensesTable.type} <> 'collection'`));
     const lensCountsMap: Record<string, number> = {};
     
     // Initialize all folders with 0 lens count
@@ -2578,7 +2578,7 @@ export class AirunoteRepository {
     const [lens] = await dbInstance
       .select()
       .from(airuLensesTable)
-      .where(eq(airuLensesTable.id, lensId))
+      .where(and(eq(airuLensesTable.id, lensId), sql`${airuLensesTable.type} <> 'collection'`))
       .limit(1);
 
     if (!lens) {
@@ -2609,7 +2609,7 @@ export class AirunoteRepository {
     const lenses = await dbInstance
       .select()
       .from(airuLensesTable)
-      .where(eq(airuLensesTable.folderId, folderId))
+      .where(and(eq(airuLensesTable.folderId, folderId), sql`${airuLensesTable.type} <> 'collection'`))
       .orderBy(desc(airuLensesTable.isDefault), desc(airuLensesTable.createdAt));
 
     return lenses.map((lens) => ({

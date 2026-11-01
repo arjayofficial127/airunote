@@ -1,10 +1,11 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../../infrastructure/db/drizzle/client';
-import { airuDocumentsTable as documents, airuFoldersTable as folders } from '../../infrastructure/db/drizzle/schema';
+import { airuDocumentsTable as documents, airuFoldersTable as folders, airuLensesTable as lenses } from '../../infrastructure/db/drizzle/schema';
+import { collectionConfigSchema } from './collections.contract';
 import { AppError } from '../../core/errors/AppError';
 
-export const spaceLinkSchema = z.object({ entityId: z.string().uuid(), entityType: z.enum(['document', 'folder']) }).strict();
+export const spaceLinkSchema = z.object({ entityId: z.string().uuid(), entityType: z.enum(['document', 'folder', 'collection']) }).strict();
 export type SpaceLink = z.infer<typeof spaceLinkSchema>;
 type Scope = { orgId: string; userId: string };
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -47,6 +48,12 @@ export class SpaceLinksRepository {
           if (target.id === folderId || target.id === target.parentFolderId) throw new AppError('Choose another Space.', 400, 'INVALID_TARGET');
           home = target.id;
           if (target.parentFolderId === folderId) throw new AppError('This Space is already here.', 409, 'ALREADY_HERE');
+        } else if (link.entityType === 'collection') {
+          const [target] = await tx.select().from(lenses).where(and(eq(lenses.id, link.entityId), eq(lenses.type, 'collection')));
+          const parsed = collectionConfigSchema.safeParse(record(target?.metadata).airunoteCollection);
+          if (!target?.folderId || !parsed.success || parsed.data.orgId !== scope.orgId || parsed.data.ownerUserId !== scope.userId) throw new AppError('Collection not found or access denied.', 404, 'NOT_FOUND');
+          home = target.folderId;
+          if (home === folderId) throw new AppError('This collection is already here.', 409, 'ALREADY_HERE');
         } else {
           const [target] = await tx.select({ folderId: documents.folderId, state: documents.state }).from(documents).innerJoin(folders, eq(documents.folderId, folders.id)).where(and(eq(documents.id, link.entityId), eq(documents.ownerUserId, scope.userId), eq(folders.ownerUserId, scope.userId), eq(folders.orgId, scope.orgId)));
           if (!target) throw new AppError('Linked note not found or access denied.', 404, 'NOT_FOUND');

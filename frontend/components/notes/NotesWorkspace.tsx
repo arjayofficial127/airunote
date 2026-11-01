@@ -20,6 +20,7 @@ import '@/components/book/book.css';
 import './notes.css';
 import './workspace.css';
 import './spaces.css';
+import './collections.css';
 
 export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: string; orgId: string; userId: string }) {
   const notes = useNotesWorkspace(rootFolderId, orgId, userId);
@@ -94,7 +95,7 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
             {focused && handle('organizer', 'navigation')}
           </div>
           <div className="an-layout-slot an-views-slot" data-workspace-pane="calendar" hidden={!visible.includes('calendar')}>
-            <div className="an-view-empty" hidden={!focused || workspace.folderChosen}><h2>Choose a Space</h2><p>Its view will appear here.</p><button onClick={() => reveal('organizer')}>Browse Folders</button><button onClick={() => model.add()}>Write a new note</button></div>
+            <div className="an-view-empty" hidden={!focused || workspace.folderChosen}><h2>Choose a folder</h2><p>Its view will appear here.</p><button onClick={() => reveal('organizer')}>Browse Folders</button><button onClick={() => model.add()}>Write a new note</button></div>
             <div className="an-view-mounted" hidden={focused && !workspace.folderChosen}><NotesViews notes={rendered} /></div>
             {handle('calendar', 'view')}
           </div>

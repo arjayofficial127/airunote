@@ -1,0 +1,28 @@
+{
+  "checks": [
+    "Reference reads the edited original",
+    "Moving original retains its date and time",
+    "Chosen reference survives the original move",
+    "Plan defaults to whole workspace",
+    "Workspace Plan includes moved original",
+    "Explicit folder scope excludes moved original",
+    "Matching source and title rule selects moved original",
+    "Failed save keeps the draft source rule",
+    "Retry applies explicit matching source",
+    "Board placement survives reload",
+    "light 1912 fits and reference text readable",
+    "light 1024 fits and reference text readable",
+    "light 390 fits and reference text readable",
+    "light 320 fits and reference text readable",
+    "dark 1912 fits and reference text readable",
+    "dark 1024 fits and reference text readable",
+    "dark 390 fits and reference text readable",
+    "dark 320 fits and reference text readable",
+    "Phone reference picker fits",
+    "Phone settings fits",
+    "Original Book retains 13 pages and 260 references",
+    "Legacy lens endpoint cannot read collections",
+    "No JavaScript errors"
+  ],
+  "errors": []
+}

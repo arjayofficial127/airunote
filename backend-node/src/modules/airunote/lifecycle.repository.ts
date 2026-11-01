@@ -1,6 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
-import { airuDocumentsTable as documents, airuFoldersTable as folders } from '../../infrastructure/db/drizzle/schema';
+import { airuDocumentsTable as documents, airuFoldersTable as folders, airuLensesTable as lenses } from '../../infrastructure/db/drizzle/schema';
 import { AppError } from '../../core/errors/AppError';
 import { bookConfigSchema, readBookConfig } from '../book/contract';
 
@@ -67,6 +67,7 @@ export class AirunoteLifecycleRepository {
           promotedFolders.push(...await tx.update(folders).set({ parentFolderId: parent.id }).where(and(owner, eq(folders.parentFolderId, id))).returning({ id: folders.id, parentFolderId: folders.parentFolderId }));
           promotedDocuments.push(...await tx.update(documents).set({ folderId: parent.id, updatedAt: new Date() }).where(and(eq(documents.folderId, id), eq(documents.ownerUserId, scope.userId))).returning({ id: documents.id, folderId: documents.folderId, updatedAt: documents.updatedAt }));
         }
+        if (next === 'trashed' && expected !== 'trashed') await tx.update(lenses).set({ folderId: parent.id, updatedAt: new Date() }).where(and(eq(lenses.folderId, id), eq(lenses.type, 'collection')));
         const metadata = { ...record(folder.metadata), airunoteLifecycle: { state: next, changedAt: new Date().toISOString() } };
         await tx.update(folders).set({ metadata: sql`${JSON.stringify(metadata)}::text::jsonb` }).where(and(owner, eq(folders.id, id)));
         return { folder: { id, parentFolderId: parent.id, metadata }, folders: promotedFolders, documents: promotedDocuments };

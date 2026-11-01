@@ -278,7 +278,7 @@ export default function DashboardLayout({
       <ErrorBoundary>
         <OrgAccessChecker>
         <WorkspaceFocusFrame enabled={Boolean(pathname?.includes('/airunote'))} appRail={Boolean(isInOrgContext)} notesHome={pathname === `/orgs/${orgId}/airunote`}>
-          {isInOrgContext && orgId && <NotesAppRail orgId={orgId} isAdmin={isAdmin} initials={getUserInitials()} onProfile={() => setIsProfileModalOpen(true)} onLogout={() => void handleLogout()} />}
+          {isInOrgContext && orgId && <NotesAppRail orgId={orgId} isAdmin={isAdmin} initials={getUserInitials()} name={user?.name ?? ''} email={user?.email ?? ''} onProfile={() => setIsProfileModalOpen(true)} onLogout={() => void handleLogout()} />}
           {!isOrgsOnboardingPage && (
           <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">
             <div

@@ -7,6 +7,7 @@ import { today } from '@/components/book/domain';
 import { initialWorkspaceLayout, type WorkspacePreset } from './workspaceLayout';
 import { useNotesPreferences } from './useNotesPreferences';
 import { useNotesLifecycle } from './useNotesLifecycle';
+import { useCollections } from './useCollections';
 import { useSpaceLinks } from './useSpaceLinks';
 import { initialPanes, followFolder, type FolderPane, type LensPane, type NotesPanes } from './panes';
 import type { AiruFolder, FolderViewSummary } from '@/components/airunote/types';
@@ -38,7 +39,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   const [spaceReveal, setSpaceReveal] = useState(0);
   const lifecycle = useNotesLifecycle({ ...base, dirty: base.dirty || folderDirty });
   function allowContextChange() {
-    if (folderDirty) { base.actions.setError('Save or discard your Space changes first.'); return false; }
+    if (folderDirty) { base.actions.setError('Save or discard your folder changes first.'); return false; }
     return true;
   }
   function revealNote() { setContextTab('note'); base.reveal(); }
@@ -53,6 +54,9 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
   const model = { ...base, open, add, reveal: revealNote, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };
   const links = useSpaceLinks(model);
+  const collections = useCollections(orgId);
+  const refreshCollections = collections.refetch;
+  useEffect(() => { if (!model.loading) void refreshCollections(); }, [model.folders, model.loading, refreshCollections]);
   const views = useAirunoteStore(state => state.folderViews);
   const upsertView = useAirunoteStore(state => state.upsertFolderView);
   const [panes, setPanes] = useState(() => initialPanes(rootFolderId));
@@ -78,7 +82,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     closed: model.closed, collapsedFolders: activeFolder?.collapsedFolders ?? [], date: model.date, period: model.period, plot: model.plot, hours: model.hours,
   }, saved => {
     const ownsFolder = (id: string) => model.folders.some(folder => folder.id === id);
-    const validView = (id: string, folder: string) => ['agenda', 'calendar', 'list'].includes(id) || availableViews.some(view => view.id === id && view.folderId === folder);
+    const validView = (id: string, folder: string) => /^collection:[0-9a-f-]{36}$/i.test(id) || ['agenda', 'calendar', 'list', 'details', 'box', 'cards'].includes(id) || availableViews.some(view => view.id === id && view.folderId === folder);
     const restored = saved.panes ?? initialPanes(rootFolderId);
     if (!saved.panes) {
       restored.folders = restored.folders.map(pane => ({ ...pane, folderId: saved.folderId, focusId: saved.focusId, collapsedFolders: saved.collapsedFolders, closed: saved.closed }));
@@ -118,11 +122,11 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function followContext(id: string) {
     if (!allowContextChange()) return false;
-    if (model.dirty) { model.actions.setError('Save or discard your note draft before opening a Space.'); return false; }
+    if (model.dirty) { model.actions.setError('Save or discard your note draft before opening a folder.'); return false; }
     setWorkspace(previous => ({ ...previous, folderChosen: true }));
     setSpaceReveal(value => value + 1);
     setFolderContextId(id);
-    // Opening a Space leads to its contents; Details stays available in Context.
+    // Opening a folder leads to its contents; Details stays available in Context.
     if (!pinned) setContextTab('folder');
     model.setVisible(previous => previous.includes('calendar') ? previous : [...previous, 'calendar']);
     model.setExpandedPanel(null);
@@ -152,9 +156,16 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
       planningConfig: { ...config, sprints: [...new Map(inheritedSprints.map(sprint => [sprint.id, sprint])).values()] },
       actions: { ...model.actions, configure: (fields: Parameters<typeof model.actions.configure>[0]) => model.actions.configure(fields, configFolderId) } };
   }
-  function defaultView(id: string) { const preferred = panes.defaults[id]; if (preferred && (['agenda', 'calendar', 'list'].includes(preferred) || availableViews.some(view => view.id === preferred && view.folderId === id))) return preferred; return availableViews.find(view => view.folderId === id && view.isDefault)?.id ?? (id === rootFolderId ? 'agenda' : 'list'); }
+  function defaultView(id: string) { const preferred = panes.defaults[id]; if (preferred && (['agenda', 'calendar', 'list', 'details', 'box', 'cards'].includes(preferred) || availableViews.some(view => view.id === preferred && view.folderId === id))) return preferred; return availableViews.find(view => view.folderId === id && view.isDefault)?.id ?? 'box'; }
   function selectFolder(paneId: string, id: string) {
     if (model.folders.some(folder => folder.id === id) && followContext(id)) setPanes(previous => followFolder(previous, paneId, id, defaultView(id)));
+  }
+  function openCollection(paneId: string, id: string, homeFolderId?: string) {
+    if (!allowContextChange() || model.dirty) { model.actions.setError('Save or discard your edits first.'); return; }
+    const home = homeFolderId ?? collections.data?.find(item => item.id === id)?.homeFolderId;
+    updateLens(paneId, { viewId: `collection:${id}`, asList: false, ...(home ? { folderId: home } : {}) });
+    model.setVisible(previous => previous.includes('calendar') ? previous : [...previous, 'calendar']);
+    setWorkspace(previous => ({ ...previous, folderChosen: true }));
   }
   function updateFolder(id: string, fields: Partial<FolderPane>) { setPanes(previous => ({ ...previous, folders: previous.folders.map(pane => pane.id === id ? { ...pane, ...fields, id } : pane) })); }
   function updateLens(id: string, fields: Partial<LensPane> | ((pane: LensPane) => Partial<LensPane>)) {
@@ -162,7 +173,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function layout(group: 'folder' | 'lens', value: NotesPanes['folderLayout']) { setPanes(previous => ({ ...previous, [group === 'folder' ? 'folderLayout' : 'lensLayout']: value, [group === 'folder' ? 'folderWidth' : 'lensWidth']: null })); }
   const contentModel = scopedModel(model.selected?.folderId ?? model.draftPreview?.folderId ?? model.captureFolderId);
-  return { links, spaceReveal, workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
+  return { collections, openCollection, links, spaceReveal, workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
     panes, setPanes, updateFolder, updateLens, layout, availableViews, upsertView, selectFolder, defaultView };
 }
 export type NotesModel = ReturnType<typeof useNotesWorkspace>;

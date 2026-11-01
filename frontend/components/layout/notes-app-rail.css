@@ -5,7 +5,6 @@
 .an-app-rail nav a:hover { background:#edf1f8; }
 .an-app-rail nav a[aria-current] { color:#2348a1; background:#e7edfc; }
 .an-rail-account { margin-top:auto; display:flex; flex-direction:column; align-items:center; gap:14px; font-size:17px; }
-.an-rail-account button:first-child { border-radius:50%; background:#223451; color:white; width:34px; height:34px; font-size:12px; }
 .an-app-rail :focus-visible { outline:2px solid #345edb; outline-offset:2px; }
 .workspace-focus-shell[data-app-rail="on"] > nav { left:72px; }
 .workspace-focus-shell[data-app-rail="on"] .workspace-stage > aside,
@@ -24,3 +23,24 @@
 .workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail nav a[aria-current] { background:#36364d; color:#c3beff; }
 
 .workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail .an-brand img { filter:brightness(0) invert(1); }
+
+/* Sidebar popovers share a compact surface, independent of the workspace's pane widths. */
+.an-app-rail { --rail-surface:#fff; --rail-text:#223451; --rail-muted:#64748b; --rail-border:#dce3ee; --rail-hover:#edf3ff; gap:16px; }
+.an-rail-account { width:100%; gap:12px; padding-bottom:6px; }
+.an-rail-control,.an-rail-direct,#notes-rail-actions,#notes-rail-settings { width:100%; }
+.an-rail-direct { display:grid; gap:6px; }
+.an-app-rail .an-rail-trigger { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:40px; width:100%; padding:6px 2px; border:0; border-radius:9px; background:transparent; color:inherit; font-size:11px; cursor:pointer; }
+.an-app-rail .an-rail-trigger:hover,.an-app-rail .an-rail-trigger[aria-expanded=true] { background:var(--rail-hover); color:var(--rail-text); }
+.an-app-rail .an-account-control>.an-rail-trigger { margin:auto; width:34px; min-height:34px; height:34px; border-radius:50%; background:#223451; color:white; font-size:12px; }
+.an-rail-plus { font-size:27px; line-height:23px; font-weight:300; }
+.an-rail-dot { position:absolute; width:5px; height:5px; border-radius:50%; background:#3569ff; top:6px; right:10px; }
+.an-rail-popover { position:fixed; z-index:80; left:80px; top:8px; width:292px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); overflow:auto; overscroll-behavior:contain; display:grid; gap:10px; padding:16px; border:1px solid var(--rail-border); border-radius:12px; background:var(--rail-surface); color:var(--rail-text); box-shadow:0 10px 35px #18274426; font-size:13px; text-align:left; }
+.an-rail-popover>strong { font-size:15px; }.an-account-identity { display:grid; gap:4px; padding-bottom:12px; border-bottom:1px solid var(--rail-border); overflow-wrap:anywhere; }.an-account-identity span,.an-rail-popover small { color:var(--rail-muted); font-size:12px; line-height:1.5; }
+.an-rail-popover label { display:grid; gap:6px; }.an-rail-popover input:not([type=checkbox]),.an-rail-popover select { width:100%; min-width:0; background:var(--rail-surface); color:var(--rail-text); border:1px solid var(--rail-border); border-radius:7px; min-height:36px; padding:6px 8px; font:inherit; }.an-rail-popover fieldset { display:grid; gap:8px; padding:10px; border:1px solid var(--rail-border); border-radius:8px; }.an-rail-popover legend { padding:0 4px; color:var(--rail-muted); }.an-rail-popover .an-rail-check { display:flex; align-items:center; gap:8px; }.an-rail-popover .an-rail-check input { accent-color:#3569ff; }
+.an-app-rail .an-rail-popover button,.an-app-rail .an-rail-popover>a { display:block; width:100%; height:auto; min-height:34px; border:0; border-radius:6px; padding:7px 8px; background:transparent; color:var(--rail-text); text-align:left; font:inherit; }.an-app-rail .an-rail-popover button:hover,.an-app-rail .an-rail-popover>a:hover { background:var(--rail-hover); }.an-rail-popover button:disabled { opacity:.45; }.an-rail-popover hr { border-color:var(--rail-border); }.an-rail-batch.airunote-book { display:block; height:auto; min-height:0; background:transparent; padding:0; overflow:visible; }
+.workspace-focus-shell:has(.airunote-notes[data-theme="dark"]) .an-app-rail { --rail-surface:#292b31; --rail-text:#e6e6ed; --rail-muted:#afb3c4; --rail-border:#474954; --rail-hover:#393b49; }
+@media(max-height:620px) { .an-app-rail { gap:4px; padding-block:4px; }.an-app-rail nav { gap:2px; }.an-app-rail nav a { padding:6px 2px; }.an-rail-direct { gap:0; }.an-rail-account { gap:4px; }.an-app-rail .an-brand { padding:0; } }
+body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog { background:#292b31; color:#e6e6ed; }
+body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog h2,body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog label { color:#e6e6ed; }
+body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog input { background:#202126; border-color:#474954; color:#e6e6ed; }
+body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog p { color:#afb3c4; }
