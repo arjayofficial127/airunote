@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { agendaGroups } from '../components/notes/agenda';
 import { defaultPlanning, type CalendarPlan, type BookConfig } from '../lib/book';
 import type { BookItem } from '../components/book/domain';
-const config: BookConfig = { version: 1, revision: 0, sprints: [{ id: 'sprint-one', name: 'Sprint', start: '2026-10-26', end: '2026-11-08' }], views: [], templates: [] };
+const config: BookConfig = { version: 1, revision: 0, sprints: [{ id: 'sprint-one', name: 'Sprint', start: '2026-10-26', end: '2026-11-08', closed: false }], views: [], templates: [] };
 function item(id: string, plan: CalendarPlan, status: 'open' | 'complete' | 'cancelled' = 'open'): BookItem {
   return { id, name: id, folderId: 'folder', ownerUserId: 'owner', type: 'TXT', visibility: 'private', state: 'active', attributes: {}, createdAt: new Date('2026-10-01'), updatedAt: new Date('2026-10-01'), planning: { ...defaultPlanning('task', false), plan, status }, invalidPlanning: false };
 }

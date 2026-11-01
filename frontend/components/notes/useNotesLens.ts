@@ -12,8 +12,8 @@ export function useNotesLens(notes: NotesModel, pane: LensPane) {
   function setter<K extends keyof LensPane>(key: K): Dispatch<SetStateAction<LensPane[K]>> {
     return value => notes.updateLens(pane.id, previous => ({ [key]: typeof value === 'function' ? value(previous[key]) : value }));
   }
-  function selectFolder(id: string) { if (model.folders.some(folder => folder.id === id)) notes.updateLens(pane.id, { folderId: id, viewId: notes.defaultView(id), asList: false }); }
-  function openView(view: FolderViewSummary) { notes.updateLens(pane.id, { folderId: view.folderId, viewId: view.id, asList: false }); setBrowse(false); }
+  function selectFolder(id: string) { if (model.folders.some(folder => folder.id === id) && notes.followContext(id)) notes.updateLens(pane.id, { folderId: id, viewId: notes.defaultView(id), asList: false }); }
+  function openView(view: FolderViewSummary) { if (!notes.followContext(view.folderId)) return; notes.updateLens(pane.id, { folderId: view.folderId, viewId: view.id, asList: false }); setBrowse(false); }
   const scope = subtree(model.folders, pane.folderId);
   const filtered = model.filtered.filter(item => (selectedView && selectedView.type !== 'book' ? item.folderId === pane.folderId : scope.has(item.folderId)) && (pane.closed || item.planning.status === 'open') && item.name.toLowerCase().includes(pane.query.toLowerCase()));
   const viewModel = { ...notes.scopedModel(pane.folderId, true), filtered, planningConfig: model.planningConfig,

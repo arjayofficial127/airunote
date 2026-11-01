@@ -93,7 +93,7 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
   const context: FolderContext = { notes, pane, draft, select, focus, add };
   const roots = pane.focusId ? model.folders.filter(folder => folder.id === pane.focusId) : model.folders.filter(folder => folder.parentFolderId === model.rootFolderId && folder.id !== model.rootFolderId);
   const loose = model.filtered.filter(item => item.folderId === model.rootFolderId && (pane.closed || item.planning.status === 'open') && item.name.toLowerCase().includes(pane.query.toLowerCase()));
-  return <section ref={section} className="an-browser-pane an-folders" aria-label={`Folders pane ${index + 1}`} data-active={notes.panes.activeFolder === pane.id}>
+  return <section ref={section} className="an-browser-pane an-folders" aria-label={`Folders pane ${index + 1}`} hidden={notes.workspace.preset !== 'panels' && notes.panes.activeFolder !== pane.id} data-active={notes.panes.activeFolder === pane.id}>
     <header><button className="an-pane-name" title="Activate this folder pane" onClick={() => select(pane.folderId)}>{pane.focusId ? folderLabel(model.folders.find(folder => folder.id === pane.focusId)?.humanId) : 'Workspace'}</button><small>{index + 1}</small><button aria-label={`Close folders pane ${index + 1}`} title={draft.draft ? 'Save or cancel the folder draft first' : 'Close pane'} disabled={notes.panes.folders.length === 1 || !!draft.draft} onClick={close}>×</button></header>
     <nav className="an-breadcrumb" aria-label="Folder path"><button onClick={() => focus(null)}><NotesIcon name="home"/> Workspace</button>{pane.focusId && folderPath(model.folders, pane.focusId).filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => focus(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
     <div className="an-folder-toolbar"><input aria-label={`Filter notes in folders pane ${index + 1}`} placeholder="Filter notes…" value={pane.query} onChange={event => notes.updateFolder(pane.id, { query: event.target.value })}/><label><input type="checkbox" checked={pane.closed} onChange={event => notes.updateFolder(pane.id, { closed: event.target.checked })}/> Done / cancelled</label>{pane.folderId === model.rootFolderId && <QuickAdd id={model.rootFolderId} context={context}/>}</div>
@@ -107,8 +107,8 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
   </section>;
 }
 export function NotesFolders({ notes }: { notes: NotesModel }) {
-  return <PaneGroup title="Folders" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} width={notes.panes.folderWidth} onWidth={folderWidth => notes.setPanes(previous => ({ ...previous, folderWidth }))}
-    actions={<><button onClick={() => notes.lifecycle.choose(null, true)}>Archive / Trash</button><button disabled={notes.panes.folders.length >= 4} onClick={() => notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()))}>+ Pane</button></>}>
+  return <PaneGroup title="Folders" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} compact={notes.workspace.preset !== 'panels'}
+    actions={<><button onClick={() => notes.lifecycle.choose(null, true)}>Archive / Trash</button><button onClick={() => notes.openFolderDetails(notes.panes.folders.find(pane => pane.id === notes.panes.activeFolder)?.folderId ?? notes.model.rootFolderId)}>Folder details</button><button hidden={notes.workspace.preset !== 'panels'} disabled={notes.panes.folders.length >= 4} onClick={() => notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()))}>+ Pane</button></>}>
     {notes.panes.folders.map((pane, index) => <FolderBrowser key={pane.id} notes={notes} pane={pane} index={index}/>)}
   </PaneGroup>;
 }

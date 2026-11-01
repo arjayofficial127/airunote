@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { workspaceLayoutSchema } from './workspaceLayout';
 import { panesSchema } from './panes';
 import { today } from '@/components/book/domain';
 const preferencesSchema = z.object({
+  workspace: workspaceLayoutSchema.optional().catch(undefined),
   panes: panesSchema.optional(),
   folderId: z.string(), focusId: z.string().nullable(), viewId: z.string(), asList: z.boolean(),
   selectedId: z.string().nullable(), visible: z.array(z.enum(['inbox', 'organizer', 'calendar', 'context'])),
