@@ -72,16 +72,16 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
     {model.actions.error && <p role="alert" className="ab-error">{model.actions.error}<button onClick={() => model.actions.setError(null)}>Dismiss</button></p>}
     {model.actions.notice && <p role="status" className="ab-notice">{model.actions.notice}</p>}
     {model.configError && <p role="alert" className="ab-error">Existing planning settings could not be read. They have been preserved.</p>}
-    <nav className="an-pane-shortcuts" aria-label="Jump to pane">{(['organizer', 'inbox', 'calendar', 'context'] as const).map((panel, index) => <button key={panel} disabled={panel === 'context' && !contextVisible} onClick={() => { model.setExpandedPanel(null); reveal(panel); }}>{['Spaces', 'Inbox', 'View', 'Note / Details'][index]}</button>)}</nav>
+    <nav className="an-pane-shortcuts" aria-label="Jump to pane">{(['organizer', 'inbox', 'calendar', 'context'] as const).map((panel, index) => <button key={panel} disabled={panel === 'context' && !contextVisible} onClick={() => { model.setExpandedPanel(null); reveal(panel); }}>{['Folders', 'Inbox', 'View', 'Note / Details'][index]}</button>)}</nav>
     <ItemActionsContext.Provider value={item => notes.lifecycle.choose({ kind: 'note', item })}>
       <BookDrag model={model} onMoveFolder={moveFolder}>
         <div ref={panes} className="ab-panes an-workspace-panes" style={sizing.style} onScrollCapture={rememberScroll} role="group" aria-label="Notes workflow panels" tabIndex={0}>
           <div className="an-navigation" data-workspace-pane={focused ? 'organizer' : undefined} hidden={focused && !visible.includes('organizer')}>
-            <div className="an-navigation-header" hidden={!focused}>
+            <div className="an-navigation-header" data-navigation={workspace.navigation} hidden={!focused}>
               <div className="an-navigation-tabs" role="tablist" aria-label="Navigation tabs">
                 {(['folders', 'inbox'] as const).map(tab => <button key={tab} id={tabId + '-' + tab} role="tab" aria-selected={workspace.navigation === tab} aria-controls={tabId + '-' + tab + '-panel'}
                   onClick={() => notes.setWorkspace(previous => ({ ...previous, navigation: tab }))}
-                  onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const next = tab === 'folders' ? 'inbox' : 'folders'; notes.setWorkspace(previous => ({ ...previous, navigation: next })); document.getElementById(tabId + '-' + next)?.focus(); } }}>{tab === 'folders' ? 'Spaces' : 'Inbox'}</button>)}
+                  onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const next = tab === 'folders' ? 'inbox' : 'folders'; notes.setWorkspace(previous => ({ ...previous, navigation: next })); document.getElementById(tabId + '-' + next)?.focus(); } }}>{tab === 'folders' ? 'Folders' : 'Inbox'}</button>)}
               </div>
               <AddFolderPaneButton notes={notes} />
             </div>
@@ -89,12 +89,12 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
               <NotesInbox model={rendered.model} />{!focused && handle('inbox', 'Inbox')}
             </div>
             <div className="an-layout-slot an-folders-slot" id={tabId + '-folders-panel'} role={focused ? 'tabpanel' : undefined} aria-labelledby={focused ? tabId + '-folders' : undefined} data-workspace-pane={!focused ? 'organizer' : undefined} hidden={!foldersShown}>
-              <NotesFolders notes={rendered} />{!focused && handle('organizer', 'Spaces')}
+              <NotesFolders notes={rendered} />{!focused && handle('organizer', 'Folders')}
             </div>
             {focused && handle('organizer', 'navigation')}
           </div>
           <div className="an-layout-slot an-views-slot" data-workspace-pane="calendar" hidden={!visible.includes('calendar')}>
-            <div className="an-view-empty" hidden={!focused || workspace.folderChosen}><h2>Choose a Space</h2><p>Its view will appear here.</p><button onClick={() => reveal('organizer')}>Browse Spaces</button><button onClick={() => model.add()}>Write a new note</button></div>
+            <div className="an-view-empty" hidden={!focused || workspace.folderChosen}><h2>Choose a Space</h2><p>Its view will appear here.</p><button onClick={() => reveal('organizer')}>Browse Folders</button><button onClick={() => model.add()}>Write a new note</button></div>
             <div className="an-view-mounted" hidden={focused && !workspace.folderChosen}><NotesViews notes={rendered} /></div>
             {handle('calendar', 'view')}
           </div>

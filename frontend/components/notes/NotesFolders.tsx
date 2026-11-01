@@ -1,4 +1,5 @@
 'use client';
+import { ClosedItemsSwitch } from './ClosedItemsSwitch';
 import { useEffect, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { BookItemRow } from '@/components/book/BookItemRow';
@@ -94,10 +95,10 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
   const context: FolderContext = { notes, pane, draft, select, focus, add };
   const roots = pane.focusId ? model.folders.filter(folder => folder.id === pane.focusId) : model.folders.filter(folder => folder.parentFolderId === model.rootFolderId && folder.id !== model.rootFolderId);
   const loose = model.filtered.filter(item => item.folderId === model.rootFolderId && (pane.closed || item.planning.status === 'open') && item.name.toLowerCase().includes(pane.query.toLowerCase()));
-  return <section ref={section} className="an-browser-pane an-folders" aria-label={`Spaces pane ${index + 1}`} data-active={notes.panes.activeFolder === pane.id}>
-    <header><button className="an-pane-name" title="Activate this Space pane" onClick={() => select(pane.folderId)}>{pane.focusId ? folderLabel(model.folders.find(folder => folder.id === pane.focusId)?.humanId) : 'Workspace'}</button><small>{index + 1}</small><button aria-label={`Close Spaces pane ${index + 1}`} title={draft.draft ? 'Save or cancel the folder draft first' : 'Close pane'} disabled={notes.panes.folders.length === 1 || !!draft.draft} onClick={close}>×</button></header>
+  return <section ref={section} className="an-browser-pane an-folders" aria-label={`Folders pane ${index + 1}`} data-active={notes.panes.activeFolder === pane.id}>
+    <header><button className="an-pane-name" title="Activate this folder pane" onClick={() => select(pane.folderId)}>{pane.focusId ? folderLabel(model.folders.find(folder => folder.id === pane.focusId)?.humanId) : 'Workspace'}</button><small>{index + 1}</small><button aria-label={`Close folders pane ${index + 1}`} title={draft.draft ? 'Save or cancel the folder draft first' : 'Close pane'} disabled={notes.panes.folders.length === 1 || !!draft.draft} onClick={close}>×</button></header>
     <nav className="an-breadcrumb" aria-label="Space path"><button onClick={() => focus(null)}><NotesIcon name="home"/> Workspace</button>{pane.focusId && folderPath(model.folders, pane.focusId).filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => focus(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
-    <div className="an-folder-toolbar"><input aria-label={`Filter notes in Spaces pane ${index + 1}`} placeholder="Filter notes…" value={pane.query} onChange={event => notes.updateFolder(pane.id, { query: event.target.value })}/><label><input type="checkbox" checked={pane.closed} onChange={event => notes.updateFolder(pane.id, { closed: event.target.checked })}/> Done / cancelled</label>{pane.folderId === model.rootFolderId && <QuickAdd id={model.rootFolderId} context={context}/>}</div>
+    <div className="an-folder-toolbar"><input aria-label={`Filter notes in folders pane ${index + 1}`} placeholder="Filter notes…" value={pane.query} onChange={event => notes.updateFolder(pane.id, { query: event.target.value })}/><ClosedItemsSwitch checked={pane.closed} onChange={closed => notes.updateFolder(pane.id, { closed })} />{pane.folderId === model.rootFolderId && <QuickAdd id={model.rootFolderId} context={context}/>}</div>
     <div className="ab-scroll" data-scroll-key={`folders:${pane.id}`}>
       {!pane.focusId && <DraftRows parentId={model.rootFolderId} context={context}/>}
       {roots.map(folder => <FolderRow key={folder.id} folder={folder} context={context} depth={0} ancestors={new Set()}/>)}
@@ -108,13 +109,13 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
   </section>;
 }
 export function AddFolderPaneButton({ notes }: { notes: NotesModel }) {
-  return <button className="an-add-folder-pane" type="button" title="Add Spaces pane" disabled={notes.panes.folders.length >= 4} onClick={() => {
+  return <button className="an-add-folder-pane" type="button" title="Add folder pane" aria-label="Add folder pane" disabled={notes.panes.folders.length >= 4} onClick={() => {
     if (notes.workspace.preset === 'cards') notes.setWorkspace(previous => ({ ...previous, navigation: 'folders' }));
     notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()));
-  }}>+ Pane</button>;
+  }}>{notes.workspace.preset === 'cards' ? '+' : '+ Pane'}</button>;
 }
 export function NotesFolders({ notes }: { notes: NotesModel }) {
-  return <PaneGroup title="Spaces" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} compact={notes.workspace.preset === 'cards' && notes.panes.folders.length === 1}
+  return <PaneGroup title="Folders" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} compact={notes.workspace.preset === 'cards' && notes.panes.folders.length === 1}
     actions={notes.workspace.preset === 'panels' && <AddFolderPaneButton notes={notes} />}>
     {notes.panes.folders.map((pane, index) => <FolderBrowser key={pane.id} notes={notes} pane={pane} index={index}/>)}
   </PaneGroup>;

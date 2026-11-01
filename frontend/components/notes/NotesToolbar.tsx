@@ -6,7 +6,7 @@ import type { NotesModel } from './useNotesWorkspace';
 import { defaultWidths, presetNames } from './workspaceLayout';
 import { NotesIcon } from './NotesIcon';
 
-const labels = { inbox: 'Inbox', organizer: 'Spaces', navigation: 'Spaces | Inbox', calendar: 'Space view', context: 'Note / Details' };
+const labels = { inbox: 'Inbox', organizer: 'Folders', navigation: 'Folders | Inbox', calendar: 'Space view', context: 'Note / Details' };
 
 export function NotesToolbar({ notes }: { notes: NotesModel }) {
   const { model, theme, workspace } = notes;
