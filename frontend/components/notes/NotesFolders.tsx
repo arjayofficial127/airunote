@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookItemRow } from '@/components/book/BookItemRow';
 import { DropZone } from '@/components/book/BookDrag';
 import { folderLabel } from '@/components/book/domain';
@@ -7,8 +7,11 @@ import { PaneHeading } from '@/components/book/PaneHeading';
 import type { AiruFolder } from '@/components/airunote/types';
 import type { NotesModel } from './useNotesWorkspace';
 import { NotesIcon } from './NotesIcon';
+import { RenameFolderForm } from './RenameFolderForm';
 
 function FolderRow({ folder, notes, depth, ancestors }: { folder: AiruFolder; notes: NotesModel; depth: number; ancestors: Set<string> }) {
+  const [renaming, setRenaming] = useState(false);
+  const titleButton = useRef<HTMLButtonElement>(null);
   const open = !notes.collapsedFolders.includes(folder.id);
   const { model } = notes;
   if (ancestors.has(folder.id)) return null;
@@ -19,8 +22,11 @@ function FolderRow({ folder, notes, depth, ancestors }: { folder: AiruFolder; no
     <DropZone id={`notes-folder:${folder.id}`} target={{ kind: 'folder', folderId: folder.id }}>
       <div className="an-folder-row" style={{ paddingLeft: Math.min(depth, 6) * 12 }} data-selected={notes.folderId === folder.id}>
         <button className="an-disclosure" aria-label={`${open ? 'Collapse' : 'Expand'} ${folderLabel(folder.humanId)}`} aria-expanded={open} onClick={() => notes.setCollapsedFolders(previous => open ? [...previous, folder.id] : previous.filter(id => id !== folder.id))}>{open ? '⌄' : '›'}</button>
-        <button className="an-folder-select" onClick={() => notes.selectFolder(folder.id)} title={folderLabel(folder.humanId)}><NotesIcon name="folder" /><span>{folderLabel(folder.humanId)}</span>{items.length > 0 && <small>{items.length}</small>}</button>
-        <button className="an-focus-folder" title="Focus on this folder" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => { notes.setFocusId(folder.id); notes.selectFolder(folder.id); }}>↗</button>
+        {renaming ? <><NotesIcon name="folder" /><RenameFolderForm folder={folder} model={model} onClose={() => { setRenaming(false); requestAnimationFrame(() => titleButton.current?.focus()); }} /></> : <>
+          <button ref={titleButton} className="an-folder-select" onClick={() => notes.selectFolder(folder.id)} title={folderLabel(folder.humanId)}><NotesIcon name="folder" /><span>{folderLabel(folder.humanId)}</span>{items.length > 0 && <small>{items.length}</small>}</button>
+          <button className="an-rename-folder" title="Rename folder" aria-label={`Rename ${folderLabel(folder.humanId)}`} onClick={() => setRenaming(true)}><NotesIcon name="edit" width="16" height="16" /></button>
+          <button className="an-focus-folder" title="Focus on this folder" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => { notes.setFocusId(folder.id); notes.selectFolder(folder.id); }}>↗</button>
+        </>}
       </div>
     </DropZone>
     {open && <><div className="an-folder-notes" style={{ paddingLeft: Math.min(depth + 1, 7) * 12 }}>{items.map(item => <BookItemRow key={item.id} item={item} model={model} compact />)}</div>{children.map(child => <FolderRow key={child.id} folder={child} notes={notes} depth={depth + 1} ancestors={visited} />)}</>}

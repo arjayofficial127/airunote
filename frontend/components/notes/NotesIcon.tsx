@@ -1,6 +1,6 @@
 import type { SVGProps } from 'react';
 
-type Icon = 'folder' | 'home' | 'search' | 'sun' | 'moon' | 'more' | 'calendar' | 'note';
+type Icon = 'folder' | 'home' | 'search' | 'sun' | 'moon' | 'more' | 'calendar' | 'note' | 'edit';
 const paths: Record<Icon, string> = {
   folder: 'M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7Z',
   home: 'm3 10 9-7 9 7M5 9v12h5v-7h4v7h5V9',
@@ -10,6 +10,7 @@ const paths: Record<Icon, string> = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   calendar: 'M5 5h14a2 2 0 0 1 2 2v13H3V7a2 2 0 0 1 2-2ZM7 3v4m10-4v4M3 10h18',
   note: 'M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8M8 16h6',
+  edit: 'm16 3 5 5-12 12-6 1 1-6L16 3Zm-3 3 5 5',
 };
 
 export function NotesIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: Icon }) {
