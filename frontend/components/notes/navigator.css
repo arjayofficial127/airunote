@@ -1,0 +1,103 @@
+/* The pane is the card; its folder tree is a continuous list. */
+.airunote-notes .an-navigation-header { display:flex; gap:12px; }
+.airunote-notes .an-navigation-tabs { display:flex; gap:4px; }
+.airunote-notes .an-navigation-tabs button:first-child,
+.airunote-notes .an-navigation-tabs button:last-child { margin:0; padding:6px 10px; border:1px solid transparent; border-radius:7px; }
+.airunote-notes .an-navigation-tabs button[aria-selected=true] { background:var(--ab-selected); border-color:transparent; box-shadow:none; }
+.airunote-notes .an-navigation-header > .an-add-folder-pane,
+.airunote-notes .an-navigation-header[data-navigation=folders] > .an-add-folder-pane { margin-left:auto; padding:4px 8px; min-width:0; height:32px; border:1px solid var(--ab-border); border-radius:6px; background:transparent; color:var(--ab-muted); font-size:12px; white-space:nowrap; box-shadow:none; }
+.airunote-notes .an-folders,
+.airunote-notes[data-workspace=cards] .an-folders { --an-tree-step:20px; --an-file-inset:24px; }
+.airunote-notes .an-folders .an-breadcrumb { margin-bottom:8px; font-size:12px; }
+.airunote-notes .an-folders .an-breadcrumb svg { width:14px; height:14px; }
+.airunote-notes .an-folders .an-folder-toolbar,
+.airunote-notes[data-workspace=cards] .an-navigation .an-folder-toolbar { flex-wrap:nowrap; gap:6px; }
+.airunote-notes .an-folders details.an-folder-filter { position:static; margin:0; flex-shrink:0; }
+.airunote-notes .an-folder-filter > summary { display:grid; place-items:center; position:relative; width:32px; height:32px; padding:0; border-color:transparent; }
+.airunote-notes .an-folder-filter > summary:after { display:none; }
+.airunote-notes .an-folder-filter[data-active=true] > summary { color:var(--ab-accent); background:var(--ab-selected); }
+.airunote-notes .an-filter-indicator { position:absolute; top:3px; right:3px; width:5px; height:5px; border-radius:50%; background:var(--ab-accent); }
+.airunote-notes .an-folder-filter > div { position:fixed; right:auto; width:210px; z-index:40; }
+.airunote-notes .an-folder-filter .an-toggle-label { justify-content:space-between; gap:10px; font-size:12px; }
+.airunote-notes .an-folders .an-folder-row,
+.airunote-notes[data-workspace=cards] .an-navigation .an-folder-row { min-height:36px; flex-wrap:nowrap; gap:2px; border-radius:6px; }
+.airunote-notes .an-folders .an-disclosure { width:20px; min-width:20px; height:32px; padding:0; }
+.airunote-notes .an-folders .an-folder-grip,
+.airunote-notes[data-workspace=cards] .an-navigation .an-folder-grip { width:12px; min-width:12px; padding:0; flex:0 0 12px; }
+.airunote-notes .an-folders .an-folder-select,
+.airunote-notes[data-workspace=cards] .an-navigation .an-folder-select { flex:1 1 0; gap:6px; padding:2px; height:32px; font-size:14px; }
+.airunote-notes .an-folders .an-folder-select > svg { width:18px; height:18px; flex-shrink:0; }
+.airunote-notes .an-folders .an-folder-select > small { color:var(--ab-muted); font-size:11px; font-weight:400; }
+.airunote-notes .an-folders .ab-item { min-height:36px; margin:0; padding:2px 0; gap:4px; border:0; border-radius:6px; background:transparent; align-items:center; box-shadow:none; }
+.airunote-notes .an-folders .ab-item > .ab-grip { width:12px; min-width:12px; flex:0 0 12px; }
+.airunote-notes .an-folders .ab-item > .ab-marker { width:18px; min-width:18px; flex:0 0 18px; font-size:14px; }
+.airunote-notes .an-folders .ab-item-title { min-width:0; height:32px; justify-content:center; font-size:14px; }
+.airunote-notes .an-folders .ab-item-title > span { display:block; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.airunote-notes .an-folders .an-tree-collection { min-height:36px; height:36px; padding:2px 4px 2px 16px; gap:6px; background:transparent; border-radius:6px; font-size:14px; }
+.airunote-notes .an-folders .an-tree-collection > svg { width:18px; height:18px; flex-shrink:0; }
+.airunote-notes .an-folders .an-folder-row:hover,
+.airunote-notes .an-folders .ab-item:hover,
+.airunote-notes .an-folders .an-tree-collection:hover { background:color-mix(in srgb, var(--ab-text) 5%, transparent); }
+.airunote-notes .an-folders .ab-item.ab-selected { background:var(--ab-selected); box-shadow:none; }
+.airunote-notes .an-folders:has(.ab-selected) .an-folder-row[data-selected=true] { background:transparent; color:var(--ab-text); }
+.airunote-notes .an-folders .an-folder-select:hover { background:transparent; }
+.airunote-notes .an-folders .ab-item:focus-within,
+.airunote-notes .an-folders .an-folder-row:focus-within { background:var(--ab-selected); }
+@media(hover:hover) and (pointer:fine) {
+  .airunote-notes .an-folders .an-folder-row { position:relative; }
+  .airunote-notes .an-folders .an-folder-row > .an-rename-folder,
+  .airunote-notes .an-folders .an-folder-row > .an-item-actions,
+  .airunote-notes .an-folders .an-folder-row > .an-focus-folder,
+  .airunote-notes .an-folders .an-folder-row > .an-quick-add,
+  .airunote-notes .an-folders .ab-item > .an-rename-note,
+  .airunote-notes .an-folders .ab-item > .an-item-actions { position:absolute; top:4px; }
+  .airunote-notes .an-folders .an-item-actions { right:0; }
+  .airunote-notes .an-folders .an-rename-folder,
+  .airunote-notes .an-folders .an-rename-note { right:28px; }
+  .airunote-notes .an-folders .an-quick-add { right:56px; }
+  .airunote-notes .an-folders .an-focus-folder { right:84px; }
+  .airunote-notes .an-folders .an-folder-row:hover > .an-folder-select,
+  .airunote-notes .an-folders .an-folder-row:focus-within > .an-folder-select { padding-right:110px; }
+  .airunote-notes[data-workspace=cards] .an-folders .an-folder-row:hover > .an-folder-select,
+  .airunote-notes[data-workspace=cards] .an-folders .an-folder-row:focus-within > .an-folder-select { padding-right:84px; }
+  .airunote-notes .an-folders .ab-item:hover > .ab-item-title,
+  .airunote-notes .an-folders .ab-item:focus-within > .ab-item-title { padding-right:56px; }
+  .airunote-notes .an-folders .ab-grip,
+  .airunote-notes .an-folders .an-folder-row .an-quick-add { opacity:0; }
+  .airunote-notes .an-folders .ab-item:hover > .ab-grip,
+  .airunote-notes .an-folders .ab-item:focus-within > .ab-grip,
+  .airunote-notes .an-folders .an-folder-row:hover > .ab-grip,
+  .airunote-notes .an-folders .an-folder-row:focus-within > .ab-grip,
+  .airunote-notes .an-folders .an-folder-row:hover .an-quick-add,
+  .airunote-notes .an-folders .an-folder-row:focus-within .an-quick-add,
+  .airunote-notes .an-folders .an-quick-add[open] { opacity:1; }
+}
+@media(hover:none), (pointer:coarse) {
+  /* A tap selects the row and reveals its actions without crowding every title. */
+  .airunote-notes .an-folders .an-folder-row { position:relative; }
+  .airunote-notes .an-folders .an-folder-row > .an-rename-folder,
+  .airunote-notes .an-folders .an-folder-row > .an-item-actions,
+  .airunote-notes .an-folders .an-folder-row > .an-focus-folder,
+  .airunote-notes .an-folders .an-folder-row > .an-quick-add,
+  .airunote-notes .an-folders .ab-item > .an-rename-note,
+  .airunote-notes .an-folders .ab-item > .an-item-actions { position:absolute; top:4px; opacity:0; pointer-events:none; }
+  .airunote-notes .an-folders .an-item-actions { right:0; }
+  .airunote-notes .an-folders .an-rename-folder,
+  .airunote-notes .an-folders .an-rename-note { right:28px; }
+  .airunote-notes .an-folders .an-quick-add { right:56px; }
+  .airunote-notes .an-folders .an-focus-folder { right:84px; }
+  .airunote-notes .an-folders .ab-grip { opacity:0; }
+  .airunote-notes .an-folders .an-folder-row:is([data-selected=true],:focus-within) > :is(.ab-grip,.an-rename-folder,.an-item-actions,.an-focus-folder,.an-quick-add),
+  .airunote-notes .an-folders .ab-item:is(.ab-selected,:focus-within) > :is(.ab-grip,.an-rename-note,.an-item-actions) { opacity:1; pointer-events:auto; }
+  .airunote-notes .an-folders .an-folder-row:is([data-selected=true],:focus-within) > .an-folder-select { padding-right:110px; }
+  .airunote-notes[data-workspace=cards] .an-folders .an-folder-row:is([data-selected=true],:focus-within) > .an-folder-select { padding-right:84px; }
+  .airunote-notes .an-folders .ab-item:is(.ab-selected,:focus-within) > .ab-item-title { padding-right:56px; }
+}
+/* Keep the generous pointer target, but draw only a quiet one-pixel divider. */
+.airunote-notes .an-workspace-resize,
+.airunote-notes .an-workspace-resize:hover,
+.airunote-notes .an-workspace-resize:focus-visible { background:transparent; }
+.airunote-notes .an-workspace-resize::after { content:''; position:absolute; top:8px; bottom:8px; left:4px; width:1px; background:var(--ab-border); }
+.airunote-notes .an-workspace-resize:hover::after,
+.airunote-notes .an-workspace-resize:focus-visible::after,
+.airunote-notes .an-workspace-resize[data-dragging=true]::after { width:2px; background:var(--ab-accent); }

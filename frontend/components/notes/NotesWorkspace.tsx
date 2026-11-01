@@ -21,6 +21,7 @@ import './notes.css';
 import './workspace.css';
 import './spaces.css';
 import './collections.css';
+import './navigator.css';
 
 export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: string; orgId: string; userId: string }) {
   const notes = useNotesWorkspace(rootFolderId, orgId, userId);

@@ -1,8 +1,9 @@
 import type { SVGProps } from 'react';
 
-type Icon = 'folder' | 'home' | 'search' | 'sun' | 'moon' | 'more' | 'calendar' | 'note' | 'edit' | 'book' | 'canvas' | 'board' | 'study';
+type Icon = 'folder' | 'home' | 'search' | 'filter' | 'sun' | 'moon' | 'more' | 'calendar' | 'note' | 'edit' | 'book' | 'canvas' | 'board' | 'study';
 export const collectionIcon = { pages: 'book', canvas: 'canvas', board: 'board', study: 'study' } as const;
 const paths: Record<Icon, string> = {
+  filter: 'M3 4h18l-7 8v7l-4 2v-9L3 4Z',
   book: 'M12 5C9 3 5 3 2 4v16c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1Zm0 0v16',
   canvas: 'M3 3h18v18H3Zm3 4h6v6H6Zm8 5h4v6h-4Z',
   board: 'M3 3h18v18H3Zm6 0v18m6-18v18M5 7h2m4 4h2m4-4h2',
