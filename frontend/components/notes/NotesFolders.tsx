@@ -48,7 +48,7 @@ function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; 
   const items = model.filtered.filter(item => item.folderId === folder.id && (pane.closed || item.planning.status === 'open') && item.name.toLowerCase().includes(pane.query.toLowerCase()));
   return <div className="an-folder-branch" ref={draggable.setNodeRef} style={draggable.isDragging ? { opacity: .5 } : undefined}>
     <DropZone id={`${pane.id}:folder:${folder.id}`} target={{ kind: 'folder', folderId: folder.id }}>
-      <div className="an-folder-row" style={{ paddingLeft: Math.min(depth, 6) * 12 }} data-selected={pane.folderId === folder.id}>
+      <div className="an-folder-row" style={{ paddingInlineStart: `calc(${Math.min(depth, 6)} * var(--an-tree-step))` }} data-selected={pane.folderId === folder.id}>
         <button className="an-disclosure" aria-label={`${open ? 'Collapse' : 'Expand'} ${folderLabel(folder.humanId)}`} aria-expanded={open} onClick={() => notes.updateFolder(pane.id, { collapsedFolders: open ? [...pane.collapsedFolders, folder.id] : pane.collapsedFolders.filter(id => id !== folder.id) })}>{open ? '⌄' : '›'}</button>
         <button className="ab-grip an-folder-grip" aria-label={`Move folder ${folderLabel(folder.humanId)}`} {...draggable.listeners} {...draggable.attributes}>⠿</button>
         {renaming ? <><NotesIcon name="folder"/><RenameFolderForm folder={folder} model={model} onClose={() => { setRenaming(false); requestAnimationFrame(() => titleButton.current?.focus()); }}/></> : <>
@@ -60,7 +60,7 @@ function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; 
         </>}
       </div>
     </DropZone>
-    {open && <><div className="an-folder-notes" style={{ paddingLeft: Math.min(depth + 1, 7) * 12 }}>
+    {open && <><div className="an-folder-notes" style={{ paddingInlineStart: `calc(${Math.min(depth + 1, 7)} * var(--an-tree-step) + var(--an-file-inset))` }}>
       <DraftRows parentId={folder.id} context={context}/>{items.map(item => <BookItemRow key={item.id} item={item} model={model} compact/>)}
     </div>{children.map(child => <FolderRow key={child.id} folder={child} context={context} depth={depth + 1} ancestors={visited}/>)}</>}
   </div>;

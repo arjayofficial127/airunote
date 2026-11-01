@@ -68,8 +68,11 @@
 .airunote-notes .ab-inline-rename button[type=submit] { color:var(--ab-accent); }
 .airunote-notes .ab-inline-rename-error { grid-column:1/-1; color:var(--ab-error); font-size:12px; overflow-wrap:anywhere; }
 @media(hover:hover) { .airunote-notes .an-focus-folder,.airunote-notes .an-rename-folder,.airunote-notes .an-rename-note { opacity:0; }.airunote-notes .an-folder-row:hover .an-focus-folder,.airunote-notes .an-folder-row:focus-within .an-focus-folder,.airunote-notes .an-folder-row:hover .an-rename-folder,.airunote-notes .an-folder-row:focus-within .an-rename-folder,.airunote-notes .ab-item:hover .an-rename-note,.airunote-notes .ab-item:focus-within .an-rename-note { opacity:1; } }
-.airunote-notes .an-folder-notes .ab-item { border:0; margin:0; padding:4px 0; }
+.airunote-notes .an-folder-notes .ab-item { border:0; margin:0; padding:4px 0; align-items:center; }
 .airunote-notes .an-folder-notes .ab-item-title { font-size:14px; }
+.airunote-notes .an-folder-notes .ab-item-title > span { display:block; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Files have no disclosure button; reserve its space to align child labels. */
+.airunote-notes .an-folders { --an-tree-step:20px; --an-file-inset:33px; }
 .airunote-notes .an-folders details { margin-top:16px; }
 .airunote-notes .an-breadcrumb { color:var(--ab-muted); font-size:13px; margin-bottom:10px; }
 .airunote-notes .an-breadcrumb button { border:0; background:transparent; padding:2px 0; color:inherit; min-height:28px; }
