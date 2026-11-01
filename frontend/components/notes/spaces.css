@@ -19,7 +19,7 @@
 .airunote-notes .an-link-picker header { display:flex; align-items:start; gap:12px; }
 .airunote-notes .an-link-picker h2 { margin:0; flex:1; font-size:20px; overflow-wrap:anywhere; }
 .airunote-notes .an-link-picker p { font-size:13px; color:var(--ab-muted); }
-.airunote-notes .an-link-picker input { width:100%; margin:8px 0; }
+.airunote-notes .an-link-picker input:not([type=checkbox]) { width:100%; margin:8px 0; }
 .airunote-notes .an-link-results { display:flex; flex-direction:column; gap:6px; max-height:50dvh; overflow:auto; }
 .airunote-notes .an-link-results button { display:flex; flex-direction:column; gap:4px; text-align:left; padding:10px; flex-shrink:0; }
 .airunote-notes .an-link-results span,.airunote-notes .an-link-results small { overflow-wrap:anywhere; }

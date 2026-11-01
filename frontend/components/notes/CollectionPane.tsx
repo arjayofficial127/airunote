@@ -13,6 +13,7 @@ import { CollectionDialog, FolderChoice, MembershipFields, ReferencePicker } fro
 import { CollectionRead } from './CollectionRead';
 import { NotesIcon } from './NotesIcon';
 import { PaneMenu } from './PaneMenu';
+import { DropZone, type BookReferenceDrop } from '@/components/book/BookDrag';
 
 function Settings({ notes, collection, close, save, error }: { notes: NotesModel; collection: Collection; close: () => void; error?: string; save: (value: { name: string; homeFolderId: string; membership: CollectionMembership }) => Promise<boolean> }) {
   const [name, setName] = useState(collection.name), [home, setHome] = useState(collection.homeFolderId), [membership, setMembership] = useState(collection.config.membership), [busy, setBusy] = useState(false);
@@ -28,6 +29,8 @@ export function CollectionPane({ notes, pane, id, closePane }: { notes: NotesMod
   const [adding, setAdding] = useState(false), [settings, setSettings] = useState(false), [linking, setLinking] = useState(false), [linkHome, setLinkHome] = useState(notes.model.rootFolderId);
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [pageName, setPageName] = useState<string | null>(null);
   const [reading, setReading] = useState<string | null>(null);
+  const [dropNotice, setDropNotice] = useState('');
+  useEffect(() => { setDropNotice(''); }, [id, pageId]);
   const pending = useRef(false);
   const { model } = notes;
   const { setDraftFlag } = model;
@@ -46,6 +49,12 @@ export function CollectionPane({ notes, pane, id, closePane }: { notes: NotesMod
   const { collection, placements } = detail.data, { config } = collection;
   const page = config.pages.find(value => value.id === pageId) ?? config.pages[0]!;
   const visible = placements.filter(item => config.kind !== 'pages' || item.pageId === page.id);
+  async function addDroppedReference(reference: BookReferenceDrop) {
+    if (busy || model.dirty || config.kind !== 'pages' || config.membership.mode !== 'chosen') return;
+    if (visible.some(item => item.entityId === reference.entityId && item.entityType === reference.entityType)) { setDropNotice(`Already on ${page.name}.`); return; }
+    setDropNotice('');
+    if (await change('/items', 'POST', { items: [{ ...reference, pageId: page.id }] })) setDropNotice(`Added ${reference.entityType === 'folder' ? 'folder' : 'note'} to ${page.name}.`);
+  }
   function title(item: Placement) { return item.entityType === 'document' ? model.items.find(value => value.id === item.entityId)?.name : item.entityType === 'folder' ? folderLabel(model.folders.find(value => value.id === item.entityId)?.humanId) : notes.collections.data?.find(value => value.id === item.entityId)?.name; }
   function home(item: Placement) { return item.entityType === 'document' ? model.items.find(value => value.id === item.entityId)?.folderId : item.entityType === 'folder' ? model.folders.find(value => value.id === item.entityId)?.parentFolderId : notes.collections.data?.find(value => value.id === item.entityId)?.homeFolderId; }
   function open(item: Placement) { if (!item.available) return; if (item.entityType === 'document') { const note = model.items.find(value => value.id === item.entityId); if (note) model.open(note); } else if (item.entityType === 'folder') notes.selectFolder(notes.panes.activeFolder, item.entityId); else notes.openCollection(pane.id, item.entityId); }
@@ -66,11 +75,12 @@ export function CollectionPane({ notes, pane, id, closePane }: { notes: NotesMod
     {(error || notes.links.error) && <p role="alert" className="ab-error">{error || notes.links.error}</p>}
     <div className="an-book-workspace" data-book={config.kind === 'pages'}>
     {config.kind === 'pages' && <><nav className="an-book-pages" aria-label="Book pages"><strong className="an-book-pages-label">Pages</strong>{config.pages.map((value, index) => <button key={value.id} aria-current={page.id === value.id ? 'page' : undefined} onClick={() => setPageId(value.id)}>{index + 1}. {value.name}</button>)}<button disabled={busy || config.pages.length >= 100} onClick={async () => { const created = { id: crypto.randomUUID(), name: `Page ${config.pages.length + 1}` }; if (await change('', 'PATCH', { pages: [...config.pages, created] })) setPageId(created.id); }}>+ Page</button></nav><div className="an-collection-actions an-book-page-heading"><h2>{page.name}</h2><small>{visible.length} references</small><PaneMenu label="Page actions"><button data-menu-action onClick={() => setPageName(page.name)}>Rename page</button><button data-menu-action disabled={busy || config.pages[0]?.id === page.id} onClick={() => reorderPage(-1)}>Move page earlier</button><button data-menu-action disabled={busy || config.pages.at(-1)?.id === page.id} onClick={() => reorderPage(1)}>Move page later</button><button data-menu-action disabled={busy || visible.length > 0 || config.pages.length === 1} onClick={() => void change('', 'PATCH', { pages: config.pages.filter(value => value.id !== page.id) })}>Remove empty page</button></PaneMenu></div></>}
-    <div className="ab-scroll an-view-content an-collection-content">
+    <DropZone id={`book-page:${id}:${page.id}`} target={{ kind: 'reference', add: reference => { void addDroppedReference(reference); } }} disabled={config.kind !== 'pages' || config.membership.mode !== 'chosen' || busy || model.dirty} label={config.kind === 'pages' ? `Add references to ${page.name}` : undefined} className={`ab-scroll an-view-content an-collection-content ${config.kind === 'pages' ? 'an-book-drop-target' : ''}`}>
+      {config.kind === 'pages' && <><p className="an-book-drop-hint">Drag notes or folders here to add references.</p><span className="an-book-drop-notice" role="status">{dropNotice}</span></>}
       {config.kind === 'canvas' && <CanvasLens key={id} orgId={model.orgId} lens={lens} items={rendererItems} lensItems={lensItems} onPersist={persist} onOpenItem={entityId => { const item = renderable.find(value => value.entityId === entityId); if (item) open(item); }} />}
       {config.kind === 'board' && <BoardLens key={id} orgId={model.orgId} lens={lens} items={rendererItems} lensItems={lensItems} onPersist={persist} onOpenItem={entityId => { const item = renderable.find(value => value.entityId === entityId); if (item) open(item); }} />}
       <div className="an-reference-list" aria-label="Collection references">{visible.map((item, index) => <div key={item.id}><div className="an-reference-row"><button disabled={!item.available} onClick={() => open(item)}><NotesIcon name={item.entityType === 'folder' ? 'folder' : 'note'}/><span>{item.available ? title(item) ?? 'Untitled' : 'Unavailable reference'}<small>{item.available ? namePath(home(item)) : 'Archived, deleted or no longer accessible'}</small></span></button>{item.available && item.entityType === 'document' && (config.kind === 'study' || config.kind === 'pages') && <button className="an-reference-read" aria-expanded={reading === item.id} aria-label={`Read reference ${index + 1}`} onClick={() => setReading(value => value === item.id ? null : item.id)}>{reading === item.id ? 'Hide' : 'Read'}</button>}<PaneMenu label={`Actions for reference ${index + 1}`}><button data-menu-action aria-label={`Move reference ${index + 1} earlier`} disabled={busy || index === 0 || !item.available} onClick={() => void change('/items', 'PATCH', { items: [{ id: item.id, order: visible[index - 1]!.order - 0.5 }] })}>Move earlier</button>{config.membership.mode === 'chosen' && <button data-menu-action aria-label={`Remove reference ${index + 1}`} disabled={busy} onClick={() => void change(`/items/${item.id}`, 'DELETE', {})}>Remove reference</button>}<small>The original note stays in its folder.</small></PaneMenu></div>{reading === item.id && item.available && <CollectionRead id={item.entityId}/>}</div>)}{!visible.length && <p className="ab-empty">{config.membership.mode === 'matching' ? 'No items match this source and filter.' : 'Add references from anywhere in your workspace.'}</p>}</div>
-    </div>
+    </DropZone>
     </div>
     {adding && <ReferencePicker error={error} notes={notes} collectionId={id} pageId={page.id} placements={placements} close={() => setAdding(false)} add={refs => change('/items', 'POST', { items: refs.map(ref => ({ ...ref, pageId: page.id })) })}/>}
     {settings && <Settings error={error} notes={notes} collection={collection} close={() => setSettings(false)} save={value => change('', 'PATCH', value)}/>}

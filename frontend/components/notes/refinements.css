@@ -26,7 +26,14 @@
 .airunote-notes .an-reference-row > button:first-child { flex:1 1 0; }
 .airunote-notes .an-reference-row > button:first-child span { font-size:13px; }
 .airunote-notes .an-reference-read { border:0; background:transparent; color:var(--ab-accent); font-size:12px; padding:4px 6px; }
+.airunote-notes .an-reference-choice { flex-shrink:0; }
 .airunote-notes .an-context-workspace { container-type:inline-size; }
+.airunote-notes .an-book-drop-target { border-radius:6px; }
+.airunote-notes .an-book-drop-hint { margin:0 0 6px; padding:8px; color:var(--ab-muted); font-size:12px; }
+.airunote-notes .an-book-drop-notice { display:block; padding:0 8px; color:var(--ab-accent); font-size:12px; }
+.airunote-notes .an-book-drop-notice:empty { display:none; }
+.airunote-notes .ab-dragging .an-book-drop-target { outline:1px dashed var(--ab-accent); outline-offset:-2px; }
+.airunote-notes .ab-dragging .an-book-drop-target.ab-drop-over { outline:2px solid var(--ab-accent); background:var(--ab-selected); }
 @container(max-width:420px) {
   .airunote-notes[data-workspace=cards] .an-reading { padding:16px 12px; }
   .airunote-notes .an-reading > h1 { font-size:22px; line-height:1.3; margin-bottom:10px; }
