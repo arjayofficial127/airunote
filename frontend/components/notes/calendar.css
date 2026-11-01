@@ -1,0 +1,56 @@
+/* Calendar entries keep their actions, but give their title the available space. */
+.airunote-notes .an-calendar-embedded .ab-calendar-entry {
+  display:flex; min-width:0; min-height:32px; padding:2px 4px; margin:1px 0;
+  align-items:center; flex-wrap:nowrap; gap:3px;
+  border:0; border-radius:5px; background:transparent; box-shadow:none;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry:is(:hover,:focus-within,.ab-selected) {
+  background:var(--ab-selected);
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry .ab-item-title {
+  min-width:0; min-height:28px; flex-direction:row; align-items:center; gap:6px;
+  font-size:13px; line-height:1.4;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry .ab-item-title > span {
+  flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry-time {
+  flex-shrink:0; color:var(--ab-muted); font-size:11px; font-variant-numeric:tabular-nums;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry > .ab-grip {
+  display:block; flex:0 0 10px; min-width:10px; width:10px; padding:0;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry > .ab-marker {
+  flex:0 0 14px; min-width:14px; width:14px; font-size:13px;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry > :is(.an-rename-note,.an-item-actions) {
+  position:absolute; top:3px; opacity:0; pointer-events:none;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry > .an-rename-note { right:28px; }
+.airunote-notes .an-calendar-embedded .ab-calendar-entry > .an-item-actions { right:2px; }
+.airunote-notes .an-calendar-embedded .ab-calendar-entry:focus-within > :is(.an-rename-note,.an-item-actions) {
+  opacity:1; pointer-events:auto;
+}
+.airunote-notes .an-calendar-embedded .ab-calendar-entry:focus-within > .ab-item-title { padding-right:54px; }
+.airunote-notes .an-calendar-embedded .ab-day-heading { flex-wrap:nowrap; min-height:32px; }
+.airunote-notes .an-calendar-embedded .ab-day-heading > button:first-child {
+  min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left;
+}
+.airunote-notes .an-calendar-embedded .ab-day-heading > button:last-child { flex-shrink:0; }
+.airunote-notes .an-calendar-embedded .ab-month-grid .ab-day-heading strong { display:inline; }
+.airunote-notes .an-calendar-embedded .ab-month-grid .ab-day-heading small { display:none; }
+.airunote-notes .an-calendar-embedded .ab-month-grid .ab-calendar-day { min-width:0; min-height:160px; }
+.airunote-notes .an-calendar-embedded :is(.an-week-grid,.ab-month-grid) .ab-calendar-entry .ab-item-title { font-size:12px; }
+.airunote-notes .an-calendar-more { font-size:11px; padding:3px 8px; min-height:26px; }
+.airunote-notes .an-calendar-embedded .ab-project-plot { min-width:0; padding:3px 0; border:0; }
+.airunote-notes .an-calendar-embedded .ab-project-plot h4 { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media(hover:hover) {
+  .airunote-notes .an-calendar-embedded .ab-calendar-entry > .ab-grip { opacity:0; }
+  .airunote-notes .an-calendar-embedded .ab-calendar-entry:is(:hover,:focus-within) > :is(.ab-grip,.an-rename-note,.an-item-actions) { opacity:1; pointer-events:auto; }
+  .airunote-notes .an-calendar-embedded .ab-calendar-entry:hover > .ab-item-title { padding-right:54px; }
+}
+@media(hover:none) {
+  .airunote-notes .an-calendar-embedded .ab-calendar-entry { min-height:40px; }
+  .airunote-notes .an-calendar-embedded .ab-calendar-entry.ab-selected > :is(.an-rename-note,.an-item-actions) { opacity:1; pointer-events:auto; }
+  .airunote-notes .an-calendar-embedded .ab-calendar-entry.ab-selected > .ab-item-title { padding-right:54px; }
+}

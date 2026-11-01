@@ -1,0 +1,436 @@
+{
+  "responsive": [
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 320,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 320,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 320,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 1024,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 1024,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 1024,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 1912,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 1912,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Light",
+      "width": 1912,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 320,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 320,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 320,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 1024,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 1024,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 1024,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 1912,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 1912,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Cards",
+      "appearance": "Charcoal",
+      "width": 1912,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 320,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 320,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 320,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 1024,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 1024,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 1024,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 1912,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 1912,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 1912,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 3840,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 3840,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Light",
+      "width": 3840,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 320,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 320,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 320,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 1024,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 1024,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 1024,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 1912,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 1912,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 1912,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 3840,
+      "period": "day",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 3840,
+      "period": "week",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 4,
+      "rowsFit": true
+    },
+    {
+      "layout": "Panels",
+      "appearance": "Charcoal",
+      "width": 3840,
+      "period": "month",
+      "documentFits": true,
+      "metadataCount": 0,
+      "rowCount": 5,
+      "rowsFit": true
+    }
+  ],
+  "flows": [
+    "Month shows three entries and +1 more opens the full day",
+    "Agenda retains all six month entries without a preview limit",
+    "Timed 09:30 entry remains visible in Day and Hours",
+    "Projects retains three folder groups",
+    "Full note opens in editor and preview",
+    "Keyboard item actions open",
+    "Inline rename opens and cancels",
+    "Keyboard drag starts and cancels without changing schedule",
+    "320px exam questions fit and first answer saves"
+  ],
+  "errors": []
+}

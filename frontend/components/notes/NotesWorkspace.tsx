@@ -23,6 +23,7 @@ import './spaces.css';
 import './collections.css';
 import './navigator.css';
 import './destinations.css';
+import './calendar.css';
 import { DestinationTabs, WorkspaceLibrary } from './WorkspaceDestinations';
 
 export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: string; orgId: string; userId: string }) {
