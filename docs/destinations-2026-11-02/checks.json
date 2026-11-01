@@ -1,0 +1,296 @@
+{
+  "smoke": {
+    "checks": [
+      "Four local icons and no view dropdown",
+      "List switches",
+      "Details switches",
+      "Details actual Name/Type/Updated table",
+      "Cards switches",
+      "Cards have real metadata",
+      "Box switches",
+      "Menu Escape closes",
+      "Active filter marker",
+      "Properties opens explicitly and compact",
+      "Properties pristine hides Save",
+      "Property draft blocks switch",
+      "Workspace calendar heading",
+      "Calendar default grid",
+      "One Today",
+      "Plan heading and Unplanned",
+      "Calendar reuses tab and restores context",
+      "Tab order and active destination survive reload",
+      "Book has independent internal pages",
+      "Book page restored",
+      "Book page survives reload",
+      "Closed resource tab removed",
+      "Freeze does not add pane",
+      "All frozen blocks replacement",
+      "Explicit second pane",
+      "Plan opens alongside frozen folder",
+      "No browser errors"
+    ],
+    "errors": []
+  },
+  "responsive": {
+    "checks": [
+      "cards light 3840 header and page fit",
+      "cards light 3840 table fits",
+      "cards light 3840 cards fit",
+      "cards light 3840 actions fit viewport",
+      "cards light 1912 header and page fit",
+      "cards light 1912 table fits",
+      "cards light 1912 cards fit",
+      "cards light 1912 actions fit viewport",
+      "cards light 1024 header and page fit",
+      "cards light 1024 table fits",
+      "cards light 1024 cards fit",
+      "cards light 1024 actions fit viewport",
+      "cards light 390 header and page fit",
+      "cards light 390 table fits",
+      "cards light 390 cards fit",
+      "cards light 390 actions fit viewport",
+      "cards light 320 header and page fit",
+      "cards light 320 table fits",
+      "cards light 320 cards fit",
+      "cards light 320 actions fit viewport",
+      "cards dark 3840 header and page fit",
+      "cards dark 3840 table fits",
+      "cards dark 3840 cards fit",
+      "cards dark 3840 actions fit viewport",
+      "cards dark 1912 header and page fit",
+      "cards dark 1912 table fits",
+      "cards dark 1912 cards fit",
+      "cards dark 1912 actions fit viewport",
+      "cards dark 1024 header and page fit",
+      "cards dark 1024 table fits",
+      "cards dark 1024 cards fit",
+      "cards dark 1024 actions fit viewport",
+      "cards dark 390 header and page fit",
+      "cards dark 390 table fits",
+      "cards dark 390 cards fit",
+      "cards dark 390 actions fit viewport",
+      "cards dark 320 header and page fit",
+      "cards dark 320 table fits",
+      "cards dark 320 cards fit",
+      "cards dark 320 actions fit viewport",
+      "panels light 3840 header and page fit",
+      "panels light 3840 table fits",
+      "panels light 3840 cards fit",
+      "panels light 3840 actions fit viewport",
+      "panels light 1912 header and page fit",
+      "panels light 1912 table fits",
+      "panels light 1912 cards fit",
+      "panels light 1912 actions fit viewport",
+      "panels light 1024 header and page fit",
+      "panels light 1024 table fits",
+      "panels light 1024 cards fit",
+      "panels light 1024 actions fit viewport",
+      "panels light 390 header and page fit",
+      "panels light 390 table fits",
+      "panels light 390 cards fit",
+      "panels light 390 actions fit viewport",
+      "panels light 320 header and page fit",
+      "panels light 320 table fits",
+      "panels light 320 cards fit",
+      "panels light 320 actions fit viewport",
+      "panels dark 3840 header and page fit",
+      "panels dark 3840 table fits",
+      "panels dark 3840 cards fit",
+      "panels dark 3840 actions fit viewport",
+      "panels dark 1912 header and page fit",
+      "panels dark 1912 table fits",
+      "panels dark 1912 cards fit",
+      "panels dark 1912 actions fit viewport",
+      "panels dark 1024 header and page fit",
+      "panels dark 1024 table fits",
+      "panels dark 1024 cards fit",
+      "panels dark 1024 actions fit viewport",
+      "panels dark 390 header and page fit",
+      "panels dark 390 table fits",
+      "panels dark 390 cards fit",
+      "panels dark 390 actions fit viewport",
+      "panels dark 320 header and page fit",
+      "panels dark 320 table fits",
+      "panels dark 320 cards fit",
+      "panels dark 320 actions fit viewport",
+      "Calendar phone controls fit",
+      "Plan phone controls fit",
+      "No JavaScript errors"
+    ],
+    "errors": [],
+    "metrics": [
+      {
+        "label": "cards light 3840",
+        "width": 898,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards light 1912",
+        "width": 898,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards light 1024",
+        "width": 898,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards light 390",
+        "width": 272,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards light 320",
+        "width": 202,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards dark 3840",
+        "width": 898,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards dark 1912",
+        "width": 898,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards dark 1024",
+        "width": 898,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards dark 390",
+        "width": 272,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "cards dark 320",
+        "width": 202,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels light 3840",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels light 1912",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels light 1024",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels light 390",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels light 320",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels dark 3840",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels dark 1912",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels dark 1024",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels dark 390",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      },
+      {
+        "label": "panels dark 320",
+        "width": 420,
+        "overflow": false,
+        "doc": true
+      }
+    ]
+  },
+  "touch": {
+    "checks": [
+      "390 touch switches presentation",
+      "390 outside tap closes actions",
+      "390 Properties fits",
+      "390 touch Calendar opens and fits",
+      "320 touch switches presentation",
+      "320 outside tap closes actions",
+      "320 Properties fits",
+      "320 touch Calendar opens and fits",
+      "Properties resizes",
+      "Properties width survives reload",
+      "Opening a note retains editor preferred width",
+      "All resource tabs close to empty state",
+      "Opening after closing all works",
+      "No JavaScript errors"
+    ],
+    "errors": []
+  },
+  "collections": {
+    "checks": [
+      "Book independently named resources",
+      "Canvas independently named resources",
+      "Board independently named resources",
+      "Study set independently named resources",
+      "Book references an original across folders",
+      "Unsaved original blocks destination switch",
+      "Original edits propagate into Book reading",
+      "Move original preserves scheduled date and time",
+      "Reference survives original move",
+      "Conflict retains collection draft",
+      "Collection move preserves ID and reference",
+      "Duplicate is independent and references same original",
+      "Unlink preserves original and source collection",
+      "Book 1912 fits",
+      "Book 390 fits",
+      "Book 320 fits",
+      "No JavaScript errors"
+    ],
+    "errors": []
+  },
+  "exam": {
+    "checks": [
+      "Exam editor opens",
+      "Exam preview opens",
+      "Two mobile exam answers saved",
+      "Mobile question fits",
+      "Pointer submission and reload succeed",
+      "No exam JavaScript errors"
+    ],
+    "errors": []
+  }
+}

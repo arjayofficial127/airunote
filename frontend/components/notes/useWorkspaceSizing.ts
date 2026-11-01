@@ -12,7 +12,7 @@ export function useWorkspaceSizing(notes: NotesModel, container: RefObject<HTMLD
   const paneLimit = focused && compact ? Math.max(220, available - 20) : Infinity;
   const minimum: PaneWidths = { inbox: 280, organizer: focused ? 260 : 300, calendar: 360, context: 360 };
   // Fit individual phone panes without replacing the user's desktop preferences.
-  const preferred = { ...workspace.widths[workspace.preset] };
+  const preferred = { ...workspace.widths[workspace.preset], ...(workspace.contextWidthMode === 'properties' ? { context: workspace.propertiesWidths[workspace.preset] } : {}) };
   for (const key of Object.keys(preferred) as Panel[]) {
     minimum[key] = Math.min(minimum[key], paneLimit);
     preferred[key] = Math.min(preferred[key], paneLimit);
@@ -30,7 +30,7 @@ export function useWorkspaceSizing(notes: NotesModel, container: RefObject<HTMLD
   function resize(key: Panel, value: number) {
     const next = resizeWidths(visible, widths, minimum, key, value, workspace.sizing === 'auto');
     const saved = workspace.sizing === 'auto' ? next : { [key]: next[key] };
-    setWorkspace(previous => ({ ...previous, widths: { ...previous.widths, [previous.preset]: { ...previous.widths[previous.preset], ...saved } } }));
+    setWorkspace(previous => ({ ...previous, ...(workspace.contextWidthMode === 'properties' && (key === 'context' || workspace.sizing === 'auto') ? { propertiesWidths: { ...previous.propertiesWidths, [previous.preset]: next.context } } : {}), widths: { ...previous.widths, [previous.preset]: { ...previous.widths[previous.preset], ...saved, ...(workspace.contextWidthMode === 'properties' ? { context: previous.widths[previous.preset].context } : {}) } } }));
   }
   return { compact, widths, minimum, resize, style: { gridTemplateColumns: visible.map(key => widths[key] + 'px').join(' ') } };
 }

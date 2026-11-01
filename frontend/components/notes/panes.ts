@@ -5,14 +5,15 @@ const folderPaneSchema = z.object({
   id: z.string(), folderId: z.string(), focusId: z.string().nullable(),
   collapsedFolders: z.array(z.string()), query: z.string(), closed: z.boolean(),
 });
-const lensPaneSchema = z.object({
+export const lensPaneSchema = z.object({
   id: z.string(), folderId: z.string(), viewId: z.string(), asList: z.boolean(), frozen: z.boolean(),
-  query: z.string(), closed: z.boolean(), descendants: z.boolean().optional(), planningFolderId: z.string().nullable().optional(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(`${value}T12:00:00Z`); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }),
+  destinationId: z.string().optional(), sort: z.enum(['name', 'updated', 'type']).optional(), calendarDisplay: z.enum(['grid', 'agenda']).optional(), collectionPageId: z.string().optional(), query: z.string(), closed: z.boolean(), descendants: z.boolean().optional(), planningFolderId: z.string().nullable().optional(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const date = new Date(`${value}T12:00:00Z`); return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value; }),
   period: z.enum(['day', 'week', 'sprint', 'month', 'year', 'unplanned']),
   plot: z.enum(['items', 'projects', 'hours']), hours: z.enum(['24', '12', '8']),
 });
 export const panesSchema = z.object({
   folders: z.array(folderPaneSchema).min(1).max(4), lenses: z.array(lensPaneSchema).min(1).max(4),
+  destinations: z.array(z.object({ key: z.string(), pane: lensPaneSchema })).default([]), activeLens: z.string().optional(), destinationsClosed: z.boolean().optional(),
   defaults: z.record(z.string()).default({}),
   activeFolder: z.string(), folderLayout: z.enum(['row', 'grid']), lensLayout: z.enum(['row', 'grid']),
   folderWidth: z.number().min(300).max(4000).nullable(), lensWidth: z.number().min(380).max(5000).nullable(),
@@ -24,8 +25,8 @@ export type LensPane = z.infer<typeof lensPaneSchema>;
 export type NotesPanes = z.infer<typeof panesSchema>;
 export function initialPanes(root: string): NotesPanes {
   return { folders: [{ id: 'folders-1', folderId: root, focusId: null, collapsedFolders: [], query: '', closed: false }],
-    lenses: [{ id: 'lens-1', folderId: root, viewId: 'agenda', asList: false, frozen: false, query: '', closed: false, date: today(), period: 'week', plot: 'items', hours: '12' }],
-    defaults: {}, activeFolder: 'folders-1', folderLayout: 'row', lensLayout: 'row', folderWidth: null, lensWidth: null };
+    lenses: [{ id: 'lens-1', folderId: root, viewId: 'box', asList: false, frozen: false, query: '', closed: false, date: today(), period: 'week', plot: 'items', hours: '12' }],
+    destinations: [], defaults: {}, activeFolder: 'folders-1', folderLayout: 'row', lensLayout: 'row', folderWidth: null, lensWidth: null };
 }
 export function addFolderPane(state: NotesPanes, id: string): NotesPanes {
   const active = state.folders.find(pane => pane.id === state.activeFolder) ?? state.folders[0];

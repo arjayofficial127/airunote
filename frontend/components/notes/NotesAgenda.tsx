@@ -18,13 +18,14 @@ export function NotesAgenda({ model }: { model: BookWorkspaceModel }) {
   }
   const week: CalendarPlan = { kind: 'week', start: monday(date) };
   return <>
-    <div className="an-agenda-nav"><button aria-label="Previous day" onClick={() => model.setDate(addDays(date, -1))}>‹</button><strong>{formatDay(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</strong><button aria-label="Next day" onClick={() => model.setDate(next)}>›</button><button className="ab-link" onClick={() => model.setDate(today())}>Today</button></div>
+    <div className="an-agenda-nav"><button aria-label="Previous day" onClick={() => model.setDate(addDays(date, -1))}>‹</button><strong><span className="an-date-long">{formatDay(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span><span className="an-date-short">{formatDay(date, { weekday: 'short', day: 'numeric', month: 'short' })}</span></strong><button aria-label="Next day" onClick={() => model.setDate(next)}>›</button><button className="ab-link" onClick={() => model.setDate(today())}>Today</button></div>
     <div className="ab-scroll an-agenda" data-scroll-key="plan">
       {day(date, current ? 'Today' : formatDay(date, { weekday: 'long' }), groups.today, true)}
       {day(next, current ? 'Tomorrow' : formatDay(next, { weekday: 'long' }), groups.tomorrow)}
       <details className="an-agenda-group" open={groups.later.length > 0}><summary>Later <small>{groups.later.length}</small></summary>{groups.later.length ? rows(groups.later) : <p className="an-agenda-empty">Your future plans will appear here.</p>}</details>
       <DropZone id="notes-week" target={{ kind: 'plan', plan: week }}><details className="an-agenda-group" open={groups.week.length > 0}><summary>Sometime this week <small>{groups.week.length}</small></summary>{rows(groups.week)}<button className="ab-link" onClick={() => model.add(week)}>+ Add something for this week</button></details></DropZone>
       {groups.longer.length > 0 && <details className="an-agenda-group"><summary>Longer plans <small>{groups.longer.length}</small></summary>{rows(groups.longer)}</details>}
+      <DropZone id="plan-unplanned" target={{ kind: 'plan', plan: { kind: 'unplanned' } }}><details className="an-agenda-group"><summary>Unplanned <small>{model.filtered.filter(item => item.planning.plan.kind === 'unplanned').length}</small></summary>{rows(model.filtered.filter(item => item.planning.plan.kind === 'unplanned'))}<button className="ab-link" onClick={() => model.add({ kind: 'unplanned' })}>+ Add unplanned</button></details></DropZone>
       {groups.earlier.length > 0 && <details className="an-agenda-group"><summary>Earlier <small>{groups.earlier.length}</small></summary><p className="an-agenda-empty">Still on their original dates. Move them when you decide.</p>{rows(groups.earlier)}</details>}
     </div><footer><small>Singapore time · Plans stay where you place them.</small></footer>
   </>;

@@ -12,6 +12,8 @@ const widthsSchema = z.object({ inbox: z.number(), organizer: z.number(), calend
   .refine(value => Object.values(value).every(width => Number.isFinite(width) && width >= 180 && width <= 6000));
 export const workspaceLayoutSchema = z.object({
   preset: z.enum(['panels', 'cards']),
+  contextWidthMode: z.enum(['note', 'properties']).default('note'),
+  propertiesWidths: z.object({ panels: z.number().min(180).max(6000), cards: z.number().min(180).max(6000) }).default({ panels: 360, cards: 360 }),
   sizing: z.enum(['stable', 'auto']),
   navigation: z.enum(['folders', 'inbox']),
   folderChosen: z.boolean(),
@@ -19,7 +21,7 @@ export const workspaceLayoutSchema = z.object({
 });
 export type WorkspaceLayout = z.infer<typeof workspaceLayoutSchema>;
 export function initialWorkspaceLayout(): WorkspaceLayout {
-  return { preset: 'cards', sizing: 'stable', navigation: 'folders', folderChosen: false,
+  return { contextWidthMode: 'note', propertiesWidths: { panels: 360, cards: 360 }, preset: 'cards', sizing: 'stable', navigation: 'folders', folderChosen: false,
     widths: { panels: { ...defaultWidths.panels }, cards: { ...defaultWidths.cards } } };
 }
 

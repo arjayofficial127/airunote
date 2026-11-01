@@ -19,17 +19,17 @@ export function NotesFolderDetails({ notes, folder }: { notes: NotesModel; folde
     try { await update.mutateAsync({ folderId: folder.id, orgId: notes.model.orgId, userId: notes.model.userId, humanId: name.trim() }); }
     catch { /* Mutation error remains visible and the draft is retained. */ }
   }
-  return <section className="an-folder-details ab-scroll" aria-label="Folder details">
+  return <section className="an-folder-details ab-scroll" aria-label="Folder properties">
     <p className="an-breadcrumb">{folderPath(notes.model.folders, folder.id).map(value => folderLabel(value.humanId)).join(' / ')}</p>
     <h2>{folderLabel(folder.humanId)}</h2>
     <form onSubmit={event => { event.preventDefault(); void save(); }}>
-      <label>Folder name<input aria-label="Folder details name" value={root ? 'Workspace' : name} disabled={root || update.isPending} maxLength={255} required onChange={event => { setName(event.target.value); setFolderDirty(event.target.value.trim() !== folder.humanId); }} /></label>
-      {!root && <div className="an-folder-save"><button type="submit" disabled={!dirty || !name.trim() || update.isPending}>{update.isPending ? 'Saving…' : 'Save name'}</button><button type="button" disabled={!dirty || update.isPending} onClick={() => { setName(folder.humanId); update.reset(); }}>Discard changes</button></div>}
+      <label>Folder name<input aria-label="Folder properties name" value={root ? 'Workspace' : name} disabled={root || update.isPending} maxLength={255} required onChange={event => { setName(event.target.value); setFolderDirty(event.target.value.trim() !== folder.humanId); }} /></label>
+      {!root && dirty && <div className="an-folder-save"><button type="submit" disabled={!dirty || !name.trim() || update.isPending}>{update.isPending ? 'Saving…' : 'Save name'}</button><button type="button" disabled={!dirty || update.isPending} onClick={() => { setName(folder.humanId); update.reset(); }}>Discard changes</button></div>}
       {update.error && <p role="alert" className="ab-error">{update.error.message}</p>}
     </form>
     <label>Default view<select aria-label="Default Folder view" value={notes.defaultView(folder.id)} onChange={event => notes.setPanes(previous => ({ ...previous, defaults: { ...previous.defaults, [folder.id]: event.target.value } }))}>
-      <option value="box">Box</option><option value="list">List</option><option value="details">Details</option><option value="cards">Cards</option><option value="agenda">Plan</option><option value="calendar">Calendar</option>
-      {notes.availableViews.filter(view => view.folderId === folder.id).map(view => <option key={view.id} value={view.id}>{viewLabel(view, notes.availableViews)}</option>)}
+      <option value="box">Box</option><option value="list">List</option><option value="details">Details</option><option value="cards">Cards</option>
+      {notes.availableViews.filter(view => view.folderId === folder.id && view.type !== 'book').map(view => <option key={view.id} value={view.id}>{viewLabel(view, notes.availableViews)}</option>)}
     </select></label><small>Default view is remembered on this browser.</small>
     <dl><dt>Type</dt><dd>{folder.type}</dd><dt>Visibility</dt><dd>{folder.visibility}</dd>
       <dt>Notes</dt><dd>{notes.model.items.filter(item => item.folderId === folder.id).length}</dd>

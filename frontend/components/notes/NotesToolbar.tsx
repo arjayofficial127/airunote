@@ -9,7 +9,7 @@ import type { NotesModel } from './useNotesWorkspace';
 import { defaultWidths, presetNames } from './workspaceLayout';
 import { NotesIcon } from './NotesIcon';
 
-const labels = { inbox: 'Inbox', organizer: 'Folders', navigation: 'Folders | Inbox', calendar: 'Folder view', context: 'Note / Details' };
+const labels = { inbox: 'Inbox', organizer: 'Folders', navigation: 'Folders | Inbox', calendar: 'Folder view', context: 'Note / Properties' };
 
 /** Workspace controls live in the app rail; portals preserve the same editor/model. */
 export function NotesToolbar({ notes }: { notes: NotesModel }) {
