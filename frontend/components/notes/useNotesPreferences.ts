@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
-import { workspaceLayoutSchema } from './workspaceLayout';
+import { migrateWorkspacePreferences, workspaceLayoutSchema } from './workspaceLayout';
 import { panesSchema } from './panes';
 import { today } from '@/components/book/domain';
-const preferencesSchema = z.object({
+export const preferencesSchema = z.preprocess(migrateWorkspacePreferences, z.object({
+  folderContextId: z.string().nullable().default(null), contextTab: z.enum(['note', 'folder']).default('note'),
   workspace: workspaceLayoutSchema.optional().catch(undefined),
   panes: panesSchema.optional(),
   folderId: z.string(), focusId: z.string().nullable(), viewId: z.string(), asList: z.boolean(),
@@ -13,7 +14,7 @@ const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark']), pinned: z.boolean(), closed: z.boolean(), collapsedFolders: z.array(z.string()),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const parsed = new Date(`${value}T12:00:00Z`); return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value; }), period: z.enum(['day', 'week', 'sprint', 'month', 'year', 'unplanned']),
   plot: z.enum(['items', 'projects', 'hours']), hours: z.enum(['24', '12', '8']), savedOn: z.string(),
-});
+}));
 export type NotesPreferences = z.infer<typeof preferencesSchema>;
 export function useNotesPreferences(key: string, loading: boolean, value: Omit<NotesPreferences, 'savedOn'>, restore: (value: NotesPreferences) => void) {
   const [ready, setReady] = useState(false); const restored = useRef(false);

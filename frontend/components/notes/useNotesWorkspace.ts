@@ -3,7 +3,7 @@ import { readBookConfig } from '@/lib/book';
 import { useEffect, useMemo, useState } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { useBookWorkspace } from '@/components/book/useBookWorkspace';
-import { folderLabel, today } from '@/components/book/domain';
+import { today } from '@/components/book/domain';
 import { initialWorkspaceLayout, type WorkspacePreset } from './workspaceLayout';
 import { useNotesPreferences } from './useNotesPreferences';
 import { useNotesLifecycle } from './useNotesLifecycle';
@@ -29,20 +29,19 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   const [contextTab, setContextTab] = useState<'note' | 'folder'>('note');
   const [folderContextId, setFolderContextId] = useState<string | null>(null);
   const [folderDirty, setFolderDirty] = useState(false);
-  const [viewOpen, setViewOpen] = useState(false);
   const lifecycle = useNotesLifecycle({ ...base, dirty: base.dirty || folderDirty });
   function allowContextChange() {
     if (folderDirty) { base.actions.setError('Save or discard your folder changes first.'); return false; }
     return true;
   }
-  function revealNote() { setContextTab('note'); setViewOpen(false); base.reveal(); }
+  function revealNote() { setContextTab('note'); base.reveal(); }
   function open(item: Parameters<typeof base.open>[0]) {
     if (!allowContextChange() || base.dirty) { if (base.dirty) base.open(item); return; }
-    setContextTab('note'); setViewOpen(false); if (folderContextId) setFolderContextId(item.folderId); base.open(item);
+    setContextTab('note'); if (folderContextId) setFolderContextId(item.folderId); base.open(item);
   }
   function add(plan?: Parameters<typeof base.add>[0], folderId?: string) {
     if (!allowContextChange() || base.dirty) { if (base.dirty) base.add(plan, folderId); return; }
-    setContextTab('note'); setViewOpen(false); if (folderContextId) setFolderContextId(folderId ?? rootFolderId); base.add(plan, folderId);
+    setContextTab('note'); if (folderContextId) setFolderContextId(folderId ?? rootFolderId); base.add(plan, folderId);
   }
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
   const model = { ...base, open, add, reveal: revealNote, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };
@@ -65,7 +64,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   const following = panes.lenses.find(pane => !pane.frozen) ?? initialPanes(rootFolderId).lenses[0];
   const preferenceKey = `airunote:notes:${orgId}:${userId}`;
   const ready = useNotesPreferences(preferenceKey, model.loading, {
-    workspace, panes, folderId: activeFolder?.folderId ?? rootFolderId, focusId: activeFolder?.focusId ?? null,
+    workspace, folderContextId, contextTab, panes, folderId: activeFolder?.folderId ?? rootFolderId, focusId: activeFolder?.focusId ?? null,
     viewId: following?.viewId ?? 'agenda', asList: following?.asList ?? false,
     selectedId: model.selected?.id ?? null, visible: model.visible, expandedPanel: model.expandedPanel, theme, pinned,
     closed: model.closed, collapsedFolders: activeFolder?.collapsedFolders ?? [], date: model.date, period: model.period, plot: model.plot, hours: model.hours,
@@ -87,14 +86,16 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
       widths: { ...previous.widths, panels: { ...previous.widths.panels, organizer: restored.folderWidth ?? 360, calendar: restored.lensWidth ?? 460 } } }));
     const selection = model.items.find(item => item.id === saved.selectedId);
     model.setSelectedId(selection?.id ?? null);
-    model.setVisible(saved.visible.filter(panel => panel !== 'context' || !!selection || saved.pinned));
+    const restoredFolder = saved.folderContextId && ownsFolder(saved.folderContextId) ? saved.folderContextId : null;
+    setFolderContextId(restoredFolder); setContextTab(saved.contextTab === 'folder' && restoredFolder ? 'folder' : 'note');
+    model.setVisible(saved.visible);
     model.setExpandedPanel(saved.expandedPanel); model.setClosed(saved.closed);
   });
   function closeNote() {
     if (model.dirty) { model.actions.setError('Save or discard your note draft before closing.'); return; }
     model.setSelectedId(null); model.setCreating(false);
     if (folderContextId) setContextTab('folder');
-    if (!pinned && !folderContextId) model.setVisible(previous => previous.filter(panel => panel !== 'context'));
+    if (!folderContextId) { setPinned(false); model.setVisible(previous => previous.filter(panel => panel !== 'context')); }
     if (model.expandedPanel === 'context') model.setExpandedPanel(null);
   }
   function openFolderDetails(id: string) {
@@ -105,22 +106,29 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     if (!allowContextChange()) return;
     setFolderContextId(null); setContextTab('note');
     if (!model.selected && !model.creating) model.setExpandedPanel(null);
-    if (!model.selected && !model.creating && !pinned) model.setVisible(previous => previous.filter(panel => panel !== 'context'));
+    if (!model.selected && !model.creating) { setPinned(false); model.setVisible(previous => previous.filter(panel => panel !== 'context')); }
   }
   function followContext(id: string) {
     if (!allowContextChange()) return false;
-    setWorkspace(previous => ({ ...previous, folderChosen: true })); setViewOpen(true);
-    if (folderContextId) setFolderContextId(id);
-    if (!model.dirty && !model.creating && !pinned && workspace.preset !== 'panels') {
-      model.setSelectedId(null);
-      if (folderContextId) setContextTab('folder');
-      else model.setVisible(previous => previous.filter(panel => panel !== 'context'));
-    }
+    if (model.dirty) { model.actions.setError('Save or discard your note draft before opening a folder.'); return false; }
+    setWorkspace(previous => ({ ...previous, folderChosen: true }));
+    setFolderContextId(id); setContextTab('folder'); base.reveal();
+    if (!model.creating && !pinned) model.setSelectedId(null);
     return true;
   }
   function setPreset(preset: WorkspacePreset) {
     setWorkspace(previous => ({ ...previous, preset })); model.setExpandedPanel(null);
   }
+  function togglePanel(panel: 'navigation' | 'inbox' | 'organizer' | 'calendar' | 'context') {
+    if (panel === 'context' && (model.dirty || folderDirty)) { model.actions.setError('Save or discard your context changes first.'); return; }
+    const targets = panel === 'navigation' ? ['inbox', 'organizer'] : [panel];
+    model.setExpandedPanel(null);
+    model.setVisible(previous => {
+      const hiding = previous.some(value => targets.includes(value));
+      return (['inbox', 'organizer', 'calendar', 'context'] as const).filter(value => targets.includes(value) ? !hiding : previous.includes(value));
+    });
+  }
+  function showAllPanels() { model.setExpandedPanel(null); model.setVisible(['inbox', 'organizer', 'calendar', 'context']); }
   function scopedModel(id: string, ownFolder = false) {
     const path = folderPath(model.folders, id);
     const owner = (ownFolder ? path[path.length - 1] : [...path].reverse().find(folder => folder.metadata && 'airunoteBook' in folder.metadata)) ?? model.root;
@@ -141,7 +149,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function layout(group: 'folder' | 'lens', value: NotesPanes['folderLayout']) { setPanes(previous => ({ ...previous, [group === 'folder' ? 'folderLayout' : 'lensLayout']: value, [group === 'folder' ? 'folderWidth' : 'lensWidth']: null })); }
   const contentModel = scopedModel(model.selected?.folderId ?? model.draftPreview?.folderId ?? model.captureFolderId);
-  return { workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, viewOpen, setViewOpen, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
+  return { workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
     panes, setPanes, updateFolder, updateLens, layout, availableViews, upsertView, selectFolder, defaultView };
 }
 export type NotesModel = ReturnType<typeof useNotesWorkspace>;

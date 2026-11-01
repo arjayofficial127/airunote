@@ -56,11 +56,11 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
   const { model, selectedView } = notes;
   const agenda = !notes.asList && notes.viewId === 'agenda';
   const calendar = !notes.asList && (notes.viewId === 'calendar' || selectedView?.type === 'book');
-  return <section ref={section} className="an-browser-pane an-view" aria-label={`Lens pane ${index + 1}`} hidden={workspace.workspace.preset !== 'panels' && pane.frozen} data-frozen={pane.frozen} data-scroll-scope={`lens:${pane.id}:${pane.folderId}:${pane.viewId}`}>
+  return <section ref={section} className="an-browser-pane an-view" aria-label={`Lens pane ${index + 1}`} data-frozen={pane.frozen} data-scroll-scope={`lens:${pane.id}:${pane.folderId}:${pane.viewId}`}>
     <header><strong>{folderLabel(model.folders.find(folder => folder.id === pane.folderId)?.humanId)}</strong><small className="an-lens-status">{pane.frozen ? 'Frozen' : 'Following'}</small>
-      {pane.frozen ? <button aria-label={`Close frozen lens ${index + 1}`} onClick={close}>×</button> : <button hidden={workspace.workspace.preset !== 'panels'} disabled={workspace.panes.lenses.length >= 4} title="Keep this context and open another Following lens" onClick={() => workspace.setPanes(previous => freezeLens(previous, crypto.randomUUID()))}>Freeze</button>}
+      {pane.frozen ? <button aria-label={`Close frozen lens ${index + 1}`} onClick={close}>×</button> : <button disabled={workspace.panes.lenses.length >= 4} title="Keep this context and open another Following lens" onClick={() => workspace.setPanes(previous => freezeLens(previous, crypto.randomUUID()))}>Freeze</button>}
     </header>
-    <button className="ab-link an-view-folder-details" onClick={() => workspace.openFolderDetails(pane.folderId)}>Folder details</button><nav className="an-breadcrumb" aria-label="Current view folder"><button onClick={notes.root}>Workspace</button>{notes.path.filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => notes.selectFolder(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
+    <nav className="an-breadcrumb" aria-label="Current view folder"><button onClick={notes.root}>Workspace</button>{notes.path.filter(folder => folder.id !== model.rootFolderId).map(folder => <span key={folder.id}> / <button onClick={() => notes.selectFolder(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>
     <div className="an-view-controls"><select aria-label="Folder view" value={notes.viewId} onChange={event => { notes.setViewId(event.target.value); notes.setAsList(false); }}><option value="agenda">Plan</option><option value="calendar">Calendar</option><option value="list">List</option>{notes.availableViews.filter(view => view.folderId === notes.folderId).map(view => <option key={view.id} value={view.id}>{viewLabel(view, notes.availableViews)} · {view.type === 'book' ? 'Calendar' : view.type}</option>)}</select>
       {(selectedView || notes.asList) && <button aria-pressed={notes.asList} onClick={() => notes.setAsList(value => !value)}>{notes.asList ? 'Return to view' : 'Show as list'}</button>}<button onClick={() => notes.setCreatingView(true)}>+ Lens</button><button aria-expanded={notes.browse} onClick={() => notes.setBrowse(value => !value)}>Browse all</button>
     </div>
@@ -82,7 +82,7 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
 }
 
 export function NotesViews({ notes }: { notes: NotesModel }) {
-  return <PaneGroup title="Lenses" panel="calendar" model={notes.model} count={notes.workspace.preset === 'panels' ? notes.panes.lenses.length : 1} layout={notes.panes.lensLayout} onLayout={value => notes.layout('lens', value)} compact={notes.workspace.preset !== 'panels'} actions={null}>
+  return <PaneGroup title="Lenses" panel="calendar" model={notes.model} count={notes.panes.lenses.length} layout={notes.panes.lensLayout} onLayout={value => notes.layout('lens', value)} compact={notes.workspace.preset === 'cards' && notes.panes.lenses.length === 1} actions={null}>
     {notes.panes.lenses.map((pane, index) => <LensBrowser key={pane.id} workspace={notes} pane={pane} index={index}/>)}
   </PaneGroup>;
 }

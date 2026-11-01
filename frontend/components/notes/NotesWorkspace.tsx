@@ -5,6 +5,7 @@ import { NotesLifecycleDialog } from './NotesLifecycleDialog';
 import { BookDrag } from '@/components/book/BookDrag';
 import { useNotesFolderMove } from './useNotesFolderMove';
 import { NotesInbox } from './NotesInbox';
+import { useNotesPopovers } from './useNotesPopovers';
 import { useNotesScroll } from './useNotesScroll';
 import { panels, type Panel } from '@/components/book/domain';
 import { NotesFolders } from './NotesFolders';
@@ -22,14 +23,15 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
   const notes = useNotesWorkspace(rootFolderId, orgId, userId);
   const { model, workspace } = notes;
   const moveFolder = useNotesFolderMove(model);
+  const container = useRef<HTMLDivElement>(null); useNotesPopovers(container);
   const panes = useRef<HTMLDivElement>(null); const tabId = useId();
-  const focused = workspace.preset !== 'panels';
+  const focused = workspace.preset === 'cards';
   const contextVisible = model.visible.includes('context');
-  const showView = workspace.preset !== 'create' || !contextVisible || notes.viewOpen;
-  const expanded = focused ? model.expandedPanel : model.expandedPanel && model.visible.includes(model.expandedPanel) ? model.expandedPanel : null;
+  const expanded = model.expandedPanel && (focused && (model.expandedPanel === 'inbox' || model.expandedPanel === 'organizer')
+    ? model.visible.some(panel => panel === 'inbox' || panel === 'organizer') : model.visible.includes(model.expandedPanel)) ? model.expandedPanel : null;
   const visible: Panel[] = focused
     ? expanded ? [expanded === 'inbox' ? 'organizer' : expanded]
-      : ['organizer', ...(showView ? ['calendar' as const] : []), ...(contextVisible ? ['context' as const] : [])]
+      : [...(model.visible.some(panel => panel === 'inbox' || panel === 'organizer') ? ['organizer' as const] : []), ...model.visible.filter(panel => panel === 'calendar' || panel === 'context')]
     : model.shownPanels;
   const sizing = useWorkspaceSizing(notes, panes, visible);
   // Keep the same mounted editors across presets and tabs to preserve drafts.
@@ -38,23 +40,24 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
   const rememberScroll = useNotesScroll(panes, notes.preferenceKey, notes.ready, scopeKey);
   function reveal(panel: Panel) {
     if (focused && (panel === 'organizer' || panel === 'inbox')) notes.setWorkspace(previous => ({ ...previous, navigation: panel === 'inbox' ? 'inbox' : 'folders' }));
-    if (panel === 'calendar') notes.setViewOpen(true);
+    const targets = focused && (panel === 'inbox' || panel === 'organizer') ? ['inbox', 'organizer'] : [panel];
+    model.setVisible(previous => panels.filter(value => previous.includes(value) || targets.includes(value)));
     requestAnimationFrame(() => {
       const target = panes.current?.querySelector<HTMLElement>('[data-workspace-pane="' + (focused && panel === 'inbox' ? 'organizer' : panel) + '"]');
       if (panes.current && target) panes.current.scrollTo({ left: panes.current.scrollLeft + target.getBoundingClientRect().left - panes.current.getBoundingClientRect().left, behavior: 'smooth' });
     });
   }
   useEffect(() => {
-    if (model.selected || model.creating || notes.folderContextId) reveal('context');
+    if (contextVisible && (model.selected || model.creating || notes.folderContextId)) reveal('context');
     // Reveal for explicit context changes, not while resizing or writing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model.selected?.id, model.creating, model.contextReveal, notes.folderContextId, model.expandedPanel, sizing.compact]);
   function handle(panel: Panel, label: string) {
-    return visible.length > 1 && <PaneResize label={label} width={sizing.widths[panel]} min={sizing.minimum[panel]} onResize={width => sizing.resize(panel, width)} />;
+    return !expanded && visible.includes(panel) && (workspace.sizing === 'stable' || visible.length > 1) && <PaneResize label={label} width={sizing.widths[panel]} min={sizing.minimum[panel]} onResize={width => sizing.resize(panel, width)} />;
   }
   const inboxShown = focused ? workspace.navigation === 'inbox' : visible.includes('inbox');
   const foldersShown = focused ? workspace.navigation === 'folders' : visible.includes('organizer');
-  return <div className="airunote-book airunote-notes" data-theme={notes.theme} data-workspace={workspace.preset} role="region" aria-label="Notes workspace">
+  return <div ref={container} className="airunote-book airunote-notes" data-theme={notes.theme} data-workspace={workspace.preset} role="region" aria-label="Notes workspace">
     <NotesToolbar notes={notes} />
     {model.actions.error && <p role="alert" className="ab-error">{model.actions.error}<button onClick={() => model.actions.setError(null)}>Dismiss</button></p>}
     {model.actions.notice && <p role="status" className="ab-notice">{model.actions.notice}</p>}
@@ -89,6 +92,6 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
       </BookDrag>
     </ItemActionsContext.Provider>
     <NotesLifecycleDialog notes={notes} />
-    {!visible.length && <div className="ab-all-hidden"><button onClick={() => model.setVisible([...panels])}>Show all panels</button></div>}
+    {!visible.length && <div className="ab-all-hidden"><button onClick={notes.showAllPanels}>Show all panels</button></div>}
   </div>;
 }

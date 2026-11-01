@@ -57,8 +57,8 @@ export function NotesInbox({ model }: { model: BookWorkspaceModel }) {
     <div className="an-inbox-caption"><small>{review ? `${pending.length} left to decide` : 'To decide'}</small>{(pending.length > 0 || review) && <button className="ab-link" onClick={() => { setReview(value => !value); setProcessed(false); }}>{review ? 'Finish review' : 'Review'}</button>}</div>
     <DropZone id="an-inbox-drop" scrollKey="inbox" target={{ kind: 'inbox' }} className="ab-scroll ab-inbox-list">
       {shown.map((item, index) => <div className="an-inbox-card" key={item.id}>
-        <BookItemRow item={item} model={model} showActions={processed} />
-        {!processed && <><button className="an-decide-toggle" aria-label={`Decide on ${item.name}`} aria-expanded={review || activeId === item.id || (!activeId && index === 0)} onClick={() => setActiveId(activeId === item.id ? 'none' : item.id)}>•••</button>
+        <BookItemRow item={item} model={model} />
+        {!processed && <><button className="an-decide-toggle" aria-label={`Decide on ${item.name}`} aria-expanded={review || activeId === item.id || (!activeId && index === 0)} onClick={() => setActiveId(activeId === item.id ? 'none' : item.id)}>{review || activeId === item.id || (!activeId && index === 0) ? 'Hide decisions' : 'Review'}</button>
           {(review || activeId === item.id || (!activeId && index === 0)) && <InboxDecision item={item} model={model} />}</>}
       </div>)}
       {!items.length && <p className="ab-empty">{model.query ? 'No thoughts match your search.' : review ? 'All caught up. Your plan is ready.' : 'Nothing waiting. Capture a thought below.'}</p>}
