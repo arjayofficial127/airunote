@@ -1,10 +1,11 @@
 'use client';
 import { readBookConfig } from '@/lib/book';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { useBookWorkspace } from '@/components/book/useBookWorkspace';
 import { folderLabel, today } from '@/components/book/domain';
 import { useNotesPreferences } from './useNotesPreferences';
+import { useNotesLifecycle } from './useNotesLifecycle';
 import { initialPanes, followFolder, type FolderPane, type LensPane, type NotesPanes } from './panes';
 import type { AiruFolder, FolderViewSummary } from '@/components/airunote/types';
 
@@ -23,11 +24,20 @@ export function viewLabel(view: FolderViewSummary, views: FolderViewSummary[]) {
 }
 export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: string) {
   const base = useBookWorkspace(rootFolderId, orgId, userId, true);
+  const lifecycle = useNotesLifecycle(base);
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
-  const model = { ...base, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };
+  const model = { ...base, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };
   const views = useAirunoteStore(state => state.folderViews);
   const upsertView = useAirunoteStore(state => state.upsertFolderView);
   const [panes, setPanes] = useState(() => initialPanes(rootFolderId));
+  useEffect(() => {
+    if (base.loading) return;
+    const available = new Set(base.folders.map(folder => folder.id));
+    setPanes(previous => {
+      if (previous.folders.every(pane => available.has(pane.folderId) && (!pane.focusId || available.has(pane.focusId))) && previous.lenses.every(pane => available.has(pane.folderId))) return previous;
+      return { ...previous, folders: previous.folders.map(pane => ({ ...pane, folderId: available.has(pane.folderId) ? pane.folderId : rootFolderId, focusId: pane.focusId && available.has(pane.focusId) ? pane.focusId : null })), lenses: previous.lenses.map(pane => available.has(pane.folderId) ? pane : { ...pane, folderId: rootFolderId, viewId: 'list', asList: false }) };
+    });
+  }, [base.folders, base.loading, rootFolderId]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [pinned, setPinned] = useState(false);
   const availableViews = useMemo(() => views.filter(view => model.folders.some(folder => folder.id === view.folderId)), [views, model.folders]);
@@ -84,7 +94,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function layout(group: 'folder' | 'lens', value: NotesPanes['folderLayout']) { setPanes(previous => ({ ...previous, [group === 'folder' ? 'folderLayout' : 'lensLayout']: value, [group === 'folder' ? 'folderWidth' : 'lensWidth']: null })); }
   const contentModel = scopedModel(model.selected?.folderId ?? model.draftPreview?.folderId ?? model.captureFolderId);
-  return { ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
+  return { lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
     panes, setPanes, updateFolder, updateLens, layout, availableViews, upsertView, selectFolder, defaultView };
 }
 export type NotesModel = ReturnType<typeof useNotesWorkspace>;

@@ -1,4 +1,5 @@
 'use client';
+import { activeFolders } from '@/lib/airunoteLifecycle';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { readBookConfig, type CalendarPlan, type WorkspaceView } from '@/lib/book';
@@ -9,8 +10,8 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
   const store = useAirunoteStore(); const root = store.foldersById.get(rootFolderId);
   const folders = useMemo(() => Array.from(store.foldersById.values()).filter(folder => folder.orgId === orgId && folder.ownerUserId === userId), [store.foldersById, orgId, userId]);
   const ids = useMemo(() => subtree(folders, rootFolderId), [folders, rootFolderId]);
-  const scopedFolders = useMemo(() => folders.filter(folder => ids.has(folder.id)), [folders, ids]);
-  const items = useMemo(() => bookItems(Array.from(store.documentsById.values()), ids, userId), [store.documentsById, ids, userId]);
+  const scopedFolders = useMemo(() => activeFolders(folders.filter(folder => ids.has(folder.id))), [folders, ids]);
+  const items = useMemo(() => bookItems(Array.from(store.documentsById.values()), new Set(scopedFolders.map(folder => folder.id)), userId), [store.documentsById, scopedFolders, userId]);
   const parsedConfig = readBookConfig(root?.metadata);
   const config = parsedConfig ?? { version: 1 as const, revision: 0, sprints: [], views: [], templates: [] };
   const actions = useBookActions(orgId, userId, rootFolderId, config);
@@ -56,6 +57,6 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
     window.addEventListener('beforeunload', unload); document.addEventListener('click', navigate, true);
     return () => { window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigate, true); };
   }, [dirty, draftFlags.length]);
-  return { natural, root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, draftPreview, setDraftPreview, draftKey, reveal, dirty, setDirty, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
+  return { natural, root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, draftPreview, setDraftPreview, draftKey, reveal, dirty, setDirty, hasDrafts: draftFlags.length > 0, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
 }
 export type BookWorkspaceModel = ReturnType<typeof useBookWorkspace>;

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { ItemActionsButton } from '@/components/book/ItemActionsContext';
 import { ContextPane } from '@/components/book/ContextPane';
 import { PaneHeading } from '@/components/book/PaneHeading';
 import { folderLabel, planLabel } from '@/components/book/domain';
@@ -34,7 +35,7 @@ export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWor
     <div className="ab-scroll an-reading" data-scroll-key="note">{!id ? <div className="an-content-empty"><NotesIcon name="note" width="36" height="36" /><h3>Choose a note to start.</h3><p>Select a note in Inbox, Folders or Lenses. Its text and next steps appear here.</p><button className="ab-link" onClick={() => model.add()}>Write a new note</button></div> : !document ? <div role={error ? 'alert' : 'status'}>{error ?? 'Opening note…'}{error && <button onClick={() => void load(id, true)}>Retry</button>}</div> : <>
       <div className="an-reading-folder"><NotesIcon name="folder" />{folderLabel(model.folders.find(folder => folder.id === document.folderId)?.humanId)}</div><h1>{document.name}</h1>
       {item && <p className="an-note-meta"><span className="an-note-kind">{item.planning.kind}</span><span>·</span><span>{item.planning.plan.kind === 'unplanned' ? 'Not scheduled' : planLabel(item.planning.plan, model.planningConfig)}</span>{item.planning.status !== 'open' && <span>· {item.planning.status}</span>}</p>}
-      <div className="an-note-actions"><button className="ab-link" onClick={() => details('folder')}><NotesIcon name="folder" />Move to folder</button><button className="ab-link" onClick={() => details('planning')}><NotesIcon name="calendar" />Schedule</button></div>
+      <div className="an-note-actions">{item && <ItemActionsButton item={item} disabled={model.actions.busy || model.dirty} />}<button className="ab-link" onClick={() => details('folder')}><NotesIcon name="folder" />Move to folder</button><button className="ab-link" onClick={() => details('planning')}><NotesIcon name="calendar" />Schedule</button></div>
       <NotesWriting key={id} model={model} document={document} />
       {item && <>
         {item.planning.checklist.length > 0 && <section className="an-reading-steps"><h2>Next steps <small>{item.planning.checklist.filter(step => step.done).length}/{item.planning.checklist.length}</small></h2>{item.planning.checklist.map(step => <label key={step.id} data-done={step.done}><input type="checkbox" checked={step.done} disabled={model.actions.busy || model.dirty || item.invalidPlanning} onChange={event => {

@@ -8,6 +8,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { folderState } from '@/lib/airunoteLifecycle';
 import type { AiruFolder, AiruDocumentMetadata, AiruDocument, FolderViewSummary } from '../types';
 
 // Layer 1: Metadata Store State
@@ -363,14 +364,14 @@ export const useAirunoteStore = create<AirunoteStore>((set, get) => ({
     const childIds = childrenByParentId.get(parentFolderId) || [];
     return childIds
       .map((id) => foldersById.get(id))
-      .filter((folder): folder is AiruFolder => folder !== undefined);
+      .filter((folder): folder is AiruFolder => folder !== undefined && folderState(folder) === 'active');
   },
 
   getDocumentsByFolder: (folderId) => {
     const { documentsById } = get();
     const documents: AiruDocumentMetadata[] = [];
     documentsById.forEach((doc) => {
-      if (doc.folderId === folderId) {
+      if (doc.folderId === folderId && doc.state === 'active') {
         documents.push(doc);
       }
     });

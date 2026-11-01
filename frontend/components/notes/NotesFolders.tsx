@@ -55,6 +55,7 @@ function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; 
           <button ref={titleButton} className="an-folder-select" onClick={() => context.select(folder.id)} title={folderLabel(folder.humanId)}><NotesIcon name="folder"/><span>{folderLabel(folder.humanId)}</span>{items.length > 0 && <small>{items.length}</small>}</button>
           {pane.folderId === folder.id && <QuickAdd id={folder.id} context={context}/>}
           <button className="an-rename-folder" title="Rename folder" aria-label={`Rename ${folderLabel(folder.humanId)}`} onClick={() => setRenaming(true)}><NotesIcon name="edit" width="16" height="16"/></button>
+          <button className="an-item-actions" aria-label={`Actions for folder ${folderLabel(folder.humanId)}`} title="Archive or delete folder" disabled={model.actions.busy} onClick={() => notes.lifecycle.choose({ kind: 'folder', item: folder })}>⋯</button>
           <button className="an-focus-folder" title="Focus on this folder" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => context.focus(folder.id)}>↗</button>
         </>}
       </div>
@@ -107,7 +108,7 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
 }
 export function NotesFolders({ notes }: { notes: NotesModel }) {
   return <PaneGroup title="Folders" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} width={notes.panes.folderWidth} onWidth={folderWidth => notes.setPanes(previous => ({ ...previous, folderWidth }))}
-    actions={<button disabled={notes.panes.folders.length >= 4} onClick={() => notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()))}>+ Pane</button>}>
+    actions={<><button onClick={() => notes.lifecycle.choose(null, true)}>Archive / Trash</button><button disabled={notes.panes.folders.length >= 4} onClick={() => notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()))}>+ Pane</button></>}>
     {notes.panes.folders.map((pane, index) => <FolderBrowser key={pane.id} notes={notes} pane={pane} index={index}/>)}
   </PaneGroup>;
 }

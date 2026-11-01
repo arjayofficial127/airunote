@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useRef, type CSSProperties } from 'react';
+import { ItemActionsContext } from '@/components/book/ItemActionsContext';
+import { NotesLifecycleDialog } from './NotesLifecycleDialog';
 import { BookDrag } from '@/components/book/BookDrag';
 import { useNotesFolderMove } from './useNotesFolderMove';
 import { NotesInbox } from './NotesInbox';
@@ -37,9 +39,10 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
     {model.actions.error && <p role="alert" className="ab-error">{model.actions.error}<button onClick={() => model.actions.setError(null)}>Dismiss</button></p>}
     {model.actions.notice && <p role="status" className="ab-notice">{model.actions.notice}</p>}
     {model.configError && <p role="alert" className="ab-error">Existing planning settings could not be read. They have been preserved.</p>}
-    <BookDrag model={model} onMoveFolder={moveFolder}><div ref={panes} className="ab-panes" style={paneStyle} data-count={model.shownPanels.length} data-panels={model.shownPanels.join(',')} onScrollCapture={rememberScroll} role="group" aria-label="Notes workflow panels" tabIndex={0}>
+    <ItemActionsContext.Provider value={item => notes.lifecycle.choose({ kind: 'note', item })}><BookDrag model={model} onMoveFolder={moveFolder}><div ref={panes} className="ab-panes" style={paneStyle} data-count={model.shownPanels.length} data-panels={model.shownPanels.join(',')} onScrollCapture={rememberScroll} role="group" aria-label="Notes workflow panels" tabIndex={0}>
       <NotesInbox model={model} /><NotesFolders notes={notes} /><NotesViews notes={notes} /><NotesContent model={notes.contentModel} pinned={notes.pinned} onPin={() => notes.setPinned(value => !value)} onClose={notes.closeNote} />
-    </div></BookDrag>
+    </div></BookDrag></ItemActionsContext.Provider>
+    <NotesLifecycleDialog notes={notes} />
     {!model.visible.length && <div className="ab-all-hidden"><button onClick={() => model.setVisible([...panels])}>Show all panels</button></div>}
   </div>;
 }
