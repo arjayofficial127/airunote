@@ -106,9 +106,15 @@ function FolderBrowser({ notes, pane, index }: { notes: NotesModel; pane: Folder
     {draft.draft && <button className="ab-link an-draft-location" onClick={() => { focus(draft.draft?.parentId === model.rootFolderId ? null : draft.draft?.parentId ?? null); if (draft.draft) revealFolder(draft.draft.parentId); }}>New folder draft · {folderLabel(model.folders.find(folder => folder.id === draft.draft?.parentId)?.humanId)}</button>}
   </section>;
 }
+export function AddFolderPaneButton({ notes }: { notes: NotesModel }) {
+  return <button className="an-add-folder-pane" type="button" title="Add folders pane" disabled={notes.panes.folders.length >= 4} onClick={() => {
+    if (notes.workspace.preset === 'cards') notes.setWorkspace(previous => ({ ...previous, navigation: 'folders' }));
+    notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()));
+  }}>+ Pane</button>;
+}
 export function NotesFolders({ notes }: { notes: NotesModel }) {
   return <PaneGroup title="Folders" panel="organizer" model={notes.model} count={notes.panes.folders.length} layout={notes.panes.folderLayout} onLayout={value => notes.layout('folder', value)} compact={notes.workspace.preset === 'cards' && notes.panes.folders.length === 1}
-    actions={<><button disabled={notes.panes.folders.length >= 4} onClick={() => notes.setPanes(previous => addFolderPane(previous, crypto.randomUUID()))}>+ Pane</button></>}>
+    actions={notes.workspace.preset === 'panels' && <AddFolderPaneButton notes={notes} />}>
     {notes.panes.folders.map((pane, index) => <FolderBrowser key={pane.id} notes={notes} pane={pane} index={index}/>)}
   </PaneGroup>;
 }

@@ -8,7 +8,7 @@ import { NotesInbox } from './NotesInbox';
 import { useNotesPopovers } from './useNotesPopovers';
 import { useNotesScroll } from './useNotesScroll';
 import { panels, type Panel } from '@/components/book/domain';
-import { NotesFolders } from './NotesFolders';
+import { AddFolderPaneButton, NotesFolders } from './NotesFolders';
 import { NotesViews } from './NotesViews';
 import { NotesContext } from './NotesContext';
 import { useNotesWorkspace } from './useNotesWorkspace';
@@ -67,10 +67,13 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
       <BookDrag model={model} onMoveFolder={moveFolder}>
         <div ref={panes} className="ab-panes an-workspace-panes" style={sizing.style} onScrollCapture={rememberScroll} role="group" aria-label="Notes workflow panels" tabIndex={0}>
           <div className="an-navigation" data-workspace-pane={focused ? 'organizer' : undefined} hidden={focused && !visible.includes('organizer')}>
-            <div className="an-navigation-tabs" role="tablist" aria-label="Navigation tabs" hidden={!focused}>
-              {(['folders', 'inbox'] as const).map(tab => <button key={tab} id={tabId + '-' + tab} role="tab" aria-selected={workspace.navigation === tab} aria-controls={tabId + '-' + tab + '-panel'}
-                onClick={() => notes.setWorkspace(previous => ({ ...previous, navigation: tab }))}
-                onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const next = tab === 'folders' ? 'inbox' : 'folders'; notes.setWorkspace(previous => ({ ...previous, navigation: next })); document.getElementById(tabId + '-' + next)?.focus(); } }}>{tab === 'folders' ? 'Folders' : 'Inbox'}</button>)}
+            <div className="an-navigation-header" hidden={!focused}>
+              <div className="an-navigation-tabs" role="tablist" aria-label="Navigation tabs">
+                {(['folders', 'inbox'] as const).map(tab => <button key={tab} id={tabId + '-' + tab} role="tab" aria-selected={workspace.navigation === tab} aria-controls={tabId + '-' + tab + '-panel'}
+                  onClick={() => notes.setWorkspace(previous => ({ ...previous, navigation: tab }))}
+                  onKeyDown={event => { if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') { event.preventDefault(); const next = tab === 'folders' ? 'inbox' : 'folders'; notes.setWorkspace(previous => ({ ...previous, navigation: next })); document.getElementById(tabId + '-' + next)?.focus(); } }}>{tab === 'folders' ? 'Folders' : 'Inbox'}</button>)}
+              </div>
+              <AddFolderPaneButton notes={notes} />
             </div>
             <div className="an-layout-slot an-inbox-slot" id={tabId + '-inbox-panel'} role={focused ? 'tabpanel' : undefined} aria-labelledby={focused ? tabId + '-inbox' : undefined} data-workspace-pane={!focused ? 'inbox' : undefined} hidden={!inboxShown}>
               <NotesInbox model={rendered.model} />{!focused && handle('inbox', 'Inbox')}
