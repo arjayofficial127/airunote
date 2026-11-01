@@ -5,7 +5,7 @@ import { panels, type Panel } from '@/components/book/domain';
 import type { BookWorkspaceModel } from '@/components/book/useBookWorkspace';
 import { NotesIcon } from './NotesIcon';
 
-const labels: Record<Panel, string> = { inbox: 'Inbox', organizer: 'Folders', calendar: 'Plan', context: 'Note' };
+const labels: Record<Panel, string> = { inbox: 'Inbox', organizer: 'Folders', calendar: 'Lenses', context: 'Note' };
 
 export function NotesToolbar({ model, theme, onTheme }: { model: BookWorkspaceModel; theme: 'light' | 'dark'; onTheme: () => void }) {
   function toggle(panel: Panel) {

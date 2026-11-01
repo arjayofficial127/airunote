@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { panesSchema } from './panes';
 import { today } from '@/components/book/domain';
 const preferencesSchema = z.object({
+  panes: panesSchema.optional(),
   folderId: z.string(), focusId: z.string().nullable(), viewId: z.string(), asList: z.boolean(),
   selectedId: z.string().nullable(), visible: z.array(z.enum(['inbox', 'organizer', 'calendar', 'context'])),
   expandedPanel: z.enum(['inbox', 'organizer', 'calendar', 'context']).nullable(),

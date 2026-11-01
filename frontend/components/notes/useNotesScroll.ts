@@ -2,6 +2,7 @@
 import { useLayoutEffect, useRef, type RefObject, type UIEvent } from 'react';
 export function useNotesScroll(container: RefObject<HTMLDivElement>, storageKey: string, ready: boolean, location: string) {
   const positions = useRef<Record<string, { top: number; left: number }>>({});
+  const positionKey = (element: HTMLElement, key: string) => `${element.closest<HTMLElement>('[data-scroll-scope]')?.dataset.scrollScope ?? (key.startsWith('folders:') || key === 'inbox' ? 'shared' : location)}:${key}`;
   const active = useRef(false);
   useLayoutEffect(() => {
     if (!ready) return;
@@ -15,18 +16,20 @@ export function useNotesScroll(container: RefObject<HTMLDivElement>, storageKey:
     const frame = requestAnimationFrame(() => {
       for (const element of [container.current, ...Array.from(container.current?.querySelectorAll<HTMLElement>('[data-scroll-key]') ?? [])]) {
         if (!element) continue;
-        const key = element.dataset.scrollKey ?? 'panes'; const position = positions.current[`${key === 'inbox' || key === 'folders' ? 'shared' : location}:${key}`];
+        const key = element.dataset.scrollKey ?? 'panes'; const position = positions.current[positionKey(element, key)];
         if (position) element.scrollTo({ top: position.top, left: position.left });
       }
       active.current = true;
     });
     return () => cancelAnimationFrame(frame);
+    // The scope key derives only from location and the mounted pane DOM.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [container, storageKey, ready, location]);
   return (event: UIEvent<HTMLDivElement>) => {
     if (!active.current || !(event.target instanceof HTMLElement)) return;
     const element = event.target; const key = element === container.current ? 'panes' : element.dataset.scrollKey;
     if (!key) return;
-    positions.current[`${key === 'inbox' || key === 'folders' ? 'shared' : location}:${key}`] = { top: element.scrollTop, left: element.scrollLeft };
+    positions.current[positionKey(element, key)] = { top: element.scrollTop, left: element.scrollLeft };
     try { sessionStorage.setItem(`${storageKey}:scroll`, JSON.stringify(positions.current)); } catch { /* Keep scrolling without persistence. */ }
   };
 }
