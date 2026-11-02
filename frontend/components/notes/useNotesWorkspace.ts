@@ -1,4 +1,5 @@
 'use client';
+import { useNotesEditors } from './useNotesEditors';
 import { readBookConfig } from '@/lib/book';
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
@@ -32,7 +33,10 @@ export function viewOptionLabel(view: FolderViewSummary, views: FolderViewSummar
   return name.toLowerCase() === type.toLowerCase() ? name : `${name} · ${type}`;
 }
 export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: string) {
-  const base = useBookWorkspace(rootFolderId, orgId, userId, true);
+  const editors = useNotesEditors(rootFolderId);
+  const base = useBookWorkspace(rootFolderId, orgId, userId, true, editors.selection);
+  const { reconcile } = editors;
+  useEffect(() => { if (!base.loading) reconcile(base.items); }, [base.items, base.loading, reconcile]);
   const [workspace, setWorkspace] = useState(initialWorkspaceLayout);
   const [contextTab, setContextTab] = useState<'note' | 'folder'>('note');
   const [folderContextId, setFolderContextId] = useState<string | null>(null);
@@ -45,14 +49,14 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function revealNote() { setContextTab('note'); base.reveal(); }
   function open(item: Parameters<typeof base.open>[0]) {
-    if (!allowContextChange() || base.dirty) { if (base.dirty) base.open(item); return; }
+    if (!allowContextChange()) return;
     if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
-    setContextTab('note'); if (folderContextId) setFolderContextId(item.folderId); base.open(item);
+    setContextTab('note'); editors.open(item); base.reveal();
   }
   function add(plan?: Parameters<typeof base.add>[0], folderId?: string) {
-    if (!allowContextChange() || base.dirty) { if (base.dirty) base.add(plan, folderId); return; }
+    if (!allowContextChange()) return;
     if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
-    setContextTab('note'); if (folderContextId) setFolderContextId(folderId ?? rootFolderId); base.add(plan, folderId);
+    setContextTab('note'); editors.add(plan, folderId); base.reveal();
   }
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
   const model = { ...base, open, add, reveal: revealNote, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };
@@ -80,7 +84,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   const following = panes.lenses.find(pane => !pane.frozen) ?? panes.lenses[0];
   const preferenceKey = `airunote:notes:${orgId}:${userId}`;
   const ready = useNotesPreferences(preferenceKey, model.loading, {
-    workspace, folderContextId, contextTab, panes, folderId: activeFolder?.folderId ?? rootFolderId, focusId: activeFolder?.focusId ?? null,
+    editors: editors.preferences, workspace, folderContextId, contextTab, panes, folderId: activeFolder?.folderId ?? rootFolderId, focusId: activeFolder?.focusId ?? null,
     viewId: following?.viewId ?? 'agenda', asList: following?.asList ?? false,
     selectedId: model.selected?.id ?? null, visible: model.visible, expandedPanel: model.expandedPanel, theme, pinned,
     closed: model.closed, collapsedFolders: activeFolder?.collapsedFolders ?? [], date: model.date, period: model.period, plot: model.plot, hours: model.hours,
@@ -101,22 +105,17 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     else setWorkspace(previous => ({ ...previous, folderChosen: saved.folderId !== rootFolderId,
       widths: { ...previous.widths, panels: { ...previous.widths.panels, organizer: restored.folderWidth ?? 360, calendar: restored.lensWidth ?? 460 } } }));
     const selection = model.items.find(item => item.id === saved.selectedId);
-    model.setSelectedId(selection?.id ?? null);
+    if (saved.editors) editors.restore(saved.editors, model.items);
+    else if (selection) editors.open(selection);
     const restoredFolder = saved.folderContextId && ownsFolder(saved.folderContextId) ? saved.folderContextId : null;
     setFolderContextId(restoredFolder); setContextTab(saved.contextTab === 'folder' && restoredFolder ? 'folder' : 'note');
     model.setVisible(saved.visible);
     model.setExpandedPanel(saved.expandedPanel); model.setClosed(saved.closed);
   });
-  function closeNote() {
-    if (model.dirty) { model.actions.setError('Save or discard your note draft before closing.'); return; }
-    model.setSelectedId(null); model.setCreating(false);
-    if (folderContextId) setContextTab('folder');
-    if (!folderContextId) { setPinned(false); model.setVisible(previous => previous.filter(panel => panel !== 'context')); }
-    if (model.expandedPanel === 'context') model.setExpandedPanel(null);
-  }
+  function closeNote() { if (editors.state.active) editors.requestClose(editors.state.active); }
   function openFolderDetails(id: string) {
     if (!allowContextChange() || !model.folders.some(folder => folder.id === id)) return;
-    if (model.dirty || model.hasDrafts) { model.actions.setError('Save or discard your edits first.'); return; }
+    if (model.hasDrafts) { model.actions.setError('Save or discard your folder or view edits first.'); return; }
     if (!model.visible.includes('context') || (!model.selected && !folderContextId)) setWorkspace(previous => ({ ...previous, contextWidthMode: 'properties' }));
     setFolderContextId(id); setContextTab('folder'); base.reveal();
   }
@@ -128,20 +127,16 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function followContext(id: string) {
     if (!allowContextChange()) return false;
-    if (model.dirty) { model.actions.setError('Save or discard your note draft before opening a folder.'); return false; }
     setWorkspace(previous => ({ ...previous, folderChosen: true }));
     setSpaceReveal(value => value + 1);
-    if (!pinned) { setFolderContextId(null); setContextTab('note'); model.setVisible(previous => previous.filter(panel => panel !== 'context')); }
     model.setVisible(previous => previous.includes('calendar') ? previous : [...previous, 'calendar']);
     model.setExpandedPanel(null);
-    if (!model.creating && !pinned) model.setSelectedId(null);
     return true;
   }
   function setPreset(preset: WorkspacePreset) {
     setWorkspace(previous => ({ ...previous, preset })); model.setExpandedPanel(null);
   }
   function togglePanel(panel: 'navigation' | 'inbox' | 'organizer' | 'calendar' | 'context') {
-    if (panel === 'context' && (model.dirty || folderDirty)) { model.actions.setError('Save or discard your context changes first.'); return; }
     const targets = panel === 'navigation' ? ['inbox', 'organizer'] : [panel];
     model.setExpandedPanel(null);
     model.setVisible(previous => {
@@ -162,7 +157,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function defaultView(id: string) { const preferred = panes.defaults[id]; if (preferred && (['list', 'details', 'box', 'cards'].includes(preferred) || availableViews.some(view => view.id === preferred && view.folderId === id && view.type !== 'book'))) return preferred; return availableViews.find(view => view.folderId === id && view.isDefault && view.type !== 'book')?.id ?? 'box'; }
   function allowDestinationChange() {
-    if (model.dirty || model.hasDrafts || folderDirty) { model.actions.setError('Save or discard your edits before switching destinations.'); return false; }
+    if (model.hasDrafts || folderDirty) { model.actions.setError('Save or discard your edits before switching destinations.'); return false; }
     return true;
   }
   function showDestination() { model.actions.setError(null); model.setExpandedPanel(null); model.setVisible(previous => previous.includes('calendar') ? previous : [...previous, 'calendar']); setWorkspace(previous => ({ ...previous, folderChosen: true })); setSpaceReveal(value => value + 1); }
@@ -202,7 +197,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function layout(group: 'folder' | 'lens', value: NotesPanes['folderLayout']) { setPanes(previous => ({ ...previous, [group === 'folder' ? 'folderLayout' : 'lensLayout']: value, [group === 'folder' ? 'folderWidth' : 'lensWidth']: null })); }
   const contentModel = scopedModel(model.selected?.folderId ?? model.draftPreview?.folderId ?? model.captureFolderId);
-  return { activateDestination, openTool, closeResource, moveResource, allowDestinationChange, collections, openCollection, links, spaceReveal, workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
+  return { editors, activateDestination, openTool, closeResource, moveResource, allowDestinationChange, collections, openCollection, links, spaceReveal, workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
     panes, setPanes, updateFolder, updateLens, layout, availableViews, upsertView, selectFolder, defaultView };
 }
 export type NotesModel = ReturnType<typeof useNotesWorkspace>;

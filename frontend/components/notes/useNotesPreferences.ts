@@ -2,12 +2,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { migrateWorkspacePreferences, workspaceLayoutSchema } from './workspaceLayout';
+import { editorPreferencesSchema } from './editorTabs';
 import { panesSchema } from './panes';
 import { today } from '@/components/book/domain';
 export const preferencesSchema = z.preprocess(migrateWorkspacePreferences, z.object({
   folderContextId: z.string().nullable().default(null), contextTab: z.enum(['note', 'folder']).default('note'),
   workspace: workspaceLayoutSchema.optional().catch(undefined),
-  panes: panesSchema.optional(),
+  panes: panesSchema.optional(), editors: editorPreferencesSchema.optional().catch(undefined),
   folderId: z.string(), focusId: z.string().nullable(), viewId: z.string(), asList: z.boolean(),
   selectedId: z.string().nullable(), visible: z.array(z.enum(['inbox', 'organizer', 'calendar', 'context'])),
   expandedPanel: z.enum(['inbox', 'organizer', 'calendar', 'context']).nullable(),

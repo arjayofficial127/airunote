@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useEditorSession } from '@/components/book/EditorSession';
 import { z } from 'zod';
 import { useBookContent } from '@/providers/hydratedContent/BookContentProvider';
 import type { AiruDocument } from '@/components/airunote/types';
@@ -40,17 +41,19 @@ export function useNoteWriting(model: BookWorkspaceModel, document: AiruDocument
       expected.current = new Date(document.updatedAt).toISOString(); setContent(original); setBase(original); setUndo(null);
     }
   }, [document.updatedAt, original, ready, dirty]);
-  async function save() {
+  async function save(): Promise<boolean> {
     const value = latest.current;
-    if (pending.current || value.model.actions.busy || value.content === value.base || !value.model.selected || value.model.selected.invalidPlanning) return;
+    if (pending.current || value.model.actions.busy || !value.model.selected || value.model.selected.invalidPlanning) return false;
+    if (value.content === value.base) return true;
     pending.current = true; setSaving(true);
     const saved = await value.model.actions.update(value.model.selected, { content: value.content, ...(document.type === 'RTF' ? { contentType: 'RTF' as const } : {}) }, expected.current);
     pending.current = false;
-    if (!alive.current) return;
+    if (!alive.current) return false;
     setSaving(false);
-    if (!saved) { setPaused(true); void load(document.id, true); return; }
+    if (!saved) { setPaused(true); void load(document.id, true); return false; }
     expected.current = new Date(saved.updatedAt).toISOString(); setBase(value.content); setUndo(value.base); setPaused(false);
     value.model.setDirty(latest.current.content !== value.content);
+    return latest.current.content === value.content;
   }
   const saveRef = useRef(save); saveRef.current = save;
   useEffect(() => {
@@ -60,6 +63,7 @@ export function useNoteWriting(model: BookWorkspaceModel, document: AiruDocument
   function change(value: string) { setContent(value); model.setDirty(value !== base || pending.current); }
   function discard() {
     if (pending.current) return;
+    try { sessionStorage.removeItem(key); } catch { /* Storage is optional. */ }
     expected.current = new Date(document.updatedAt).toISOString(); setBase(original); setContent(original); setPaused(false); setUndo(null); model.setDirty(false);
   }
   async function saveCopy() {
@@ -67,5 +71,6 @@ export function useNoteWriting(model: BookWorkspaceModel, document: AiruDocument
     const saved = await model.actions.capture(`${document.name.slice(0, 240)} (draft)`, model.selected?.planning.kind ?? 'note', undefined, document.folderId, content);
     if (saved) { discard(); model.setSelectedId(saved.id); }
   }
+  useEditorSession({ save, discard });
   return { content, change, ready, dirty, paused, saving, editing, setEditing, undo: undo !== null ? () => { change(undo); setUndo(null); } : null, save, discard, saveCopy };
 }

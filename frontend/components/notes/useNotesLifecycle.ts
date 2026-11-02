@@ -37,7 +37,8 @@ export function useNotesLifecycle(model: BookWorkspaceModel) {
         const current = store.documentsById.get(patch.id); if (current) store.updateDocumentMetadata({ ...current, ...patch });
         store.removeDocumentContent(patch.id);
       }
-      model.setSelectedId(null); setTarget(null);
+      // Open editor tabs reconcile against the updated metadata. Other tabs stay open.
+      setTarget(null);
     } catch (failure) { if (available()) setError(errorMessage(failure)); }
     finally { pending.current = false; if (available()) setBusy(false); }
   }

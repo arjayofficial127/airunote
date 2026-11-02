@@ -20,7 +20,7 @@ export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWor
   useEffect(() => { setEditTarget(null); if (id) void load(id); }, [id, load]);
   useEffect(() => {
     if (!editTarget) return;
-    const selector = editTarget === 'folder' ? '#ab-context-folder' : editTarget === 'planning' ? '[aria-label="Calendar bucket"]' : '#ab-context-name';
+    const selector = editTarget === 'folder' ? '[data-editor-field=folder]' : editTarget === 'planning' ? '[aria-label="Calendar bucket"]' : '[data-editor-field=title]';
     editorContainer.current?.querySelector<HTMLElement>(selector)?.focus();
   }, [editTarget, document?.id]);
   const item = model.selected;

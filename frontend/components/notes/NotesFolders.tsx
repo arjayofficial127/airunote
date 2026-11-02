@@ -47,7 +47,7 @@ function DraftRows({ parentId, context }: { parentId: string; context: FolderCon
       <NotesIcon name="folder" /><input ref={input} required maxLength={255} placeholder="Folder name" aria-label="New Folder name" value={draft.name} disabled={model.actions.busy} onChange={event => setDraft({ ...draft, name: event.target.value })}/><small>Draft</small>
       <button disabled={model.actions.busy || !draft.name.trim()} aria-label="Save new folder">✓</button><button type="button" disabled={model.actions.busy} aria-label="Cancel new folder" onClick={() => setDraft(null)}>×</button>
     </form>}
-    {model.creating && (model.draftPreview?.folderId ?? model.captureFolderId) === parentId && <button className="an-note-draft" onClick={model.reveal}><NotesIcon name="note"/><span>{model.draftPreview?.name.trim() || 'Untitled note'}</span><small>Draft</small></button>}
+    {context.notes.editors.state.tabs.filter(tab => !tab.noteId && tab.folderId === parentId).map(tab => <button key={tab.key} className="an-note-draft" onClick={() => { context.notes.editors.focus(tab.key); model.reveal(); }}><NotesIcon name="note"/><span>{tab.name.trim() || 'Untitled note'}</span><small>Draft</small></button>)}
   </>;
 }
 function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; context: FolderContext; depth: number; ancestors: Set<string> }) {

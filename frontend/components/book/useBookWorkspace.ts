@@ -1,12 +1,18 @@
 'use client';
 import { activeFolders } from '@/lib/airunoteLifecycle';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { readBookConfig, type CalendarPlan, type WorkspaceView } from '@/lib/book';
 import { subtree, bookItems, today, panels, type Panel, type Period, type Plot, type BookItem } from './domain';
 import { useBookActions } from './useBookActions';
 
-export function useBookWorkspace(rootFolderId: string, orgId: string, userId: string, natural = false) {
+export type BookEditorSelection = {
+  selectedId: string | null; creating: boolean; captureFolderId: string; capturePlan: CalendarPlan;
+  draftPreview: { name: string; folderId: string } | null; dirty: boolean;
+  setSelectedId: Dispatch<SetStateAction<string | null>>; setCreating: Dispatch<SetStateAction<boolean>>;
+  setDraftPreview: Dispatch<SetStateAction<{ name: string; folderId: string } | null>>; setDirty: Dispatch<SetStateAction<boolean>>;
+};
+export function useBookWorkspace(rootFolderId: string, orgId: string, userId: string, natural = false, editor?: BookEditorSelection) {
   const store = useAirunoteStore(); const root = store.foldersById.get(rootFolderId);
   const folders = useMemo(() => Array.from(store.foldersById.values()).filter(folder => folder.orgId === orgId && folder.ownerUserId === userId), [store.foldersById, orgId, userId]);
   const ids = useMemo(() => subtree(folders, rootFolderId), [folders, rootFolderId]);
@@ -23,12 +29,16 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
   const [layout, setLayout] = useState<'tree' | 'columns'>('columns');
   const [period, setPeriod] = useState<Period>('week'); const [date, setDate] = useState(today);
   const [plot, setPlot] = useState<Plot>('items'); const [hours, setHours] = useState<'24' | '12' | '8'>('12');
-  const [selectedId, setSelectedId] = useState<string | null>(null); const [creating, setCreating] = useState(false);
-  const [captureFolderId, setCaptureFolderId] = useState(rootFolderId);
-  const [capturePlan, setCapturePlan] = useState<CalendarPlan>({ kind: 'unplanned' });
-  const [draftPreview, setDraftPreview] = useState<{ name: string; folderId: string } | null>(null);
+  const [localSelectedId, setLocalSelectedId] = useState<string | null>(null); const [localCreating, setLocalCreating] = useState(false);
+  const [localCaptureFolderId, setLocalCaptureFolderId] = useState(rootFolderId);
+  const [localCapturePlan, setLocalCapturePlan] = useState<CalendarPlan>({ kind: 'unplanned' });
+  const [localDraftPreview, setLocalDraftPreview] = useState<{ name: string; folderId: string } | null>(null);
   const [draftKey, setDraftKey] = useState(0);
-  const [dirty, setDirty] = useState(false);
+  const [localDirty, setLocalDirty] = useState(false);
+  const { selectedId, creating, captureFolderId, capturePlan, draftPreview, dirty, setSelectedId, setCreating, setDraftPreview, setDirty } = editor ?? {
+    selectedId: localSelectedId, creating: localCreating, captureFolderId: localCaptureFolderId, capturePlan: localCapturePlan, draftPreview: localDraftPreview, dirty: localDirty,
+    setSelectedId: setLocalSelectedId, setCreating: setLocalCreating, setDraftPreview: setLocalDraftPreview, setDirty: setLocalDirty,
+  };
   const [draftFlags, setDraftFlags] = useState<string[]>([]);
   const setDraftFlag = useCallback((key: string, value: boolean) => setDraftFlags(previous => value ? previous.includes(key) ? previous : [...previous, key] : previous.filter(flag => flag !== key)), []);
   const [batchMode, setBatchMode] = useState(false); const [batchIds, setBatchIds] = useState<string[]>([]);
@@ -42,7 +52,7 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
   }
   function add(plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId) {
     if (dirty) { actions.setError('Save or discard your note draft before starting another item.'); return; }
-    setDraftKey(value => value + 1); setDraftPreview({ name: '', folderId }); setSelectedId(null); setCreating(true); setCapturePlan(plan); setCaptureFolderId(folderId); reveal();
+    setDraftKey(value => value + 1); setDraftPreview({ name: '', folderId }); setSelectedId(null); setCreating(true); setLocalCapturePlan(plan); setLocalCaptureFolderId(folderId); reveal();
   }
   function applyView(view: WorkspaceView) { setExpandedPanel(null); setVisible(panels.filter(panel => view.panels.includes(panel))); setFolderFilter(view.folders); setPeriod(view.period); setDate(view.date); setPlot(view.plot); setHours(view.hours); setLayout(view.layout); setClosed(view.closed); }
   function view(name: string): WorkspaceView { return { id: crypto.randomUUID(), name, panels: visible, folders: selectedFolders, period, date, plot, hours, layout, closed }; }

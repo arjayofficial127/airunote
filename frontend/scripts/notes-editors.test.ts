@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import { editorPreferences, editorPreferencesSchema, focusEditor, initialEditorTabs, openEditor, reconcileEditors, removeEditor, saveEditor, toggleEditor, type EditorTab } from '../components/notes/editorTabs';
+
+const note = (id: string): EditorTab => ({ key: `note:${id}`, noteId: id, name: id, folderId: 'folder', dirty: false, plan: { kind: 'unplanned' } });
+let state = initialEditorTabs();
+for (const id of ['a', 'b', 'c', 'd', 'e']) state = openEditor(state, note(id));
+assert.equal(state.tabs.length, 5, 'Opening a fifth note retains the other tabs');
+assert.deepEqual(state.visible, ['note:b', 'note:c', 'note:d', 'note:e'], 'At most four notes are visible');
+state = openEditor(state, note('b'));
+assert.equal(state.tabs.length, 5, 'Opening the same note reuses its tab');
+assert.equal(state.active, 'note:b');
+assert.equal(toggleEditor(state, 'note:a'), state, 'Visibility picker cannot exceed four');
+state = toggleEditor(state, 'note:b');
+assert.equal(state.active, 'note:c', 'Hiding the active note focuses a remaining visible note');
+assert.equal(state.tabs.length, 5, 'Hiding a note does not close its tab');
+state = focusEditor(state, 'note:a');
+assert.equal(state.visible.length, 4);
+state = removeEditor(state, 'note:a');
+assert.equal(state.active, 'note:e', 'Closing active note chooses a visible neighbor');
+
+const draft: EditorTab = { ...note('draft'), key: 'draft-key', noteId: null, dirty: true, name: 'Unsaved title' };
+state = openEditor(state, draft);
+const preferences = editorPreferences({ ...state, layout: 'grid' });
+assert.equal(preferences.active, null, 'Unsaved draft is never persisted as a saved note');
+assert.ok(!JSON.stringify(preferences).includes('Unsaved title'), 'Preferences do not store draft content');
+assert.equal(editorPreferencesSchema.safeParse(preferences).success, true);
+const draftIndex = state.tabs.findIndex(tab => tab.key === draft.key);
+state = saveEditor(state, draft.key, 'new-id');
+assert.equal(state.tabs[draftIndex]?.key, draft.key, 'Saving retains draft position and identity');
+assert.equal(state.tabs[draftIndex]?.noteId, 'new-id');
+assert.equal(state.tabs[draftIndex]?.dirty, false);
+assert.equal(openEditor(state, note('new-id')).tabs.length, state.tabs.length, 'Saved draft does not open twice');
+
+state = openEditor(state, { ...note('dirty'), dirty: true });
+state = openEditor(state, { ...draft, key: 'second-draft' });
+state = reconcileEditors(state, new Set(['b', 'd', 'e', 'new-id']));
+assert.ok(!state.tabs.some(tab => tab.noteId === 'c'), 'Archived note closes');
+assert.ok(state.tabs.some(tab => tab.noteId === 'b'), 'Archiving leaves unrelated tabs open');
+assert.ok(state.tabs.some(tab => tab.noteId === 'dirty'), 'Missing metadata never silently discards edits');
+assert.ok(state.tabs.some(tab => tab.key === 'second-draft'), 'Reconciliation preserves drafts');
+for (const tab of [...state.tabs]) state = removeEditor(state, tab.key);
+assert.deepEqual(state.tabs, []);
+assert.equal(state.active, null);
+assert.deepEqual(state.visible, []);
+state = openEditor(state, note('only'));
+assert.equal(toggleEditor(state, 'note:only'), state, 'One visible note remains until explicitly closed');
+console.log('Editor tabs: reuse, four-visible limit, hide/close recovery, draft conversion, safe preferences and archive reconciliation passed.');
