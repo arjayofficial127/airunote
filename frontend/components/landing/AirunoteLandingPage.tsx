@@ -786,7 +786,7 @@ export function AirunoteLandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-[1280px] flex-col gap-8 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12"><div><AirunoteLogo iconSize={20} textClassName="text-sm font-semibold text-slate-950" /><p className="mt-2 text-xs text-slate-500">A knowledge workspace by AOTECH.</p></div><div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-slate-500"><Link href="#lenses" className="hover:text-slate-950">Live demo</Link><Link href="#publish" className="hover:text-slate-950">Publish</Link><Link href="#workspaces" className="hover:text-slate-950">Teams</Link><Link href="/login" className="hover:text-slate-950">Sign in</Link><span>© {new Date().getFullYear()} airunote</span></div></div></footer>
+      <footer className="border-t border-slate-200 bg-white"><div className="mx-auto flex max-w-[1280px] flex-col gap-8 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12"><div><AirunoteLogo iconSize={20} textClassName="text-sm font-semibold text-slate-950" /></div><div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-slate-500"><Link href="#lenses" className="hover:text-slate-950">Live demo</Link><Link href="#publish" className="hover:text-slate-950">Publish</Link><Link href="#workspaces" className="hover:text-slate-950">Teams</Link><Link href="/login" className="hover:text-slate-950">Sign in</Link><span>© {new Date().getFullYear()} airunote</span></div></div></footer>
     </div>
   );
 }
