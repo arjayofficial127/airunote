@@ -123,3 +123,9 @@ Both packages run `strict: true` and `strictNullChecks: true`. All `T | undefine
 ## Multi-Tenancy
 
 All data is scoped to an organization. The org context always flows from `OrgSessionProvider`. Backend routes enforce org membership via `requireOrgRole` middleware. Role-based access control (RBAC) is applied at the route layer.
+
+## Shared repository guidance
+
+@AGENTS.md
+
+Use its shared-context entrypoint for cross-tool continuity. Existing architecture guidance in this file still applies.
