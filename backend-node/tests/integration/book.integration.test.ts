@@ -30,7 +30,7 @@ integration('Book isolated PostgreSQL integration', () => {
     await client`INSERT INTO orgs (id,plan) VALUES (${org},'pro'),(${otherOrg},'pro') ON CONFLICT (id) DO UPDATE SET plan='pro'`;
     await client`TRUNCATE airu_document_revisions, airu_documents, airu_lenses, airu_folders`;
     for (const [folderId, orgId, owner, parent] of [[root, org, user, root], [child, org, user, root], [outsider, otherOrg, user, outsider]]) {
-      await client`INSERT INTO airu_folders (id,org_id,owner_user_id,parent_folder_id,human_id,metadata) VALUES (${folderId},${orgId},${owner},${parent},'Folder',${client.json({ unrelated: { keep: true } })})`;
+      await client`INSERT INTO airu_folders (id,org_id,owner_user_id,parent_folder_id,human_id,metadata) VALUES (${folderId},${orgId},${owner},${parent},${folderId === root || folderId === outsider ? '__user_root__' : 'Folder'},${client.json({ unrelated: { keep: true } })})`;
     }
     for (const documentId of [id, second]) await client`INSERT INTO airu_documents (id,folder_id,owner_user_id,type,name,canonical_content,shared_content,attributes,updated_at) VALUES (${documentId},${child},${user},'MD',${documentId},'Original canonical','Pending shared edit',${client.json({ unrelated: { keep: true }, airunoteBook: defaultPlanning('task') })},${at})`;
   });
@@ -87,6 +87,48 @@ integration('Book isolated PostgreSQL integration', () => {
     expect(document.visibility).toBe('private'); expect(document.ownerUserId).toBe(user);
     expect((await client`SELECT jsonb_typeof(attributes) AS kind FROM airu_documents WHERE id=${document.id}`)[0]?.kind).toBe('object');
     expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(3);
+  });
+  test('daily creation is private, dated, and idempotent across concurrent requests', async () => {
+    const documents = await Promise.all(Array.from({ length: 4 }, () => service.daily(scope, root, '2026-11-05')));
+    expect(new Set(documents.map(document => document.id)).size).toBe(1);
+    expect(documents[0]).toMatchObject({ name: 'November 5, 2026', visibility: 'private', folderId: root, attributes: {
+      airunoteDaily: { date: '2026-11-05' }, airunoteBook: { kind: 'note', processed: true, plan: { kind: 'day', date: '2026-11-05' } },
+    } });
+    expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(3);
+  });
+  test('daily lookup follows moves and renames and preserves saved content', async () => {
+    const first = await service.daily(scope, root, '2026-11-05');
+    await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), name: 'My day', folderId: child, content: 'Keep my notes' });
+    const reopened = await service.daily(scope, root, '2026-11-05');
+    expect(reopened).toMatchObject({ id: first.id, folderId: child, name: 'My day', canonicalContent: 'Keep my notes' });
+    await client`UPDATE airu_documents SET state='archived' WHERE id=${first.id}`;
+    await expect(service.daily(scope, root, '2026-11-05')).rejects.toMatchObject({ code: 'DAILY_NOTE_INACTIVE' });
+  });
+  test('a date-like rename cannot reassign another daily note', async () => {
+    const first = await service.daily(scope, root, '2026-11-05');
+    await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), name: 'November 6, 2026' });
+    await expect(service.daily(scope, root, '2026-11-06')).rejects.toMatchObject({ code: 'DAILY_NOTE_NAME_CONFLICT' });
+    expect((await service.daily(scope, root, '2026-11-05')).id).toBe(first.id);
+  });
+  test('daily lookup reuses a legacy date title without clearing its checklist', async () => {
+    const planning = editablePlanning(defaultPlanning('note'));
+    planning.checklist = [{ id: '80000000-0000-4000-8000-000000000001', text: 'Existing item', done: true }];
+    const first = await service.create(scope, { rootFolderId: root, folderId: root, name: 'November 5, 2026', content: 'Existing text', planning });
+    const reopened = await service.daily(scope, root, '2026-11-05');
+    expect(reopened).toMatchObject({ id: first.id, canonicalContent: 'Existing text', attributes: { airunoteBook: { checklist: planning.checklist } } });
+  });
+  test('daily notes enforce scope, dates, quotas, and preserve existing notes at the limit', async () => {
+    await expect(service.daily({ orgId: otherOrg, userId: user }, root, '2026-11-05')).rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.daily({ orgId: org, userId: otherUser }, root, '2026-11-05')).rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.daily(scope, child, '2026-11-05')).rejects.toMatchObject({ code: 'INVALID_DAILY_ROOT' });
+    await expect(service.daily(scope, root, '2026-02-30')).rejects.toThrow();
+    const first = await service.daily(scope, root, '2026-11-05');
+    await client`UPDATE orgs SET plan='free' WHERE id=${org}`;
+    process.env.FREE_PLAN_LIMIT = '3';
+    try {
+      expect((await service.daily(scope, root, '2026-11-05')).id).toBe(first.id);
+      await expect(service.daily(scope, root, '2026-11-06')).rejects.toMatchObject({ code: 'UPGRADE_REQUIRED' });
+    } finally { delete process.env.FREE_PLAN_LIMIT; }
   });
   test('capture respects the existing free document limit', async () => {
     await client`UPDATE orgs SET plan='free' WHERE id=${org}`; process.env.FREE_PLAN_LIMIT = '2';

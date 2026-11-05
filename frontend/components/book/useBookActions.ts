@@ -40,6 +40,13 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
       const document = await services.capture(orgId, userId, folderId, name, planning, content, rootFolderId); commit(document); setNotice('Captured'); return document;
     });
   }
+  async function daily(date: string) {
+    return run(async () => {
+      const document = await services.daily(orgId, rootFolderId, date);
+      commit(document);
+      return document;
+    });
+  }
   async function configure(fields: BookConfigFields, folderId = rootFolderId) {
     return run(async () => {
       const current = folderId === rootFolderId ? config : readBookConfig(useAirunoteStore.getState().foldersById.get(folderId)?.metadata);
@@ -63,6 +70,6 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
   async function batch(items: BookItem[], change: BookBatch['change']) {
     return run(async () => { const documents = await services.batch(orgId, { rootFolderId, entries: items.map(item => ({ id: item.id, expectedUpdatedAt: new Date(item.updatedAt).toISOString() })), change }); documents.forEach(commit); setNotice(`Updated ${documents.length} items`); return documents; });
   }
-  return { update, capture, configure, createFolder, cycle, batch, fields, busy, error, setError, notice };
+  return { update, capture, daily, configure, createFolder, cycle, batch, fields, busy, error, setError, notice };
 }
 export type BookActions = ReturnType<typeof useBookActions>;

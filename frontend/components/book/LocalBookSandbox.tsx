@@ -36,6 +36,7 @@ export function LocalBookSandbox() {
   const services = useMemo(() => {
     const guard = () => { if (fail.current) throw new Error('Simulated save failure. Your draft was preserved.'); };
     return {
+      async daily() { throw new Error('Daily notes are available in the Notes workspace.'); },
       async batch(scope: string, input: import('@/lib/book').BookBatch) {
         const before = data.current.documents;
         try { const result = []; for (const entry of input.entries) { const item = data.current.documents.find(candidate => candidate.id === entry.id); const planning = item ? readPlanning(item.attributes) : null; if (!item || !planning) throw new Error('Unavailable item'); const fields = editablePlanning(planning); const change = input.change; result.push(await this.update(scope, entry.id, { rootFolderId: input.rootFolderId, expectedUpdatedAt: entry.expectedUpdatedAt, ...(change.kind === 'folder' ? { folderId: change.folderId } : {}), planning: change.kind === 'status' ? { ...fields, status: change.status } : change.kind === 'plan' ? { ...fields, plan: change.plan } : { ...fields, processed: true } })); } return result; } catch (error) { data.current.documents = before; throw error; }

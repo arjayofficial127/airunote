@@ -11,6 +11,10 @@ function documentBoundary(value: unknown): AiruDocument {
   return parsed.data.document;
 }
 export const bookApi = {
+  async daily(orgId: string, rootFolderId: string, date: string): Promise<AiruDocument> {
+    const response = await apiClient.put<unknown>(`/orgs/${orgId}/airunote/book/daily/${date}`, { rootFolderId });
+    return documentBoundary(response.data);
+  },
   async batch(orgId: string, input: BookBatch): Promise<AiruDocument[]> {
     const response = await apiClient.post<unknown>(`/orgs/${orgId}/airunote/book/batch`, input);
     const envelope = z.object({ success: z.literal(true), data: z.object({ documents: z.array(documentSchema) }) }).parse(response.data);

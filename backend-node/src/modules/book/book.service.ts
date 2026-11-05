@@ -2,31 +2,59 @@ import { randomUUID } from 'node:crypto';
 import { AppError, ConflictError } from '../../core/errors/AppError';
 import type { BookDocumentCreate } from './contract';
 import { BookRepository, type BookScope, type BookTransaction } from './book.repository';
-import { readPlanning, readBookConfig, record, editablePlanning, type BookDocumentUpdate, type BookConfigUpdate, type BookPlanning, type BookBatch } from './contract';
+import { readPlanning, readBookConfig, record, editablePlanning, defaultPlanning, daySchema, type BookDocumentUpdate, type BookConfigUpdate, type BookPlanning, type BookBatch } from './contract';
 
 export class BookService {
   constructor(private readonly repository = new BookRepository()) {}
 
   async create(scope: BookScope, input: BookDocumentCreate) {
+    return this.repository.transaction(tx => this.createInTransaction(tx, scope, input));
+  }
+
+  private async createInTransaction(tx: BookTransaction, scope: BookScope, input: BookDocumentCreate) {
+    const root = await this.repository.folder(tx, scope, input.rootFolderId);
+    await this.repository.withinRoot(tx, scope, input.folderId, root.id);
+    const folder = await this.repository.folder(tx, scope, input.folderId);
+    const config = readBookConfig(root.metadata);
+    if (!config) throw new AppError('Unsupported Book configuration', 409, 'UNSUPPORTED_BOOK_VERSION');
+    const plan = input.planning.plan;
+    if (plan.kind === 'sprint' && !await this.repository.hasSprint(tx, scope, folder.id, root.id, plan.sprintId)) throw new AppError('Choose a sprint belonging to this folder or one of its parents', 400, 'INVALID_SPRINT');
+    const schema = record(record(folder.metadata).schema);
+    for (const [key, field] of Object.entries(schema)) {
+      const rule = record(field);
+      if ((rule.required && key !== 'airunoteBook') || (key === 'airunoteBook' && rule.type !== 'object')) throw new AppError('Use the document editor to provide this folder’s custom attributes before planning the item.', 400, 'FOLDER_ATTRIBUTES_REQUIRED');
+    }
+    const quota = await this.repository.quota(tx, scope);
+    const configuredLimit = Number(process.env.FREE_PLAN_LIMIT ?? 10); const limit = Number.isFinite(configuredLimit) ? configuredLimit : 10;
+    if (quota.plan !== 'pro' && quota.count >= limit) throw new AppError('Upgrade required to continue', 403, 'UPGRADE_REQUIRED');
+    const planning: BookPlanning = { ...input.planning, version: 1, history: [{ id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action: 'Captured in Book' }] };
+    const document = await this.repository.create(tx, scope, folder.id, input.name, input.content, { airunoteBook: planning });
+    return { ...document, content: document.canonicalContent };
+  }
+
+  async daily(scope: BookScope, rootFolderId: string, value: string) {
+    const date = daySchema.parse(value);
     return this.repository.transaction(async tx => {
-      const root = await this.repository.folder(tx, scope, input.rootFolderId);
-      await this.repository.withinRoot(tx, scope, input.folderId, root.id);
-      const folder = await this.repository.folder(tx, scope, input.folderId);
-      const config = readBookConfig(root.metadata);
-      if (!config) throw new AppError('Unsupported Book configuration', 409, 'UNSUPPORTED_BOOK_VERSION');
-      const plan = input.planning.plan;
-      if (plan.kind === 'sprint' && !await this.repository.hasSprint(tx, scope, folder.id, root.id, plan.sprintId)) throw new AppError('Choose a sprint belonging to this folder or one of its parents', 400, 'INVALID_SPRINT');
-      const schema = record(record(folder.metadata).schema);
-      for (const [key, field] of Object.entries(schema)) {
-        const rule = record(field);
-        if ((rule.required && key !== 'airunoteBook') || (key === 'airunoteBook' && rule.type !== 'object')) throw new AppError('Use the document editor to provide this folder’s custom attributes before planning the item.', 400, 'FOLDER_ATTRIBUTES_REQUIRED');
+      const root = await this.repository.folder(tx, scope, rootFolderId);
+      if (root.humanId !== '__user_root__') throw new AppError('Open daily notes from your workspace', 400, 'INVALID_DAILY_ROOT');
+      // Serialize retries without blocking unrelated document creation or folder updates.
+      await this.repository.lockDaily(tx, scope, date);
+      const name = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(date + 'T12:00:00Z'));
+      const existing = await this.repository.daily(tx, scope, root.id, date, name);
+      if (existing) {
+        const savedDate = record(record(existing.attributes).airunoteDaily).date;
+        if (savedDate && savedDate !== date) throw new AppError('Another daily note uses this date title. Rename that note before opening today.', 409, 'DAILY_NOTE_NAME_CONFLICT');
+        if (existing.state !== 'active') throw new AppError('Restore this daily note from Archive / Trash first.', 409, 'DAILY_NOTE_INACTIVE');
+        if (existing.type !== 'MD' || !readPlanning(existing.attributes)) throw new AppError('A note with this date already exists. Open it from Folders.', 409, 'DAILY_NOTE_FORMAT');
+        if (record(record(existing.attributes).airunoteDaily).date === date) return { ...existing, content: existing.canonicalContent };
+        const tagged = await this.repository.saveDocument(tx, existing.id, { attributes: { ...record(existing.attributes), airunoteDaily: { date } } });
+        return { ...tagged, content: tagged.canonicalContent };
       }
-      const quota = await this.repository.quota(tx, scope);
-      const configuredLimit = Number(process.env.FREE_PLAN_LIMIT ?? 10); const limit = Number.isFinite(configuredLimit) ? configuredLimit : 10;
-      if (quota.plan !== 'pro' && quota.count >= limit) throw new AppError('Upgrade required to continue', 403, 'UPGRADE_REQUIRED');
-      const planning: BookPlanning = { ...input.planning, version: 1, history: [{ id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action: 'Captured in Book' }] };
-      const document = await this.repository.create(tx, scope, folder.id, input.name, input.content, { airunoteBook: planning });
-      return { ...document, content: document.canonicalContent };
+      const planning = editablePlanning(defaultPlanning('note', true));
+      planning.plan = { kind: 'day', date, time: null, duration: null };
+      const created = await this.createInTransaction(tx, scope, { rootFolderId, folderId: root.id, name, content: '', planning });
+      const tagged = await this.repository.saveDocument(tx, created.id, { attributes: { ...record(created.attributes), airunoteDaily: { date } } });
+      return { ...tagged, content: tagged.canonicalContent };
     });
   }
 

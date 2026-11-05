@@ -58,6 +58,18 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
     setContextTab('note'); editors.add(plan, folderId); base.reveal();
   }
+  async function openToday() {
+    if (!allowContextChange() || base.loading || base.actions.busy) return;
+    const document = await base.actions.daily(today());
+    if (!document) return;
+    if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
+    setContextTab('note');
+    editors.open(document);
+    base.reveal();
+    if (workspace.preset === 'cards' && !workspace.folderChosen) {
+      base.setVisible(previous => previous.filter(panel => panel !== 'calendar'));
+    }
+  }
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
   const model = { ...base, open, add, reveal: revealNote, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };
   const links = useSpaceLinks(model);
@@ -197,7 +209,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   function layout(group: 'folder' | 'lens', value: NotesPanes['folderLayout']) { setPanes(previous => ({ ...previous, [group === 'folder' ? 'folderLayout' : 'lensLayout']: value, [group === 'folder' ? 'folderWidth' : 'lensWidth']: null })); }
   const contentModel = scopedModel(model.selected?.folderId ?? model.draftPreview?.folderId ?? model.captureFolderId);
-  return { editors, activateDestination, openTool, closeResource, moveResource, allowDestinationChange, collections, openCollection, links, spaceReveal, workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
+  return { editors, openToday, activateDestination, openTool, closeResource, moveResource, allowDestinationChange, collections, openCollection, links, spaceReveal, workspace, setWorkspace, setPreset, contextTab, setContextTab, folderContextId, folderDirty, setFolderDirty, openFolderDetails, closeFolderDetails, followContext, togglePanel, showAllPanels, lifecycle, ready, preferenceKey, theme, setTheme, pinned, setPinned, closeNote, model, contentModel, scopedModel,
     panes, setPanes, updateFolder, updateLens, layout, availableViews, upsertView, selectFolder, defaultView };
 }
 export type NotesModel = ReturnType<typeof useNotesWorkspace>;
