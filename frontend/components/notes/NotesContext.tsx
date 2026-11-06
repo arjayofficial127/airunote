@@ -86,7 +86,7 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
           const model = editors.modelFor(tab, { ...scoped, shownPanels: notes.model.shownPanels });
           return <div key={tab.key} className="an-editor-cell" data-active={state.active === tab.key} data-scroll-scope={`editor:${tab.key}`} role="tabpanel" id={`${id}-${tab.key}-panel`} aria-labelledby={`${id}-${tab.key}`} hidden={!visible.includes(tab.key)} onFocusCapture={() => { if (state.active !== tab.key) editors.focus(tab.key); }} onPointerDown={() => { if (state.active !== tab.key) editors.focus(tab.key); }}>
             {state.layout !== 'single' && <header className="an-editor-cell-heading"><button onClick={() => activate(tab.key)}>{title(notes, tab)}</button><button aria-label={`Show only ${title(notes, tab)}`} title="Show only this note" onClick={() => { activate(tab.key); editors.layout('single'); }}>↗</button></header>}
-            <div className="an-context-body"><EditorSessionContext.Provider value={editors.forTab(tab.key).session}><NotesContent model={model} pinned={notes.pinned} onPin={() => notes.setPinned(value => !value)} onClose={() => editors.requestClose(tab.key)}/></EditorSessionContext.Provider></div>
+            <div className="an-context-body"><EditorSessionContext.Provider value={editors.forTab(tab.key).session}><NotesContent editorKey={tab.key} model={model} pinned={notes.pinned} onPin={() => notes.setPinned(value => !value)} onClose={() => editors.requestClose(tab.key)}/></EditorSessionContext.Provider></div>
           </div>;
         })}
       </div>

@@ -1,8 +1,17 @@
 /// <reference types="jest" />
 import { batchBookSchema, defaultPlanning, editablePlanning, planSchema, planningSchema, readPlanning, readBookConfig, updateBookDocumentSchema } from '../../src/modules/book/contract';
 import { dailyNoteDate } from '../../src/modules/book/daily';
+import { kindFieldsSchema, defaultKindFields } from '../../src/modules/book/kinds';
 
 describe('Book planning contract', () => {
+  test('kind fields reject forged history, unsafe meeting URLs and invalid measures', () => {
+    const fields = defaultKindFields();
+    expect(kindFieldsSchema.safeParse({ ...fields, releases: [] }).success).toBe(false);
+    expect(kindFieldsSchema.safeParse({ ...fields, goalHistory: [] }).success).toBe(false);
+    expect(kindFieldsSchema.safeParse({ ...fields, meetingUrl: 'javascript:alert(1)' }).success).toBe(false);
+    expect(kindFieldsSchema.safeParse({ ...fields, version: 99 }).success).toBe(false);
+    for (const target of [0, -1, Infinity]) expect(kindFieldsSchema.safeParse({ ...fields, goal: { measure: 'Revenue', unit: 'PHP', current: 0, target, nextTaskId: null } }).success).toBe(false);
+  });
   test('daily compatibility requires an explicit marker or a matching scheduled note date', () => {
     const planning = { ...defaultPlanning('note'), plan: { kind: 'day', date: '2026-11-06', time: null, duration: null } };
     const note = { type: 'MD', name: '2026-11-06 · Friday', attributes: { airunoteBook: planning } };

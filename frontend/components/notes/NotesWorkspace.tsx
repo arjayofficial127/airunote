@@ -14,6 +14,7 @@ import { NotesContext } from './NotesContext';
 import { SpaceLinkPicker } from './SpaceLinkPicker';
 import { useNotesWorkspace } from './useNotesWorkspace';
 import { NotesToolbar } from './NotesToolbar';
+import { KindReminders } from './KindReminders';
 import { useWorkspaceSizing } from './useWorkspaceSizing';
 import { PaneResize } from './PaneResize';
 import '@/components/book/book.css';
@@ -81,6 +82,7 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
   const foldersShown = focused ? workspace.navigation === 'folders' : visible.includes('organizer');
   return <div ref={container} className="airunote-book airunote-notes" data-theme={notes.theme} data-workspace={workspace.preset} role="region" aria-label="Notes workspace">
     <NotesToolbar notes={notes} />
+    <KindReminders model={model}/>
     {model.query.trim() && <div className="an-search-status" role="region" aria-label="Active note search"><span>Filtering notes: <strong title={model.query}>{model.query}</strong></span><button onClick={() => model.setQuery('')}>Clear search</button></div>}
     {model.actions.error && <p role="alert" className="ab-error">{model.actions.error}<button onClick={() => model.actions.setError(null)}>Dismiss</button></p>}
     {model.actions.notice && <p role="status" className="ab-notice">{model.actions.notice}</p>}

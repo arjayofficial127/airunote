@@ -84,7 +84,14 @@ export class BookRepository {
   }
 
   async revision(tx: BookTransaction, documentId: string, content: string, userId: string) {
-    await tx.insert(airuDocumentRevisionsTable).values({ documentId, contentType: 'canonical', content, createdByUserId: userId });
+    const [revision] = await tx.insert(airuDocumentRevisionsTable).values({ documentId, contentType: 'canonical', content, createdByUserId: userId }).returning();
+    if (!revision) throw new Error('Snapshot could not be created');
+    return revision;
+  }
+
+  async releasedContent(tx: BookTransaction, documentId: string, revisionId: string) {
+    const [revision] = await tx.select().from(airuDocumentRevisionsTable).where(and(eq(airuDocumentRevisionsTable.id, revisionId), eq(airuDocumentRevisionsTable.documentId, documentId), eq(airuDocumentRevisionsTable.contentType, 'canonical')));
+    return revision;
   }
 
   async saveConfig(tx: BookTransaction, id: string, metadata: Record<string, unknown>) {

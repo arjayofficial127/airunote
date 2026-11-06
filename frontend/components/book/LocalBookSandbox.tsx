@@ -36,6 +36,9 @@ export function LocalBookSandbox() {
   const services = useMemo(() => {
     const guard = () => { if (fail.current) throw new Error('Simulated save failure. Your draft was preserved.'); };
     return {
+      async capabilities() { return false; },
+      async ready(): Promise<AiruDocument> { throw new Error('Document versions require the Notes workspace.'); },
+      async version(): Promise<import('@/lib/book').DocumentRelease & { content: string }> { throw new Error('Document versions require the Notes workspace.'); },
       async daily() { throw new Error('Daily notes are available in the Notes workspace.'); },
       async batch(scope: string, input: import('@/lib/book').BookBatch) {
         const before = data.current.documents;

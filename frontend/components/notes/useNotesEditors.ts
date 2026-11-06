@@ -7,7 +7,7 @@ import type { EditorControls, EditorSession } from '@/components/book/EditorSess
 import { editorPreferences, focusEditor, initialEditorTabs, openEditor, reconcileEditors, removeEditor, saveEditor, toggleEditor, type EditorTab, type EditorLayout } from './editorTabs';
 
 const resolve = <T,>(value: SetStateAction<T>, previous: T): T => typeof value === 'function' ? (value as (previous: T) => T)(previous) : value;
-export function useNotesEditors(rootFolderId: string) {
+export function useNotesEditors(rootFolderId: string, orgId: string, userId: string) {
   const [state, setState] = useState(initialEditorTabs);
   const latest = useRef(state); latest.current = state;
   const controls = useRef(new Map<string, EditorControls>());
@@ -91,12 +91,15 @@ export function useNotesEditors(rootFolderId: string) {
       creating: !tab.noteId, dirty: tab.dirty, captureFolderId: tab.folderId, capturePlan: tab.plan,
       draftPreview: tab.noteId ? null : { name: tab.name, folderId: tab.folderId } };
   }
-  function restore(saved: ReturnType<typeof editorPreferences>, items: BookItem[]) {
+  function restore(saved: ReturnType<typeof editorPreferences>, items: BookItem[], folderIds: string[]) {
     let restored = initialEditorTabs();
     for (const id of saved.noteIds) { const item = items.find(item => item.id === id); if (item) restored = openEditor(restored, { key: `note:${id}`, noteId: id, folderId: item.folderId, name: item.name, plan: { kind: 'unplanned' }, dirty: false }); }
-    const visible = saved.visible.map(id => `note:${id}`).filter(key => restored.tabs.some(tab => tab.key === key));
+    for (const draft of saved.drafts) {
+      try { if (folderIds.includes(draft.folderId) && sessionStorage.getItem(`airunote:kind-draft:${orgId}:${userId}:${draft.key}`)) restored = openEditor(restored, { ...draft, name: '', noteId: null, dirty: true }); } catch { /* Storage is optional. */ }
+    }
+    const visible = [...saved.visible.map(id => `note:${id}`), ...saved.visibleDrafts].filter(key => restored.tabs.some(tab => tab.key === key)).slice(-4);
     restored = { ...restored, layout: saved.layout, visible: visible.length ? visible : restored.visible };
-    setState(focusEditor(restored, `note:${saved.active}`));
+    setState(focusEditor(restored, saved.activeDraft ?? `note:${saved.active}`));
   }
   return { state, selection, open, add, focus, remove, requestClose, closing, saving, confirmClose, cancelClose: () => setClosing(null),
     forTab, modelFor, restore, reconcile, preferences: editorPreferences(state),

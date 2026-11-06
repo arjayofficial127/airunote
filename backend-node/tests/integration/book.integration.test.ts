@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import type { BookService } from '../../src/modules/book/book.service';
 import type postgres from 'postgres';
 import { defaultPlanning, editablePlanning } from '../../src/modules/book/contract';
+import { defaultKindFields, readKindDetails } from '../../src/modules/book/kinds';
 
 // This suite only runs against an explicitly supplied disposable database.
 const integration = process.env.BOOK_TEST_DATABASE_URL ? describe : describe.skip;
@@ -86,6 +87,72 @@ integration('Book isolated PostgreSQL integration', () => {
     const document = await service.create(scope, { rootFolderId: root, folderId: child, name: 'Captured', content: 'Brief', planning: editablePlanning(defaultPlanning('task', false)) });
     expect(document.visibility).toBe('private'); expect(document.ownerUserId).toBe(user);
     expect((await client`SELECT jsonb_typeof(attributes) AS kind FROM airu_documents WHERE id=${document.id}`)[0]?.kind).toBe('object');
+    expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(3);
+  });
+  test('kind validation rejects empty task lists, untimed events and unmeasured goals', async () => {
+    for (const kind of ['task', 'event', 'goal'] as const) {
+      await expect(service.create(scope, { rootFolderId: root, folderId: child, name: kind, content: 'Keep draft local', planning: editablePlanning(defaultPlanning(kind)), kindFields: { ...defaultKindFields(), taskMode: 'list' } })).rejects.toMatchObject({ code: 'INVALID_KIND_DETAILS' });
+    }
+    expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(2);
+  });
+  test('task-list completion follows steps and can reopen without creating a second item', async () => {
+    const planning = editablePlanning(defaultPlanning('task'));
+    planning.checklist = [{ id: '80000000-0000-4000-8000-000000000001', text: 'First', done: false }, { id: '80000000-0000-4000-8000-000000000002', text: 'Second', done: false }];
+    const first = await service.create(scope, { rootFolderId: root, folderId: child, name: 'List', content: 'Supporting notes', planning, kindFields: { ...defaultKindFields(), taskMode: 'list' } });
+    const completed = await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), planning: { ...planning, checklist: planning.checklist.map(item => ({ ...item, done: true })) } });
+    expect(completed.attributes).toMatchObject({ airunoteBook: { status: 'complete' } });
+    const reopened = await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: completed.updatedAt.toISOString(), planning });
+    expect(reopened).toMatchObject({ id: first.id, canonicalContent: 'Supporting notes', attributes: { airunoteBook: { status: 'open' }, airunoteKinds: { taskMode: 'list' } } });
+    const [batchComplete] = await service.batch(scope, { rootFolderId: root, entries: [{ id: first.id, expectedUpdatedAt: reopened.updatedAt.toISOString() }], change: { kind: 'status', status: 'complete' } });
+    expect(batchComplete?.attributes).toMatchObject({ airunoteBook: { status: 'complete', checklist: [{ done: true }, { done: true }] } });
+    await expect(service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), content: 'Stale' })).rejects.toMatchObject({ code: 'CONFLICT' });
+  });
+  test('measured goal progress is independent of task completion and records history', async () => {
+    const planning = editablePlanning(defaultPlanning('goal'));
+    const fields = { ...defaultKindFields(), goal: { measure: 'Revenue received', unit: 'PHP', current: 0, target: 10000, nextTaskId: id } };
+    const goal = await service.create(scope, { rootFolderId: root, folderId: child, name: 'First earnings', content: '', planning, kindFields: fields });
+    await service.update(scope, id, { rootFolderId: root, expectedUpdatedAt: at, planning: { ...editablePlanning(defaultPlanning('task')), status: 'complete' } });
+    const [unchanged] = await client`SELECT attributes FROM airu_documents WHERE id=${goal.id}`;
+    expect(unchanged?.attributes).toMatchObject({ airunoteKinds: { goal: { current: 0 }, goalHistory: [{ current: 0 }] }, airunoteBook: { status: 'open' } });
+    await expect(service.batch(scope, { rootFolderId: root, entries: [{ id: goal.id, expectedUpdatedAt: goal.updatedAt.toISOString() }], change: { kind: 'status', status: 'complete' } })).rejects.toMatchObject({ code: 'GOAL_PROGRESS_REQUIRED' });
+    const updated = await service.update(scope, goal.id, { rootFolderId: root, expectedUpdatedAt: goal.updatedAt.toISOString(), kindFields: { ...fields, goal: { ...fields.goal, current: 10000 } } });
+    expect(updated.attributes).toMatchObject({ airunoteBook: { status: 'complete' }, airunoteKinds: { goalHistory: [{ current: 0 }, { current: 10000 }] } });
+    const reopened = await service.update(scope, goal.id, { rootFolderId: root, expectedUpdatedAt: updated.updatedAt.toISOString(), kindFields: { ...fields, goal: { ...fields.goal, current: 2500 } } });
+    expect(reopened.attributes).toMatchObject({ airunoteBook: { status: 'open' }, airunoteKinds: { goal: { current: 2500 } } });
+    await expect(service.update(scope, goal.id, { rootFolderId: root, expectedUpdatedAt: reopened.updatedAt.toISOString(), kindFields: { ...fields, goal: { ...fields.goal, nextTaskId: goal.id } } })).rejects.toMatchObject({ code: 'INVALID_GOAL_TASK' });
+  });
+  test('configured event keeps its time slot and rejects broad planning without losing content', async () => {
+    const planning = editablePlanning(defaultPlanning('event'));
+    planning.plan = { kind: 'day', date: '2026-11-09', time: '10:00', duration: 30 };
+    const first = await service.create(scope, { rootFolderId: root, folderId: child, name: 'Review', content: 'Agenda', planning, kindFields: { ...defaultKindFields(), location: 'Video call', meetingUrl: 'https://example.com/meeting' } });
+    await expect(service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), planning: { ...planning, plan: { kind: 'week', start: '2026-11-09' } } })).rejects.toMatchObject({ code: 'INVALID_KIND_DETAILS' });
+    const saved = await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), content: 'Updated agenda' });
+    expect(saved.attributes).toMatchObject({ airunoteBook: { plan: planning.plan }, airunoteKinds: { meetingUrl: 'https://example.com/meeting' } });
+  });
+  test('document ready versions are immutable, idempotent, private and owner-scoped', async () => {
+    const planning = editablePlanning(defaultPlanning('document'));
+    const first = await service.create(scope, { rootFolderId: root, folderId: child, name: 'Guide', content: '# First version', planning, kindFields: defaultKindFields() });
+    const ready = await service.readyDocument(scope, first.id, root, first.updatedAt.toISOString());
+    const release = readKindDetails(ready.attributes)!.releases[0]!;
+    expect(ready.visibility).toBe('private'); expect(release.number).toBe(1);
+    expect(readKindDetails((await service.readyDocument(scope, first.id, root, ready.updatedAt.toISOString())).attributes)?.releases).toHaveLength(1);
+    const edited = await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: ready.updatedAt.toISOString(), name: 'Updated guide', content: '# Second version' });
+    expect(await service.documentVersion(scope, first.id, root, release.id)).toMatchObject({ name: 'Guide', content: '# First version', number: 1 });
+    await expect(service.readyDocument(scope, first.id, root, ready.updatedAt.toISOString())).rejects.toMatchObject({ code: 'CONFLICT' });
+    const secondReady = await service.readyDocument(scope, first.id, root, edited.updatedAt.toISOString());
+    expect(readKindDetails(secondReady.attributes)?.releases).toHaveLength(2);
+    await expect(service.documentVersion({ orgId: otherOrg, userId: user }, first.id, root, release.id)).rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.documentVersion({ orgId: org, userId: otherUser }, first.id, root, release.id)).rejects.toMatchObject({ statusCode: 404 });
+    const [otherRevision] = await client`SELECT id FROM airu_document_revisions WHERE document_id=${first.id} AND id<>${release.id} ORDER BY created_at LIMIT 1`;
+    if (otherRevision) await expect(service.documentVersion(scope, first.id, root, otherRevision.id)).rejects.toMatchObject({ code: 'VERSION_NOT_FOUND' });
+  });
+  test('conversion preserves content, identity, custom attributes and past ready versions', async () => {
+    const first = await service.create(scope, { rootFolderId: root, folderId: child, name: 'A note', content: 'Existing body', planning: editablePlanning(defaultPlanning('note')) });
+    const converted = await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), planning: editablePlanning(defaultPlanning('document')), kindFields: defaultKindFields() });
+    const ready = await service.readyDocument(scope, first.id, root, converted.updatedAt.toISOString());
+    const back = await service.update(scope, first.id, { rootFolderId: root, expectedUpdatedAt: ready.updatedAt.toISOString(), planning: editablePlanning(defaultPlanning('note')) });
+    expect(back).toMatchObject({ id: first.id, canonicalContent: 'Existing body', folderId: child, visibility: 'private' });
+    expect(readKindDetails(back.attributes)?.releases).toHaveLength(1);
     expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(3);
   });
   test('daily creation is private, dated, and idempotent across concurrent requests', async () => {

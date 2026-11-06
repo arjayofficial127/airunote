@@ -12,8 +12,9 @@ import { dailyNoteDate, dailyNoteHeading } from '@/lib/book';
 import { NotesIcon } from './NotesIcon';
 import { NotesWriting } from './NotesWriting';
 import { NoteQuickDetails } from './NoteQuickDetails';
+import { KindEditor } from './KindEditor';
 
-export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWorkspaceModel; pinned: boolean; onPin: () => void; onClose: () => void }) {
+export function NotesContent({ model, pinned, onPin, onClose, editorKey }: { model: BookWorkspaceModel; pinned: boolean; onPin: () => void; onClose: () => void; editorKey: string }) {
   const [editTarget, setEditTarget] = useState<'note' | 'folder' | 'planning' | null>(null);
   const editorContainer = useRef<HTMLDivElement>(null);
   const id = model.selected?.id;
@@ -33,6 +34,7 @@ export function NotesContent({ model, pinned, onPin, onClose }: { model: BookWor
     if (model.dirty) { model.actions.setError('Save or discard your note draft before changing details.'); return; }
     setEditTarget(target);
   }
+  if (!editTarget && (model.creating || item && document && !daily && !item.invalidPlanning)) return <KindEditor key={editorKey} editorKey={editorKey} model={model} document={document ?? null} onAdvanced={() => details('note')}/>;
   if (editTarget || model.creating) return <div ref={editorContainer} className="an-content-editor" hidden={!model.shownPanels.includes('context')}>
     {!model.creating && <button className="an-back-reading" onClick={() => { if (model.dirty) { model.actions.setError('Save or discard your draft before reading.'); return; } setEditTarget(null); }}>← Read note</button>}
     {!model.creating && item && (editTarget === 'folder' || editTarget === 'planning') ? <NoteQuickDetails key={item.id + editTarget} model={model} target={editTarget} close={() => setEditTarget(null)} allDetails={() => setEditTarget('note')}/> : <ContextPane model={model} onClose={onClose} />}

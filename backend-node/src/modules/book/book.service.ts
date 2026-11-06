@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { defaultKindFields, editableKindDetails, kindPlanning, kindValidation, readKindDetails, type KindDetails, type KindFields } from './kinds';
 import { dailyNoteNames } from './daily';
 import { AppError, ConflictError } from '../../core/errors/AppError';
 import type { BookDocumentCreate } from './contract';
@@ -28,8 +29,9 @@ export class BookService {
     const quota = await this.repository.quota(tx, scope);
     const configuredLimit = Number(process.env.FREE_PLAN_LIMIT ?? 10); const limit = Number.isFinite(configuredLimit) ? configuredLimit : 10;
     if (quota.plan !== 'pro' && quota.count >= limit) throw new AppError('Upgrade required to continue', 403, 'UPGRADE_REQUIRED');
-    const planning: BookPlanning = { ...input.planning, version: 1, history: [{ id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action: 'Captured in Book' }] };
-    const document = await this.repository.create(tx, scope, folder.id, input.name, input.content, { airunoteBook: planning });
+    const details = input.kindFields ? await this.prepareKind(tx, scope, root.id, input.planning, input.kindFields) : undefined;
+    const planning: BookPlanning = { ...(input.kindFields ? kindPlanning(input.planning, input.kindFields) : input.planning), version: 1, history: [{ id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action: 'Captured in Book' }] };
+    const document = await this.repository.create(tx, scope, folder.id, input.name, input.content, { airunoteBook: planning, ...(details ? { airunoteKinds: details } : {}) });
     return { ...document, content: document.canonicalContent };
   }
 
@@ -68,6 +70,52 @@ export class BookService {
     return this.repository.transaction(tx => this.updateInTransaction(tx, scope, id, update));
   }
 
+  private async prepareKind(tx: BookTransaction, scope: BookScope, rootId: string, planning: import('./contract').PlanningFields, fields: KindFields, previous?: KindDetails): Promise<KindDetails> {
+    const error = kindValidation(planning, fields);
+    if (error) throw new AppError(error, 400, 'INVALID_KIND_DETAILS');
+    if (planning.kind === 'goal' && fields.goal?.nextTaskId) {
+      const task = await this.repository.document(tx, scope, fields.goal.nextTaskId);
+      await this.repository.withinRoot(tx, scope, task.folderId, rootId);
+      if (task.state !== 'active' || readPlanning(task.attributes)?.kind !== 'task') throw new AppError('Choose an active task in this workspace.', 400, 'INVALID_GOAL_TASK');
+    }
+    const history = previous?.goalHistory ?? [];
+    const goal = fields.goal;
+    const changed = planning.kind === 'goal' && goal && (!previous?.goal || ['measure', 'unit', 'current', 'target'].some(key => goal[key as keyof typeof goal] !== previous.goal?.[key as keyof typeof goal]));
+    if (changed && history.length >= 1000) throw new AppError('This goal has reached its progress-history limit.', 409, 'GOAL_HISTORY_LIMIT');
+    return { ...fields, releases: previous?.releases ?? [], goalHistory: changed ? [...history, { at: new Date().toISOString(), measure: goal.measure, unit: goal.unit, current: goal.current, target: goal.target }] : history };
+  }
+
+  async readyDocument(scope: BookScope, id: string, rootFolderId: string, expectedUpdatedAt: string) {
+    return this.repository.transaction(async tx => {
+      const current = await this.repository.document(tx, scope, id);
+      await this.repository.withinRoot(tx, scope, current.folderId, rootFolderId);
+      if (current.updatedAt.toISOString() !== expectedUpdatedAt) throw new ConflictError('This document changed. Save or reload before marking it ready.');
+      if (current.state !== 'active' || readPlanning(current.attributes)?.kind !== 'document') throw new AppError('Choose an active Document.', 400, 'INVALID_DOCUMENT_KIND');
+      const details = readKindDetails(current.attributes);
+      if (details === null) throw new AppError('Unsupported kind details were preserved.', 409, 'UNSUPPORTED_KIND_VERSION');
+      const releases = details?.releases ?? [];
+      const sha256 = createHash('sha256').update(JSON.stringify([current.name, current.type, current.canonicalContent])).digest('hex');
+      if (releases.at(-1)?.sha256 === sha256) return { ...current, content: current.canonicalContent };
+      if (releases.length >= 100) throw new AppError('This document has reached its ready-version limit.', 409, 'DOCUMENT_VERSION_LIMIT');
+      const snapshot = await this.repository.revision(tx, id, current.canonicalContent, scope.userId);
+      const release = { id: snapshot.id, number: releases.length + 1, name: current.name, type: current.type, sha256, createdAt: new Date().toISOString() };
+      const document = await this.repository.saveDocument(tx, id, { attributes: { ...record(current.attributes), airunoteKinds: { ...(details ?? { ...defaultKindFields(), goalHistory: [] }), releases: [...releases, release] } } });
+      return { ...document, content: document.canonicalContent };
+    });
+  }
+
+  async documentVersion(scope: BookScope, id: string, rootFolderId: string, revisionId: string) {
+    return this.repository.transaction(async tx => {
+      const document = await this.repository.document(tx, scope, id);
+      await this.repository.withinRoot(tx, scope, document.folderId, rootFolderId);
+      const release = readKindDetails(document.attributes)?.releases.find(value => value.id === revisionId);
+      if (!release) throw new AppError('Version not found.', 404, 'VERSION_NOT_FOUND');
+      const snapshot = await this.repository.releasedContent(tx, id, release.id);
+      if (!snapshot) throw new AppError('Version not found.', 404, 'VERSION_NOT_FOUND');
+      return { ...release, content: snapshot.content };
+    });
+  }
+
   private async updateInTransaction(tx: BookTransaction, scope: BookScope, id: string, update: BookDocumentUpdate) {
       const root = await this.repository.folder(tx, scope, update.rootFolderId);
       const current = await this.repository.document(tx, scope, id);
@@ -85,14 +133,19 @@ export class BookService {
         const sprintId = update.planning.plan.sprintId;
         if (!await this.repository.hasSprint(tx, scope, update.folderId ?? current.folderId, root.id, sprintId)) throw new AppError('Choose a sprint belonging to this folder or one of its parents', 400, 'INVALID_SPRINT');
       }
-      const action = [update.name !== undefined && update.name !== current.name ? 'Renamed' : '', update.content !== undefined && update.content !== current.canonicalContent ? 'Updated brief' : '', update.folderId && update.folderId !== current.folderId ? 'Moved folder' : '', update.planning ? 'Updated planning' : ''].filter(Boolean).join('; ');
+      const storedKind = readKindDetails(current.attributes);
+      if (storedKind === null && update.kindFields) throw new AppError('Unsupported kind details were preserved.', 409, 'UNSUPPORTED_KIND_VERSION');
+      const kindFields = update.kindFields ?? (storedKind ? editableKindDetails(storedKind) : undefined);
+      const nextFields = { ...editablePlanning(previous), ...update.planning };
+      const details = kindFields ? await this.prepareKind(tx, scope, root.id, nextFields, kindFields, storedKind ?? undefined) : undefined;
+      const action = [update.name !== undefined && update.name !== current.name ? 'Renamed' : '', update.content !== undefined && update.content !== current.canonicalContent ? 'Updated brief' : '', update.folderId && update.folderId !== current.folderId ? 'Moved folder' : '', update.planning ? 'Updated planning' : '', update.kindFields ? 'Updated kind details' : ''].filter(Boolean).join('; ');
       if (!action) return { ...current, content: current.canonicalContent };
-      const planning: BookPlanning = { ...previous, ...update.planning, history: [...previous.history, { id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action }] };
+      const planning: BookPlanning = { ...previous, ...(kindFields ? kindPlanning(nextFields, kindFields) : nextFields), history: [...previous.history, { id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action }] };
       const document = await this.repository.saveDocument(tx, id, {
         ...(update.name !== undefined ? { name: update.name } : {}),
         ...(update.content !== undefined ? { canonicalContent: update.content, content: update.content } : {}),
         ...(update.folderId ? { folderId: update.folderId } : {}),
-        attributes: { ...record(current.attributes), airunoteBook: planning },
+        attributes: { ...record(current.attributes), airunoteBook: planning, ...(details ? { airunoteKinds: details } : {}) },
       });
       if (update.content !== undefined && update.content !== current.canonicalContent) await this.repository.revision(tx, id, update.content, scope.userId);
       return { ...document, content: document.canonicalContent };
@@ -107,6 +160,11 @@ export class BookService {
         const planning = readPlanning(current.attributes);
         if (!planning) throw new AppError('Unsupported planning data', 409, 'UNSUPPORTED_BOOK_VERSION');
         const fields = editablePlanning(planning); const change = batch.change;
+        const details = readKindDetails(current.attributes);
+        if (change.kind === 'status' && change.status !== 'cancelled') {
+          if (planning.kind === 'goal' && details?.goal && (details.goal.current >= details.goal.target ? 'complete' : 'open') !== change.status) throw new AppError('Open the goal and record progress to change its completion.', 400, 'GOAL_PROGRESS_REQUIRED');
+          if (planning.kind === 'task' && details?.taskMode === 'list') fields.checklist = fields.checklist.map(step => ({ ...step, done: change.status === 'complete' }));
+        }
         results.push(await this.updateInTransaction(tx, scope, entry.id, {
           rootFolderId: batch.rootFolderId, expectedUpdatedAt: entry.expectedUpdatedAt,
           ...(change.kind === 'folder' ? { folderId: change.folderId } : {}),

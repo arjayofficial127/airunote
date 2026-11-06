@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { kindFieldsSchema } from './kinds';
 
 export const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   const date = new Date(`${value}T00:00:00Z`);
@@ -34,9 +35,10 @@ export const updateBookDocumentSchema = z.object({
   name: z.string().trim().min(1).max(255).optional(),
   content: z.string().max(1000000).optional(), folderId: z.string().uuid().optional(),
   planning: planningFieldsSchema.optional(),
+  kindFields: kindFieldsSchema.optional(),
   contentType: z.literal('RTF').optional(),
-}).strict().refine(value => value.name !== undefined || value.content !== undefined || value.folderId !== undefined || value.planning !== undefined, 'Nothing to save');
-export const createBookDocumentSchema = z.object({ rootFolderId: z.string().uuid(), folderId: z.string().uuid(), name: z.string().trim().min(1).max(255), content: z.string().max(1000000), planning: planningFieldsSchema }).strict();
+}).strict().refine(value => value.name !== undefined || value.content !== undefined || value.folderId !== undefined || value.planning !== undefined || value.kindFields !== undefined, 'Nothing to save');
+export const createBookDocumentSchema = z.object({ rootFolderId: z.string().uuid(), folderId: z.string().uuid(), name: z.string().trim().min(1).max(255), content: z.string().max(1000000), planning: planningFieldsSchema, kindFields: kindFieldsSchema.optional() }).strict();
 export type BookDocumentCreate = z.infer<typeof createBookDocumentSchema>;
 export const sprintSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120), start: daySchema, end: daySchema, closed: z.boolean() }).strict().refine(value => value.end >= value.start, 'Sprint end must follow its start');
 export const workspaceViewSchema = z.object({

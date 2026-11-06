@@ -4,7 +4,7 @@ import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { errorMessage } from './services';
 import { useBookServices } from './BookServicesContext';
-import { editablePlanning, readBookConfig } from '@/lib/book';
+import { editablePlanning, readBookConfig, readKindDetails, type KindFields } from '@/lib/book';
 import { defaultPlanning, type PlanningFields, type CalendarPlan, type BookConfig, type BookConfigFields, type BookDocumentUpdate, type BookBatch } from '@/lib/book';
 import type { BookItem } from './domain';
 import type { AiruDocument } from '@/components/airunote/types';
@@ -34,10 +34,10 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
       commit(document); if (announce) setNotice('Saved'); return document;
     });
   }
-  async function capture(name: string, kind: PlanningFields['kind'], plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, content = '', fields?: PlanningFields) {
+  async function capture(name: string, kind: PlanningFields['kind'], plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, content = '', fields?: PlanningFields, kindFields?: KindFields) {
     return run(async () => {
       const planning = { ...defaultPlanning(kind, folderId !== rootFolderId), ...fields, plan, processed: fields?.processed ?? folderId !== rootFolderId };
-      const document = await services.capture(orgId, userId, folderId, name, planning, content, rootFolderId); commit(document); setNotice('Captured'); return document;
+      const document = await services.capture(orgId, userId, folderId, name, planning, content, rootFolderId, kindFields); commit(document); setNotice('Captured'); return document;
     });
   }
   async function daily(date: string) {
@@ -46,6 +46,9 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
       commit(document);
       return document;
     });
+  }
+  async function readyDocument(item: BookItem, expectedUpdatedAt?: string) {
+    return run(async () => { const document = await services.ready(orgId, item.id, rootFolderId, expectedUpdatedAt ?? new Date(item.updatedAt).toISOString()); commit(document); return document; });
   }
   async function configure(fields: BookConfigFields, folderId = rootFolderId) {
     return run(async () => {
@@ -64,12 +67,17 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
   }
   function fields(item: BookItem): PlanningFields { return editablePlanning(item.planning); }
   async function cycle(item: BookItem) {
+    if (item.planning.kind === 'goal' && readKindDetails(item.attributes)?.goal) { setError('Open this goal and record progress to complete it.'); return null; }
+    if (item.planning.kind === 'task' && readKindDetails(item.attributes)?.taskMode === 'list') {
+      const done = item.planning.status === 'open';
+      return update(item, { planning: { ...fields(item), status: done ? 'complete' : 'open', checklist: item.planning.checklist.map(step => ({ ...step, done })) } });
+    }
     const status = item.planning.status === 'open' ? 'complete' : item.planning.status === 'complete' ? 'cancelled' : 'open';
     return update(item, { planning: { ...fields(item), status } });
   }
   async function batch(items: BookItem[], change: BookBatch['change']) {
     return run(async () => { const documents = await services.batch(orgId, { rootFolderId, entries: items.map(item => ({ id: item.id, expectedUpdatedAt: new Date(item.updatedAt).toISOString() })), change }); documents.forEach(commit); setNotice(`Updated ${documents.length} items`); return documents; });
   }
-  return { update, capture, daily, configure, createFolder, cycle, batch, fields, busy, error, setError, notice };
+  return { update, capture, daily, readyDocument, configure, createFolder, cycle, batch, fields, busy, error, setError, notice };
 }
 export type BookActions = ReturnType<typeof useBookActions>;

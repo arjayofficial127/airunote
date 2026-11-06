@@ -33,7 +33,7 @@ export function viewOptionLabel(view: FolderViewSummary, views: FolderViewSummar
   return name.toLowerCase() === type.toLowerCase() ? name : `${name} · ${type}`;
 }
 export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: string) {
-  const editors = useNotesEditors(rootFolderId);
+  const editors = useNotesEditors(rootFolderId, orgId, userId);
   const base = useBookWorkspace(rootFolderId, orgId, userId, true, editors.selection);
   const { reconcile } = editors;
   useEffect(() => { if (!base.loading) reconcile(base.items); }, [base.items, base.loading, reconcile]);
@@ -120,7 +120,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     else setWorkspace(previous => ({ ...previous, folderChosen: saved.folderId !== rootFolderId,
       widths: { ...previous.widths, panels: { ...previous.widths.panels, organizer: restored.folderWidth ?? 360, calendar: restored.lensWidth ?? 460 } } }));
     const selection = model.items.find(item => item.id === saved.selectedId);
-    if (saved.editors) editors.restore(saved.editors, model.items);
+    if (saved.editors) editors.restore(saved.editors, model.items, model.folders.map(folder => folder.id));
     else if (selection) editors.open(selection);
     const restoredFolder = saved.folderContextId && ownsFolder(saved.folderContextId) ? saved.folderContextId : null;
     setFolderContextId(restoredFolder); setContextTab(saved.contextTab === 'folder' && restoredFolder ? 'folder' : 'note');

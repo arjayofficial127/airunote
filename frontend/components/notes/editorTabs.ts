@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { CalendarPlan } from '@/lib/book';
+import { planSchema, type CalendarPlan } from '@/lib/book';
 
 export type EditorTab = {
   key: string; noteId: string | null; folderId: string; name: string;
@@ -10,6 +10,8 @@ export type EditorTabs = { tabs: EditorTab[]; active: string | null; visible: st
 export const editorPreferencesSchema = z.object({
   noteIds: z.array(z.string()).max(100), active: z.string().nullable(),
   visible: z.array(z.string()).max(4), layout: z.enum(['single', 'row', 'grid']),
+  drafts: z.array(z.object({ key: z.string().min(1).max(200), folderId: z.string().min(1).max(200), plan: planSchema })).max(100).default([]),
+  activeDraft: z.string().min(1).max(200).nullable().default(null), visibleDrafts: z.array(z.string().min(1).max(200)).max(4).default([]),
 });
 export const initialEditorTabs = (): EditorTabs => ({ tabs: [], active: null, visible: [], layout: 'single' });
 export function focusEditor(state: EditorTabs, key: string): EditorTabs {
@@ -44,7 +46,11 @@ export function toggleEditor(state: EditorTabs, key: string): EditorTabs {
 export function editorPreferences(state: EditorTabs): z.infer<typeof editorPreferencesSchema> {
   const noteFor = (key: string | null) => state.tabs.find(tab => tab.key === key)?.noteId ?? null;
   return { noteIds: state.tabs.flatMap(tab => tab.noteId ? [tab.noteId] : []), active: noteFor(state.active),
-    visible: state.visible.flatMap(key => { const id = noteFor(key); return id ? [id] : []; }), layout: state.layout };
+    visible: state.visible.flatMap(key => { const id = noteFor(key); return id ? [id] : []; }), layout: state.layout,
+    drafts: state.tabs.filter(tab => !tab.noteId && tab.dirty).map(({ key, folderId, plan }) => ({ key, folderId, plan })),
+    activeDraft: state.tabs.find(tab => tab.key === state.active && !tab.noteId && tab.dirty)?.key ?? null,
+    visibleDrafts: state.visible.filter(key => state.tabs.some(tab => tab.key === key && !tab.noteId && tab.dirty)),
+  };
 }
 export function reconcileEditors(state: EditorTabs, available: ReadonlySet<string>): EditorTabs {
   return state.tabs.reduce((next, tab) => tab.noteId && !tab.dirty && !available.has(tab.noteId) ? removeEditor(next, tab.key) : next, state);
