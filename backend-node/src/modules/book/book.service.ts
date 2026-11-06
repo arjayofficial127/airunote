@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { dailyNoteNames } from './daily';
 import { AppError, ConflictError } from '../../core/errors/AppError';
 import type { BookDocumentCreate } from './contract';
 import { BookRepository, type BookScope, type BookTransaction } from './book.repository';
@@ -39,8 +40,13 @@ export class BookService {
       if (root.humanId !== '__user_root__') throw new AppError('Open daily notes from your workspace', 400, 'INVALID_DAILY_ROOT');
       // Serialize retries without blocking unrelated document creation or folder updates.
       await this.repository.lockDaily(tx, scope, date);
-      const name = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(date + 'T12:00:00Z'));
-      const existing = await this.repository.daily(tx, scope, root.id, date, name);
+      const names = dailyNoteNames(date);
+      const name = names[0]!;
+      const candidates = await this.repository.daily(tx, scope, root.id, date, names);
+      const existing = candidates[0];
+      if (candidates.length > 1 && record(record(existing?.attributes).airunoteDaily).date !== date) {
+        throw new AppError('More than one note uses this date. Open the one you want from Folders.', 409, 'DAILY_NOTE_AMBIGUOUS');
+      }
       if (existing) {
         const savedDate = record(record(existing.attributes).airunoteDaily).date;
         if (savedDate && savedDate !== date) throw new AppError('Another daily note uses this date title. Rename that note before opening today.', 409, 'DAILY_NOTE_NAME_CONFLICT');

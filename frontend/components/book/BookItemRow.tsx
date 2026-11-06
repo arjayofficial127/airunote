@@ -6,7 +6,7 @@ import { InlineRename } from './InlineRename';
 import { folderLabel, planLabel } from './domain';
 import type { BookItem } from './domain';
 import type { BookWorkspaceModel } from './useBookWorkspace';
-export function BookItemRow({ item, model, compact = false, showActions = true, calendarEntry = false }: { item: BookItem; model: BookWorkspaceModel; compact?: boolean; showActions?: boolean; calendarEntry?: boolean }) {
+export function BookItemRow({ item, model, compact = false, showActions = true, calendarEntry = false, displayName }: { item: BookItem; model: BookWorkspaceModel; compact?: boolean; showActions?: boolean; calendarEntry?: boolean; displayName?: string }) {
   const instance = useId();
   const [renaming, setRenaming] = useState(false);
   const titleButton = useRef<HTMLButtonElement>(null);
@@ -24,7 +24,7 @@ export function BookItemRow({ item, model, compact = false, showActions = true, 
         if (model.dirty) { model.actions.setError('Finish editing your note before renaming it.'); return false; }
         return !!await model.actions.update(item, { name });
       }} /> : <>
-      <button ref={titleButton} type="button" className="ab-item-title" title={calendarEntry ? calendarDescription : compact ? item.name : undefined} onClick={() => model.open(item)}>{calendarEntry && time && <time className="ab-calendar-entry-time" dateTime={time}>{time}</time>}<span>{item.planning.priority ? '★ ' : ''}{item.name}</span>{!compact && !calendarEntry && <small>{folderLabel(model.folders.find(folder => folder.id === item.folderId)?.humanId)} · {model.natural && item.planning.plan.kind === 'unplanned' ? 'Not scheduled' : planLabel(item.planning.plan, model.planningConfig)}{item.invalidPlanning ? ' · Unsupported planning data' : ''}</small>}</button>
+      <button ref={titleButton} type="button" className="ab-item-title" aria-label={displayName ? `${displayName} · ${calendarDescription}` : undefined} title={calendarEntry ? calendarDescription : compact ? item.name : undefined} onClick={() => model.open(item)}>{calendarEntry && time && <time className="ab-calendar-entry-time" dateTime={time}>{time}</time>}<span>{item.planning.priority ? '★ ' : ''}{displayName ?? item.name}</span>{!compact && !calendarEntry && <small>{folderLabel(model.folders.find(folder => folder.id === item.folderId)?.humanId)} · {model.natural && item.planning.plan.kind === 'unplanned' ? 'Not scheduled' : planLabel(item.planning.plan, model.planningConfig)}{item.invalidPlanning ? ' · Unsupported planning data' : ''}</small>}</button>
       {model.natural && <button type="button" className="an-rename-note" aria-label={`Rename ${item.name}`} title="Rename note" disabled={model.actions.busy || item.invalidPlanning || model.dirty} onClick={() => setRenaming(true)}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6L16 3Zm-3 3 5 5" /></svg></button>}
       {showActions && <ItemActionsButton item={item} disabled={model.actions.busy || model.dirty} />}
     </>}

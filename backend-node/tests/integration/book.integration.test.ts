@@ -117,6 +117,23 @@ integration('Book isolated PostgreSQL integration', () => {
     const reopened = await service.daily(scope, root, '2026-11-05');
     expect(reopened).toMatchObject({ id: first.id, canonicalContent: 'Existing text', attributes: { airunoteBook: { checklist: planning.checklist } } });
   });
+  test('daily lookup adopts a scheduled ISO day note in its existing nested folder', async () => {
+    const planning = editablePlanning(defaultPlanning('note'));
+    planning.plan = { kind: 'day', date: '2026-11-06', time: null, duration: null };
+    planning.checklist = [{ id: '80000000-0000-4000-8000-000000000001', text: 'Keep this next step', done: true }];
+    const first = await service.create(scope, { rootFolderId: root, folderId: child, name: '2026-11-06 · Friday', content: 'Existing guidance', planning });
+    const reopened = await service.daily(scope, root, '2026-11-06');
+    expect(reopened).toMatchObject({ id: first.id, folderId: child, name: first.name, canonicalContent: 'Existing guidance', attributes: { airunoteDaily: { date: '2026-11-06' }, airunoteBook: { checklist: planning.checklist } } });
+    expect((await service.daily(scope, root, '2026-11-06')).id).toBe(first.id);
+    expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(3);
+  });
+  test('ambiguous legacy day notes require an explicit choice instead of adopting arbitrarily', async () => {
+    const planning = editablePlanning(defaultPlanning('note'));
+    planning.plan = { kind: 'day', date: '2026-11-06', time: null, duration: null };
+    for (const folderId of [root, child]) await service.create(scope, { rootFolderId: root, folderId, name: '2026-11-06 · Friday', content: 'Keep both', planning });
+    await expect(service.daily(scope, root, '2026-11-06')).rejects.toMatchObject({ code: 'DAILY_NOTE_AMBIGUOUS' });
+    expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(4);
+  });
   test('daily notes enforce scope, dates, quotas, and preserve existing notes at the limit', async () => {
     await expect(service.daily({ orgId: otherOrg, userId: user }, root, '2026-11-05')).rejects.toMatchObject({ statusCode: 404 });
     await expect(service.daily({ orgId: org, userId: otherUser }, root, '2026-11-05')).rejects.toMatchObject({ statusCode: 404 });

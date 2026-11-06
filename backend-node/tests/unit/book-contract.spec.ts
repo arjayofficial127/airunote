@@ -1,7 +1,19 @@
 /// <reference types="jest" />
 import { batchBookSchema, defaultPlanning, editablePlanning, planSchema, planningSchema, readPlanning, readBookConfig, updateBookDocumentSchema } from '../../src/modules/book/contract';
+import { dailyNoteDate } from '../../src/modules/book/daily';
 
 describe('Book planning contract', () => {
+  test('daily compatibility requires an explicit marker or a matching scheduled note date', () => {
+    const planning = { ...defaultPlanning('note'), plan: { kind: 'day', date: '2026-11-06', time: null, duration: null } };
+    const note = { type: 'MD', name: '2026-11-06 · Friday', attributes: { airunoteBook: planning } };
+    expect(dailyNoteDate(note)).toBe('2026-11-06');
+    expect(dailyNoteDate({ ...note, name: 'Ordinary work note' })).toBeNull();
+    expect(dailyNoteDate({ ...note, attributes: { airunoteBook: { ...planning, kind: 'task' } } })).toBeNull();
+    expect(dailyNoteDate({ ...note, attributes: { airunoteBook: { ...planning, plan: { kind: 'unplanned' } } } })).toBeNull();
+    expect(dailyNoteDate({ ...note, name: '2026-11-06 · Thursday' })).toBeNull();
+    expect(dailyNoteDate({ ...note, attributes: { airunoteDaily: { date: '2026-02-30' }, airunoteBook: planning } })).toBeNull();
+    expect(dailyNoteDate({ ...note, name: 'Renamed day', attributes: { airunoteDaily: { date: '2026-11-06' } } })).toBe('2026-11-06');
+  });
   test('legacy notes remain notes and processed, with no inferred schedule', () => {
     expect(readPlanning({ tags: ['existing'] })).toEqual(defaultPlanning());
     expect(readBookConfig({ existing: true })?.revision).toBe(0);

@@ -5,6 +5,7 @@ import type { NotesModel } from './useNotesWorkspace';
 import type { EditorTab } from './editorTabs';
 import { NotesContent } from './NotesContent';
 import { NotesFolderDetails } from './NotesFolderDetails';
+import { PaneMenu } from './PaneMenu';
 
 function title(notes: NotesModel, tab: EditorTab) {
   return notes.model.items.find(item => item.id === tab.noteId)?.name || tab.name.trim() || 'Untitled note';
@@ -22,8 +23,23 @@ function CloseEditorDialog({ notes }: { notes: NotesModel }) {
 }
 export function NotesContext({ notes }: { notes: NotesModel }) {
   const id = useId(); const { editors } = notes; const { state } = editors;
+  const tablist = useRef<HTMLDivElement>(null);
   const folder = notes.model.folders.find(value => value.id === notes.folderContextId);
   const showingFolder = !!folder && (notes.contextTab === 'folder' || !state.tabs.length);
+  useEffect(() => {
+    const list = tablist.current;
+    if (!list) return;
+    const reveal = () => {
+      const active = list.querySelector<HTMLElement>('[aria-selected=true]')?.parentElement;
+      if (!active) return;
+      const bounds = list.getBoundingClientRect(), tab = active.getBoundingClientRect();
+      if (tab.left < bounds.left) list.scrollLeft += tab.left - bounds.left;
+      else if (tab.right > bounds.right) list.scrollLeft += tab.right - bounds.right;
+    };
+    reveal();
+    const observer = new ResizeObserver(reveal); observer.observe(list);
+    return () => observer.disconnect();
+  }, [state.active, state.tabs, showingFolder]);
   useEffect(() => { if (notes.folderContextId && !folder && !notes.folderDirty) notes.closeFolderDetails(); });
   const visible = state.layout === 'single' ? state.active ? [state.active] : [] : state.visible;
   const [visited, setVisited] = useState<string[]>([]);
@@ -39,7 +55,7 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
   function activate(key: string) { editors.focus(key); notes.setContextTab('note'); }
   return <section className="an-context-workspace" aria-label="Notes and Properties">
     <header className="an-context-tabs an-editor-tabs">
-      <div role="tablist" aria-label="Open notes" onKeyDown={event => {
+      <div ref={tablist} role="tablist" aria-label="Open notes" onKeyDown={event => {
         const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=tab]'));
         const index = tabs.findIndex(tab => tab === event.target);
         if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -53,6 +69,7 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
         {folder && <span><button role="tab" id={id + '-folder'} aria-controls={id + '-folder-panel'} aria-selected={showingFolder} tabIndex={showingFolder ? 0 : -1} onClick={() => notes.setContextTab('folder')}>Properties</button><button aria-label="Close Properties tab" onClick={notes.closeFolderDetails}>×</button></span>}
       </div>
       <div className="an-context-tools">
+        {state.tabs.length > 1 && <PaneMenu label="All open notes">{state.tabs.map(tab => <button data-menu-action key={tab.key} aria-current={state.active === tab.key ? 'page' : undefined} onClick={() => activate(tab.key)}>{title(notes, tab)}{tab.dirty ? ' •' : ''}</button>)}</PaneMenu>}
         <button aria-label="New note tab" title="New note" onClick={() => notes.model.add()}>+</button>
         <select aria-label="Note layout" value={state.layout} onChange={event => { const value = event.target.value; if (value === 'single' || value === 'row' || value === 'grid') { editors.layout(value); notes.setContextTab('note'); } }}><option value="single">Single</option><option value="row">1 × 4</option><option value="grid">2 × 2</option></select>
         {state.layout !== 'single' && <details className="ab-popover an-editor-picker"><summary>Visible {state.visible.length}/4</summary><div>{state.tabs.map(tab => <label key={tab.key}><input type="checkbox" checked={state.visible.includes(tab.key)} disabled={state.visible.includes(tab.key) ? state.visible.length === 1 : state.visible.length === 4} onChange={() => editors.toggle(tab.key)}/><span>{title(notes, tab)}</span></label>)}</div></details>}

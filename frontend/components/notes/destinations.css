@@ -39,3 +39,21 @@
 .airunote-notes .an-calendar-date-legacy{display:contents}
 .airunote-notes .an-pane-grid:not([data-pane-count="1"])>[data-resource-active=true]{box-shadow:inset 0 2px var(--ab-selected)}
 @container(max-width:550px){.airunote-notes .an-date-long{display:none}.airunote-notes .an-date-short{display:inline}}
+.airunote-notes .an-folder-heading[data-plan=true] header{flex-wrap:nowrap;gap:8px}
+.airunote-notes .an-folder-heading[data-plan=true] h2{flex:1 1 auto;font-size:20px}
+.airunote-notes .an-plan-scope{flex:0 1 190px;min-width:0}
+.airunote-notes .an-plan-scope label{display:block;margin:0;min-width:0}
+.airunote-notes .an-plan-scope select{width:100%;min-width:0;font-size:12px;padding:6px 8px}
+.airunote-notes .an-agenda-nav{gap:4px;margin-bottom:8px}
+.airunote-notes .an-agenda-nav strong{font-size:13px;line-height:1.4}
+.airunote-notes .an-agenda-nav button,.airunote-notes .an-agenda-heading button{min-width:32px;min-height:36px}
+.airunote-notes .an-agenda-day{padding:6px 0 10px}
+.airunote-notes .an-agenda-heading{margin-bottom:2px}
+.airunote-notes .an-agenda-heading h3{margin:0}
+.airunote-notes .an-agenda-group{padding:0}
+.airunote-notes .an-agenda-group summary{display:flex;align-items:center;gap:8px;min-height:40px;color:var(--ab-muted);list-style:none}
+.airunote-notes .an-agenda-group summary::-webkit-details-marker{display:none}
+.airunote-notes .an-agenda-group summary::before{content:'▸';font-size:11px}
+.airunote-notes .an-agenda-group[open]>summary::before{content:'▾'}
+.airunote-notes .an-agenda-group summary small{margin-left:auto;font-variant-numeric:tabular-nums}
+@media(pointer:coarse){.airunote-notes .an-agenda-nav button,.airunote-notes .an-agenda-heading button,.airunote-notes .an-agenda-group summary{min-height:44px}}

@@ -1,5 +1,6 @@
 .airunote-notes .an-editor-tabs { min-width:0; flex-shrink:0; }
-.airunote-notes .an-editor-tabs > [role=tablist] { flex:1 1 320px; min-width:0; flex-wrap:nowrap; overflow-x:auto; }
+.airunote-notes .an-editor-tabs > [role=tablist] { flex:1 1 320px; min-width:0; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+.airunote-notes .an-editor-tabs > [role=tablist]::-webkit-scrollbar { display:none; }
 .airunote-notes .an-editor-tabs > [role=tablist] > span { flex:none; max-width:260px; }
 .airunote-notes .an-editor-tabs [role=tab] { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
 .airunote-notes .an-editor-tabs [data-visible=true] { border-bottom:2px solid var(--ab-border); }
@@ -7,6 +8,7 @@
 .airunote-notes .an-editor-tabs .an-context-tools { margin-left:auto; flex-wrap:wrap; }
 .airunote-notes .an-editor-tabs select { width:auto; font-size:12px; padding:4px 6px; }
 .airunote-notes .an-editor-picker > div { right:0; left:auto; width:240px; max-height:280px; overflow:auto; }
+.airunote-notes .an-editor-tabs .an-pane-menu > div > button { white-space:normal; overflow-wrap:anywhere; }
 .airunote-notes .an-editor-picker label { display:flex; flex-direction:row; align-items:center; gap:8px; padding:5px; }
 .airunote-notes .an-editor-picker input { width:16px; flex:0 0 16px; }
 .airunote-notes .an-editor-picker label span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

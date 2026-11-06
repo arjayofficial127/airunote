@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import { airuDocumentsTable, airuFoldersTable, airuDocumentRevisionsTable, orgsTable } from '../../infrastructure/db/drizzle/schema';
 import { NotFoundError } from '../../core/errors/AppError';
@@ -57,19 +57,23 @@ export class BookRepository {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${scope.orgId + ':' + scope.userId + ':' + date}, 0))`);
   }
 
-  async daily(tx: BookTransaction, scope: BookScope, rootFolderId: string, date: string, name: string) {
-    const [row] = await tx.select({ document: airuDocumentsTable }).from(airuDocumentsTable)
+  async daily(tx: BookTransaction, scope: BookScope, rootFolderId: string, date: string, names: string[]) {
+    const rows = await tx.select({ document: airuDocumentsTable }).from(airuDocumentsTable)
       .innerJoin(airuFoldersTable, eq(airuDocumentsTable.folderId, airuFoldersTable.id))
       .where(and(
         eq(airuDocumentsTable.ownerUserId, scope.userId),
         eq(airuFoldersTable.ownerUserId, scope.userId),
         eq(airuFoldersTable.orgId, scope.orgId),
         sql`(${airuDocumentsTable.attributes}->'airunoteDaily'->>'date' = ${date}
-          OR (${airuDocumentsTable.folderId} = ${rootFolderId}::uuid AND ${airuDocumentsTable.name} = ${name}))`,
+          OR (${airuDocumentsTable.folderId} = ${rootFolderId}::uuid AND ${airuDocumentsTable.name} = ${names[0]})
+          OR (${inArray(airuDocumentsTable.name, names)}
+            AND ${airuDocumentsTable.attributes}->'airunoteBook'->>'kind' = 'note'
+            AND ${airuDocumentsTable.attributes}->'airunoteBook'->'plan'->>'kind' = 'day'
+            AND ${airuDocumentsTable.attributes}->'airunoteBook'->'plan'->>'date' = ${date}))`,
       ))
       .orderBy(sql`CASE WHEN ${airuDocumentsTable.attributes}->'airunoteDaily'->>'date' = ${date} THEN 0 ELSE 1 END`)
-      .limit(1).for('update', { of: airuDocumentsTable });
-    return row?.document;
+      .limit(2).for('update', { of: airuDocumentsTable });
+    return rows.map(row => row.document);
   }
 
   async saveDocument(tx: BookTransaction, id: string, changes: Partial<Pick<StoredBookDocument, 'name' | 'content' | 'canonicalContent' | 'folderId' | 'attributes'>>) {

@@ -27,11 +27,11 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
     catch (failure) { if (available()) setError(errorMessage(failure)); return null; }
     finally { pending.current = false; if (available()) setBusy(false); }
   }
-  async function update(item: BookItem, changes: Omit<BookDocumentUpdate, 'rootFolderId' | 'expectedUpdatedAt'>, expectedUpdatedAt?: string) {
+  async function update(item: BookItem, changes: Omit<BookDocumentUpdate, 'rootFolderId' | 'expectedUpdatedAt'>, expectedUpdatedAt?: string, announce = true) {
     if (item.invalidPlanning) { setError('Unsupported planning data. Open this item in its original editor.'); return null; }
     return run(async () => {
       const document = await services.update(orgId, item.id, { ...changes, rootFolderId, expectedUpdatedAt: expectedUpdatedAt ?? new Date(item.updatedAt).toISOString() });
-      commit(document); setNotice('Saved'); return document;
+      commit(document); if (announce) setNotice('Saved'); return document;
     });
   }
   async function capture(name: string, kind: PlanningFields['kind'], plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, content = '', fields?: PlanningFields) {

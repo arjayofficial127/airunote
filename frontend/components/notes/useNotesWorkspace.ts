@@ -1,6 +1,6 @@
 'use client';
 import { useNotesEditors } from './useNotesEditors';
-import { readBookConfig } from '@/lib/book';
+import { dailyNoteDate, readBookConfig, record } from '@/lib/book';
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { useBookWorkspace } from '@/components/book/useBookWorkspace';
@@ -60,15 +60,18 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
   }
   async function openToday() {
     if (!allowContextChange() || base.loading || base.actions.busy) return;
-    const document = await base.actions.daily(today());
+    const date = today();
+    const matches = base.items.filter(item => dailyNoteDate(item) === date);
+    const marked = matches.find(item => record(record(item.attributes).airunoteDaily).date === date);
+    if (!marked && matches.length > 1) { base.actions.setError('More than one note uses today’s date. Open the one you want from Folders.'); return; }
+    const document = marked ?? matches[0] ?? await base.actions.daily(date);
     if (!document) return;
-    if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
+    setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
     setContextTab('note');
     editors.open(document);
+    editors.layout('single');
     base.reveal();
-    if (workspace.preset === 'cards' && !workspace.folderChosen) {
-      base.setVisible(previous => previous.filter(panel => panel !== 'calendar'));
-    }
+    base.setVisible(previous => previous.filter(panel => panel !== 'calendar'));
   }
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
   const model = { ...base, open, add, reveal: revealNote, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };

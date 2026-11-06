@@ -3,6 +3,7 @@ import { useEffect, useState, type RefObject } from 'react';
 import type { Panel } from '@/components/book/domain';
 import type { NotesModel } from './useNotesWorkspace';
 import { allocateWidths, resizeWidths, type PaneWidths } from './workspaceLayout';
+import { dailyNoteDate } from '@/lib/book';
 
 export function useWorkspaceSizing(notes: NotesModel, container: RefObject<HTMLDivElement>, visible: Panel[]) {
   const [available, setAvailable] = useState(0);
@@ -26,6 +27,9 @@ export function useWorkspaceSizing(notes: NotesModel, container: RefObject<HTMLD
   }, [container]);
   const space = Math.max(0, available - Math.max(0, visible.length - 1) * (focused ? 10 : 1) - (focused ? 20 : 0));
   const widths = allocateWidths(visible, preferred, minimum, space, workspace.sizing === 'auto');
+  if (focused && !compact && visible.includes('context') && !visible.includes('calendar') && notes.model.selected && dailyNoteDate(notes.model.selected)) {
+    widths.context = Math.max(minimum.context, space - visible.filter(key => key !== 'context').reduce((sum, key) => sum + widths[key], 0));
+  }
   if (notes.model.expandedPanel && visible.length === 1) { const key = visible[0]; if (key) widths[key] = Math.max(minimum[key], space); }
   function resize(key: Panel, value: number) {
     const next = resizeWidths(visible, widths, minimum, key, value, workspace.sizing === 'auto');
