@@ -22,7 +22,7 @@ export function KindEditor({ model, document, editorKey, onAdvanced }: { model: 
   const capabilities = useQuery({ queryKey: ['airunote-kind-capabilities', model.orgId], queryFn: () => services.capabilities(model.orgId), staleTime: 60000, retry: false }).data === true;
   const editor = useKindEditor(model, document, editorKey, capabilities);
   const { state } = editor, kind = state.planning.kind;
-  const fields = state.kindFields ?? { ...defaultKindFields(), taskMode: state.planning.checklist.length ? 'list' as const : 'single' as const };
+  const fields = state.kindFields ?? defaultKindFields();
   const disabled = !editor.ready || model.actions.busy && !editor.saving || editor.readOnly;
   const list = kind === 'task' && fields.taskMode === 'list';
   const [checklist, setChecklist] = useState(false), [conversion, setConversion] = useState<Kind | null>(null);
