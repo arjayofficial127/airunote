@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
@@ -8,6 +7,7 @@ import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 import type { AiruFolderType } from '@/components/airunote/types';
 import { getFolderTypeIcon } from '@/components/airunote/utils/folderTypeIcon';
 import { LivingLensPlayground, type DemoLensKey } from '@/components/landing/LivingLensPlayground';
+import { LandingHeroImage } from './LandingHeroImage';
 
 const heroStories = [
   { line1: 'Searchable wiki', label: 'Searchable wiki', accent: 'bg-sky-500' },
@@ -713,13 +713,13 @@ export function AirunoteLandingPage() {
               </div>
               <div className="relative mx-auto w-full max-w-4xl">
                 <div className="relative aspect-[3/2] overflow-hidden rounded-[1.6rem] border border-white shadow-[0_42px_110px_-38px_rgba(15,27,61,0.5)] sm:rounded-[2rem]">
-                  <Image src="/airunote/knowledge-terrain-v1.png" alt="Airunote knowledge terrain" fill priority unoptimized className="object-cover" />
+                  <LandingHeroImage />
                   <div className="terrain-sun-glow" aria-hidden="true" />
                   <svg className="river-trajectory-layer" viewBox="0 0 1000 667" preserveAspectRatio="none" aria-hidden="true">
                     <path id="river-paper-boat-path" d="M757 308 C770 319 766 333 742 354 C646 378 642 404 643 432 C619 467 495 482 448 497 C424 507 432 527 392 548 C308 552 285 590 222 607 C202 617 215 627 179 637" fill="none" />
                     <use href="#river-paper-boat-path" className="river-trajectory-guide" /><use href="#river-paper-boat-path" className="river-trajectory-flow" /><circle className="river-trajectory-point river-trajectory-point-start" cx="750" cy="308" r="5" /><circle className="river-trajectory-point river-trajectory-point-end" cx="212" cy="642" r="5" />
-                    <g className="river-paper-boat-vector"><animateMotion dur="180s" repeatCount="indefinite" rotate="0" calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.88;1"><mpath href="#river-paper-boat-path" /></animateMotion><ellipse className="river-paper-boat-ripple" cx="0" cy="10" rx="18" ry="4" /><g transform="rotate(-18)"><image className="river-paper-boat-vector-image" href="/airunote/paper-boat-3d-v1.png" x="-27" y="-18" width="54" height="36" preserveAspectRatio="xMidYMid meet" /></g></g>
-                    <g className="river-paper-boat-vector-static" transform="translate(212 642) rotate(-18)"><ellipse className="river-paper-boat-ripple" cx="0" cy="10" rx="18" ry="4" /><image className="river-paper-boat-vector-image" href="/airunote/paper-boat-3d-v1.png" x="-27" y="-18" width="54" height="36" preserveAspectRatio="xMidYMid meet" /></g>
+                    <g className="river-paper-boat-vector"><animateMotion dur="180s" repeatCount="indefinite" rotate="0" calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.88;1"><mpath href="#river-paper-boat-path" /></animateMotion><ellipse className="river-paper-boat-ripple" cx="0" cy="10" rx="18" ry="4" /><g transform="rotate(-18)"><image className="river-paper-boat-vector-image" href="/airunote/paper-boat-3d-v1-192.png" x="-27" y="-18" width="54" height="36" preserveAspectRatio="xMidYMid meet" /></g></g>
+                    <g className="river-paper-boat-vector-static" transform="translate(212 642) rotate(-18)"><ellipse className="river-paper-boat-ripple" cx="0" cy="10" rx="18" ry="4" /><image className="river-paper-boat-vector-image" href="/airunote/paper-boat-3d-v1-192.png" x="-27" y="-18" width="54" height="36" preserveAspectRatio="xMidYMid meet" /></g>
                     <g className="terrain-wave-flag" transform="translate(245 85)"><g className="terrain-wave-flag-cloth"><image className="terrain-wave-flag-mark" href="/airunote/airunote-swoosh.svg?v=20260901-blue" x="2" y="-45" width="40" height="20" preserveAspectRatio="xMidYMid meet" /></g></g>
                   </svg>
                 </div>
