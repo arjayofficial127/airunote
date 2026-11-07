@@ -10,18 +10,19 @@ import { lifecycleApi } from './services/lifecycle';
 export type LifecycleTarget = { kind: 'folder'; item: AiruFolder } | { kind: 'note'; item: AiruDocumentMetadata };
 export function useNotesLifecycle(model: BookWorkspaceModel) {
   const [target, setTarget] = useState<LifecycleTarget | null>(null);
+  const [trash, setTrash] = useState(false);
   const [recovery, setRecovery] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState<string | null>(null);
   const pending = useRef(false), alive = useRef(true);
   const { activeOrgId } = useOrgSession(); const active = useRef(activeOrgId); active.current = activeOrgId;
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const available = () => alive.current && active.current === model.orgId;
-  function choose(value: LifecycleTarget | null, recover = false) {
+  function choose(value: LifecycleTarget | null, recover = false, confirmTrash = false) {
     if (model.dirty || model.hasDrafts) { model.actions.setError('Save or discard your draft first.'); return; }
-    setTarget(value); setRecovery(recover); setError(null);
+    setTarget(value); setRecovery(recover); setTrash(confirmTrash); setError(null);
   }
   async function change(value: LifecycleTarget, state: LifecycleState) {
     if (pending.current || model.actions.busy || !available()) return;
-    if (model.dirty || model.hasDrafts) { setError('Save or discard your draft first.'); return; }
+    if (model.dirty || model.hasDrafts) { (target ? setError : model.actions.setError)('Save or discard your draft first.'); return; }
     pending.current = true; setBusy(true); setError(null);
     try {
       if (value.kind === 'folder') {
@@ -39,9 +40,10 @@ export function useNotesLifecycle(model: BookWorkspaceModel) {
       }
       // Open editor tabs reconcile against the updated metadata. Other tabs stay open.
       setTarget(null);
-    } catch (failure) { if (available()) setError(errorMessage(failure)); }
+      return true;
+    } catch (failure) { if (available()) (target ? setError : model.actions.setError)(errorMessage(failure)); }
     finally { pending.current = false; if (available()) setBusy(false); }
   }
-  return { target, recovery, busy, error, choose, change, close: () => { if (!pending.current) { setTarget(null); setRecovery(false); setError(null); } } };
+  return { target, recovery, trash, busy, error, choose, change, close: () => { if (!pending.current) { setTarget(null); setRecovery(false); setError(null); } } };
 }
 export type NotesLifecycle = ReturnType<typeof useNotesLifecycle>;

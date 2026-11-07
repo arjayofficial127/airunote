@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useId, useRef } from 'react';
-import { ItemActionsContext } from '@/components/book/ItemActionsContext';
+import { NotesItemActions } from './NotesItemActions';
 import { NotesLifecycleDialog } from './NotesLifecycleDialog';
 import { BookDrag } from '@/components/book/BookDrag';
 import { useNotesFolderMove } from './useNotesFolderMove';
@@ -88,7 +88,7 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
     {model.actions.notice && <p role="status" className="ab-notice">{model.actions.notice}</p>}
     {model.configError && <p role="alert" className="ab-error">Existing planning settings could not be read. They have been preserved.</p>}
     <nav className="an-pane-shortcuts" aria-label="Jump to pane">{(['organizer', 'inbox', 'calendar', 'context'] as const).map((panel, index) => <button key={panel} disabled={panel === 'context' && !contextVisible} onClick={() => { model.setExpandedPanel(null); reveal(panel); }}>{['Folders', 'Inbox', 'View', 'Note / Properties'][index]}</button>)}</nav>
-    <ItemActionsContext.Provider value={item => notes.lifecycle.choose({ kind: 'note', item })}>
+    <NotesItemActions notes={notes}>
       <BookDrag model={model} onMoveFolder={moveFolder}>
         <div ref={panes} className="ab-panes an-workspace-panes" style={sizing.style} onScrollCapture={rememberScroll} role="group" aria-label="Notes workflow panels" tabIndex={0}>
           <div className="an-navigation" data-workspace-pane={focused ? 'organizer' : undefined} hidden={focused && !visible.includes('organizer')}>
@@ -118,7 +118,7 @@ export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: 
           </div>
         </div>
       </BookDrag>
-    </ItemActionsContext.Provider>
+    </NotesItemActions>
     <NotesLifecycleDialog notes={notes} /><SpaceLinkPicker notes={notes} />
     {!visible.length && <div className="ab-all-hidden"><button onClick={notes.showAllPanels}>Show all panels</button></div>}
   </div>;

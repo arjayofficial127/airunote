@@ -53,10 +53,10 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
     setContextTab('note'); editors.open(item); base.reveal();
   }
-  function add(plan?: Parameters<typeof base.add>[0], folderId?: string) {
+  function add(plan?: Parameters<typeof base.add>[0], folderId?: string, kind?: Parameters<typeof base.add>[2]) {
     if (!allowContextChange()) return;
     if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
-    setContextTab('note'); editors.add(plan, folderId); base.reveal();
+    setContextTab('note'); editors.add(plan, folderId, kind); base.reveal();
   }
   async function openToday() {
     if (!allowContextChange() || base.loading || base.actions.busy) return;

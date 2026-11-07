@@ -1,29 +1,52 @@
 'use client';
-import { useState } from 'react';
+import { useState, type RefObject } from 'react';
 import { defaultKindFields, type CalendarPlan } from '@/lib/book';
 import { today, planLabel } from '@/components/book/domain';
 import type { BookWorkspaceModel } from '@/components/book/useBookWorkspace';
 import type { KindEditorModel } from './useKindEditor';
 import { GrowingField } from './GrowingField';
 
-export function KindChecklist({ editor, disabled, label = 'Checklist', required = false }: { editor: KindEditorModel; disabled: boolean; label?: string; required?: boolean }) {
-  const { state } = editor; const items = state.planning.checklist;
-  const done = items.filter(item => item.done).length;
+export function KindChecklist({ editor, disabled, label = 'Checklist', required = false, task = false, taskDates = false, inputRef }: {
+  editor: KindEditorModel;
+  disabled: boolean;
+  label?: string;
+  required?: boolean;
+  task?: boolean;
+  taskDates?: boolean;
+  inputRef?: RefObject<HTMLInputElement>;
+}) {
+  const { state } = editor;
+  const items = state.planning.checklist;
+  const countPrimary = task && !required;
+  const total = items.length + Number(countPrimary);
+  const done = items.filter(item => item.done).length + Number(countPrimary && state.planning.status === 'complete');
+  const noun = task ? 'task' : 'checklist item';
+  function update(id: string, patch: Partial<(typeof items)[number]>) {
+    editor.planning(previous => ({ checklist: previous.checklist.map(item => item.id === id ? { ...item, ...patch } : item) }));
+  }
+  function add() {
+    editor.addStep();
+    inputRef?.current?.focus();
+  }
   return <section className="an-kind-checklist" aria-label={label}>
-    <div className="an-kind-count"><span>{done}/{items.length} done</span>{items.length > 0 && <span>{Math.round(done / items.length * 100)}%</span>}</div>
-    {items.length > 0 && <progress aria-label={`${label} progress`} max={items.length} value={done}/>}
-    {items.map((item, index) => <div className="an-kind-checkrow" key={item.id} data-done={item.done}>
-      <input type="checkbox" aria-label={item.text || `Item ${index + 1}`} disabled={disabled} checked={item.done} onChange={event => { const done = event.target.checked; editor.planning(previous => ({ checklist: previous.checklist.map(value => value.id === item.id ? { ...value, done } : value) })); }}/>
-      <GrowingField aria-label={`Edit checklist item ${index + 1}`} value={item.text} maxLength={2000} disabled={disabled} onChange={event => { const text = event.target.value; editor.planning(previous => ({ checklist: previous.checklist.map(value => value.id === item.id ? { ...value, text } : value) })); }}/>
-      <button type="button" title={required && items.length === 1 ? 'Keep one item or choose Single task' : 'Remove item'} aria-label={`Remove checklist item ${index + 1}`} disabled={disabled || required && items.length === 1} onClick={() => editor.planning(previous => ({ checklist: previous.checklist.filter(value => value.id !== item.id) }))}>×</button>
+    {items.length > 0 && <div className="an-kind-count"><strong>{label}</strong><span>{done} of {total} done</span></div>}
+    {!task && items.length > 0 && <progress aria-label={`${label} progress`} max={total} value={done}/>}
+    {items.map((item, index) => <div className="an-kind-checkrow" key={item.id} data-done={item.done} data-task-dates={taskDates || undefined}>
+      <input type="checkbox" aria-label={item.text || `Item ${index + 1}`} disabled={disabled} checked={item.done} onChange={event => update(item.id, { done: event.target.checked })}/>
+      <GrowingField aria-label={`Edit ${noun} ${index + 1}`} value={item.text} maxLength={2000} disabled={disabled} onChange={event => update(item.id, { text: event.target.value })}/>
+      {taskDates && <input className="an-kind-row-date" type="date" aria-label={`Due date for ${item.text || `task ${index + 1}`}`} disabled={disabled} value={item.dueDate ?? ''} onChange={event => update(item.id, { dueDate: event.target.value || undefined })}/>}
+      <button type="button" title={required && items.length === 1 ? 'Keep at least one task in this existing list' : `Remove ${noun}`} aria-label={`Remove ${noun} ${index + 1}`} disabled={disabled || required && items.length === 1} onClick={() => editor.planning(previous => ({ checklist: previous.checklist.filter(value => value.id !== item.id) }))}>×</button>
     </div>)}
-    <div className="an-kind-add"><input aria-label="New checklist item" placeholder="Add a step…" disabled={disabled} maxLength={2000} value={state.step} onChange={event => editor.change({ step: event.target.value })} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); editor.addStep(); } }}/><button type="button" aria-label="Add checklist item" disabled={disabled || !state.step.trim() || items.length >= 200} onClick={editor.addStep}>+</button></div>
+    <div className="an-kind-add">
+      <input ref={inputRef} aria-label={task ? 'Another task' : 'New checklist item'} placeholder={task ? 'What else needs doing?' : 'Add a step…'} disabled={disabled || items.length >= 200} maxLength={2000} value={state.step} onChange={event => editor.change({ step: event.target.value })} onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); add(); } }}/>
+      <button type="button" aria-label={task ? 'Add task' : 'Add checklist item'} disabled={disabled || !state.step.trim() || items.length >= 200} onClick={add}>{task ? 'Add' : '+'}</button>
+    </div>
   </section>;
 }
 
 export function KindDueDate({ editor, model, disabled }: { editor: KindEditorModel; model: BookWorkspaceModel; disabled: boolean }) {
   const plan = editor.state.planning.plan;
-  return <label className="an-kind-due">{editor.state.planning.kind === 'goal' ? 'Target date' : 'Due date'}<input aria-label="Due date" type="date" disabled={disabled} value={plan.kind === 'day' ? plan.date : ''} onChange={event => editor.planning({ plan: event.target.value ? { kind: 'day', date: event.target.value, time: plan.kind === 'day' ? plan.time : null, duration: plan.kind === 'day' ? plan.duration : null } : { kind: 'unplanned' } })}/>{plan.kind !== 'day' && plan.kind !== 'unplanned' && <small>{planLabel(plan, model.planningConfig)}</small>}</label>;
+  return <label className="an-kind-due">{editor.state.planning.kind === 'goal' ? 'Target date (optional)' : 'Due date (optional)'}<input aria-label="Due date" type="date" disabled={disabled} value={plan.kind === 'day' ? plan.date : ''} onChange={event => editor.planning({ plan: event.target.value ? { kind: 'day', date: event.target.value, time: plan.kind === 'day' ? plan.time : null, duration: plan.kind === 'day' ? plan.duration : null } : { kind: 'unplanned' } })}/>{plan.kind !== 'day' && plan.kind !== 'unplanned' && <small>{planLabel(plan, model.planningConfig)}</small>}</label>;
 }
 
 export function KindEvent({ editor, disabled, capabilities }: { editor: KindEditorModel; disabled: boolean; capabilities: boolean }) {

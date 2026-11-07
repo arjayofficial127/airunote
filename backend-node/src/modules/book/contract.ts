@@ -19,7 +19,7 @@ export const planSchema = z.discriminatedUnion('kind', [
     context.addIssue({ code: z.ZodIssueCode.custom, message: 'Duration needs a start time and must finish by midnight' });
   }
 });
-export const checklistSchema = z.array(z.object({ id: z.string().uuid(), text: z.string().trim().min(1).max(2000), done: z.boolean() }).strict()).max(200);
+export const checklistSchema = z.array(z.object({ id: z.string().uuid(), text: z.string().trim().min(1).max(2000), done: z.boolean(), dueDate: daySchema.optional() }).strict()).max(200);
 export const planningFieldsSchema = z.object({
   kind: z.enum(['task', 'event', 'note', 'goal', 'document']),
   status: z.enum(['open', 'complete', 'cancelled']),

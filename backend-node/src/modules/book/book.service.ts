@@ -13,7 +13,33 @@ export class BookService {
     return this.repository.transaction(tx => this.createInTransaction(tx, scope, input));
   }
 
-  private async createInTransaction(tx: BookTransaction, scope: BookScope, input: BookDocumentCreate) {
+  async copy(scope: BookScope, id: string, target: { rootFolderId: string; folderId: string; expectedUpdatedAt: string }) {
+    return this.repository.transaction(async tx => {
+      const source = await this.repository.document(tx, scope, id);
+      await this.repository.withinRoot(tx, scope, source.folderId, target.rootFolderId, true);
+      await this.repository.withinRoot(tx, scope, target.folderId, target.rootFolderId, true);
+      if (source.state !== 'active') throw new AppError('Restore this item before copying it.', 409, 'DOCUMENT_INACTIVE');
+      if (source.updatedAt.toISOString() !== target.expectedUpdatedAt) throw new ConflictError('The original changed. Copy it again to use its latest version.');
+      const planning = readPlanning(source.attributes);
+      const details = readKindDetails(source.attributes);
+      if (!planning || details === null) throw new AppError('This item has unsupported details.', 409, 'UNSUPPORTED_BOOK_VERSION');
+      const fields = editablePlanning(planning);
+      fields.processed = target.folderId !== target.rootFolderId;
+      if (fields.plan.kind === 'sprint' && !await this.repository.hasSprint(tx, scope, target.folderId, target.rootFolderId, fields.plan.sprintId)) {
+        fields.plan = { kind: 'unplanned' };
+      }
+      const kindFields = details ? { ...editableKindDetails(details), reminderAt: null } : undefined;
+      return this.createInTransaction(tx, scope, {
+        ...target,
+        name: source.name,
+        content: source.canonicalContent,
+        planning: fields,
+        kindFields,
+      }, source.type, true);
+    });
+  }
+
+  private async createInTransaction(tx: BookTransaction, scope: BookScope, input: BookDocumentCreate, type: 'MD' | 'TXT' | 'RTF' = 'MD', copy = false) {
     const root = await this.repository.folder(tx, scope, input.rootFolderId);
     await this.repository.withinRoot(tx, scope, input.folderId, root.id);
     const folder = await this.repository.folder(tx, scope, input.folderId);
@@ -31,7 +57,7 @@ export class BookService {
     if (quota.plan !== 'pro' && quota.count >= limit) throw new AppError('Upgrade required to continue', 403, 'UPGRADE_REQUIRED');
     const details = input.kindFields ? await this.prepareKind(tx, scope, root.id, input.planning, input.kindFields) : undefined;
     const planning: BookPlanning = { ...(input.kindFields ? kindPlanning(input.planning, input.kindFields) : input.planning), version: 1, history: [{ id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action: 'Captured in Book' }] };
-    const document = await this.repository.create(tx, scope, folder.id, input.name, input.content, { airunoteBook: planning, ...(details ? { airunoteKinds: details } : {}) });
+    const document = await this.repository.create(tx, scope, folder.id, input.name, input.content, { airunoteBook: planning, ...(details ? { airunoteKinds: details } : {}) }, type, copy);
     return { ...document, content: document.canonicalContent };
   }
 

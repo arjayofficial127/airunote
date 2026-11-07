@@ -9,8 +9,18 @@ import { AppError } from '../../core/errors/AppError';
 const router: ReturnType<typeof Router> = Router({ mergeParams: true });
 router.use(authMiddleware, requireOrgMembership);
 const service = new BookService();
-router.get('/capabilities', (_req, res) => { res.json({ success: true, data: { kinds: 1, documentVersions: true } }); });
+router.get('/capabilities', (_req, res) => { res.json({ success: true, data: { kinds: 1, documentVersions: true, taskDueDates: true, itemCopies: true } }); });
 const versionRequest = z.object({ rootFolderId: z.string().uuid(), expectedUpdatedAt: z.string().datetime() }).strict();
+router.post('/documents/:id/copy', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orgId = z.string().uuid().parse(req.params.orgId);
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
+    const input = versionRequest.extend({ folderId: z.string().uuid() }).parse(req.body);
+    const document = await service.copy({ orgId, userId }, z.string().uuid().parse(req.params.id), input);
+    res.status(201).json({ success: true, data: { document } });
+  } catch (error) { next(error instanceof z.ZodError ? new AppError('Choose a valid item and destination.', 400, 'VALIDATION_ERROR') : error); }
+});
 router.post('/documents/:id/ready', async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user?.userId) throw new AppError('Authentication required', 401, 'UNAUTHORIZED');

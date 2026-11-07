@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import type { CalendarPlan } from '@/lib/book';
+import type { CalendarPlan, PlanningFields } from '@/lib/book';
 import type { BookItem } from '@/components/book/domain';
 import type { BookEditorSelection, BookWorkspaceModel } from '@/components/book/useBookWorkspace';
 import type { EditorControls, EditorSession } from '@/components/book/EditorSession';
@@ -56,8 +56,8 @@ export function useNotesEditors(rootFolderId: string, orgId: string, userId: str
   function open(item: Pick<BookItem, 'id' | 'folderId' | 'name'>) {
     setState(previous => openEditor(previous, { key: `note:${item.id}`, noteId: item.id, folderId: item.folderId, name: item.name, plan: { kind: 'unplanned' }, dirty: false }));
   }
-  function add(plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId) {
-    setState(previous => openEditor(previous, { key: crypto.randomUUID(), noteId: null, folderId, name: '', plan, dirty: false }));
+  function add(plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, kind: PlanningFields['kind'] = 'note') {
+    setState(previous => openEditor(previous, { key: crypto.randomUUID(), noteId: null, folderId, name: '', plan, kind, dirty: false }));
   }
   const selection: BookEditorSelection = {
     selectedId: active?.noteId ?? null, creating: !!active && !active.noteId,
@@ -88,7 +88,7 @@ export function useNotesEditors(rootFolderId: string, orgId: string, userId: str
   }
   function modelFor(tab: EditorTab, model: BookWorkspaceModel): BookWorkspaceModel {
     return { ...model, ...forTab(tab.key), selected: model.items.find(item => item.id === tab.noteId) ?? null,
-      creating: !tab.noteId, dirty: tab.dirty, captureFolderId: tab.folderId, capturePlan: tab.plan,
+      creating: !tab.noteId, dirty: tab.dirty, captureFolderId: tab.folderId, capturePlan: tab.plan, captureKind: tab.kind ?? 'note',
       draftPreview: tab.noteId ? null : { name: tab.name, folderId: tab.folderId } };
   }
   function restore(saved: ReturnType<typeof editorPreferences>, items: BookItem[], folderIds: string[]) {

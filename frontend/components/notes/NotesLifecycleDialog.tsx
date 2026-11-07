@@ -11,7 +11,7 @@ export function NotesLifecycleDialog({ notes }: { notes: NotesModel }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [deleting, setDeleting] = useState(false), [tab, setTab] = useState<'archived' | 'trashed'>('archived');
   const open = !!actions.target || actions.recovery;
-  useEffect(() => { setDeleting(false); }, [actions.target]);
+  useEffect(() => { setDeleting(actions.trash); }, [actions.target, actions.trash]);
   useEffect(() => { if (open) dialog.current?.showModal(); else dialog.current?.close(); }, [open]);
   const owned = Array.from(folders.values()).filter(folder => folder.orgId === model.orgId && folder.ownerUserId === model.userId);
   const ids = new Set(owned.map(folder => folder.id));
@@ -26,7 +26,7 @@ export function NotesLifecycleDialog({ notes }: { notes: NotesModel }) {
     <header><h2 id="an-lifecycle-title">{target ? name : 'Archive & Trash'}</h2><button aria-label="Close actions" disabled={actions.busy} onClick={actions.close}>×</button></header>
     {actions.error && <p role="alert" className="ab-error">{actions.error}</p>}
     {target ? <>
-      {deleting ? <><p>{target.kind === 'folder' ? `Move this folder to Trash? Its direct notes and child Folders will move to ${folderLabel(folders.get(target.item.parentFolderId)?.humanId)}. Their contents and schedules stay intact.` : 'Move this note to Trash? You can restore it later.'}</p>{target.kind === 'folder' && <p className="ab-muted">Restoring this folder will not move those contents back automatically. Its saved views remain with the folder.</p>}<div className="an-dialog-actions"><button disabled={actions.busy} onClick={() => setDeleting(false)}>Cancel</button><button className="ab-primary" disabled={actions.busy} onClick={() => void actions.change(target, 'trashed')}>{actions.busy ? 'Moving…' : 'Move to Trash'}</button></div></> : <div className="an-lifecycle-choices">
+      {deleting ? <><p>{target.kind === 'folder' ? `Move this folder to Trash? Its direct notes and child Folders will move to ${folderLabel(folders.get(target.item.parentFolderId)?.humanId)}. Their contents and schedules stay intact.` : 'Move this note to Trash? You can restore it later.'}</p>{target.kind === 'folder' && <p className="ab-muted">Restoring this folder will not move those contents back automatically. Its saved views remain with the folder.</p>}<div className="an-dialog-actions"><button disabled={actions.busy} onClick={() => actions.trash ? actions.close() : setDeleting(false)}>Cancel</button><button className="ab-primary" disabled={actions.busy} onClick={() => void actions.change(target, 'trashed')}>{actions.busy ? 'Moving…' : 'Move to Trash'}</button></div></> : <div className="an-lifecycle-choices">
         {state === 'active' ? <><button disabled={actions.busy} onClick={() => void actions.change(target, 'archived')}>Archive {target.kind === 'folder' ? 'Folder' : 'note'}</button><small>{target.kind === 'folder' ? 'Keep this folder and its contents together. Restore anytime.' : 'Keep this note for later. Restore anytime.'}</small></> : <button disabled={actions.busy} onClick={() => void actions.change(target, 'active')}>Restore {target.kind === 'folder' ? 'Folder' : 'note'}</button>}
         {state !== 'trashed' && <button disabled={actions.busy} onClick={() => setDeleting(true)}>Delete {target.kind === 'folder' ? 'Folder' : 'note'}…</button>}
       </div>}

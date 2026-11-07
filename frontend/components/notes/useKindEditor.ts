@@ -21,9 +21,11 @@ const serialized = (state: KindEditorState) => JSON.stringify({ ...state, step: 
 
 export function useKindEditor(model: BookWorkspaceModel, document: AiruDocument | null, editorKey: string, capabilities: boolean) {
   const details = readKindDetails(document?.attributes);
+  const draftFields = defaultKindFields();
+  if (model.captureKind === 'goal') draftFields.goal = { measure: '', unit: '', current: 0, target: 1, nextTaskId: null };
   const original: KindEditorState = { name: document?.name ?? '', content: document?.canonicalContent ?? document?.content ?? '', folderId: document?.folderId ?? model.captureFolderId,
-    planning: model.selected ? model.actions.fields(model.selected) : { ...editablePlanning(defaultPlanning('note', model.captureFolderId !== model.rootFolderId)), plan: model.capturePlan },
-    kindFields: details ? editableKindDetails(details) : document ? null : defaultKindFields(), step: '', eventEnd: null };
+    planning: model.selected ? model.actions.fields(model.selected) : { ...editablePlanning(defaultPlanning(model.captureKind, model.captureFolderId !== model.rootFolderId)), plan: model.capturePlan },
+    kindFields: details ? editableKindDetails(details) : document ? null : draftFields, step: '', eventEnd: null };
   const originalValue = serialized(original);
   const [state, setState] = useState(original), [base, setBase] = useState(originalValue);
   const [ready, setReady] = useState(false), [saving, setSaving] = useState(false), [paused, setPaused] = useState(false);
@@ -90,7 +92,7 @@ export function useKindEditor(model: BookWorkspaceModel, document: AiruDocument 
     snapshot.planning = specific ? kindPlanning(fields.data, specific) : fields.data;
     pending.current = true; setSaving(true);
     const saved = current.document && current.model.selected ? await current.model.actions.update(current.model.selected, { name: snapshot.name, content: snapshot.content, folderId: snapshot.folderId, planning: snapshot.planning, ...(current.document.type === 'RTF' ? { contentType: 'RTF' as const } : {}), ...(specific && capabilities ? { kindFields: specific } : {}) }, expected.current, false)
-      : await current.model.actions.capture(snapshot.name, snapshot.planning.kind, snapshot.planning.plan, snapshot.folderId, snapshot.content, snapshot.planning, specific && capabilities ? specific : undefined);
+      : await current.model.actions.capture(snapshot.name, snapshot.planning.kind, snapshot.planning.plan, snapshot.folderId, snapshot.content, snapshot.planning, specific && capabilities ? specific : undefined, false);
     pending.current = false;
     if (!alive.current) return false;
     setSaving(false);
@@ -106,9 +108,10 @@ export function useKindEditor(model: BookWorkspaceModel, document: AiruDocument 
       step: recent.step === current.state.step ? '' : recent.step, eventEnd: recent.eventEnd === current.state.eventEnd ? null : recent.eventEnd };
     const stillDirty = serialized(next) !== serialized(savedState) || !!next.step.trim();
     latest.current = { ...latest.current, state: next, base: serialized(savedState), dirty: stillDirty };
-    setState(next); setBase(serialized(savedState)); setPaused(false); current.model.setDirty(stillDirty);
+    setState(next); setBase(serialized(savedState)); setPaused(false);
     try { sessionStorage.removeItem(key); if (current.document) sessionStorage.removeItem(`airunote:note-draft:${model.orgId}:${model.userId}:${current.document.id}`); } catch { /* Saved content is authoritative. */ }
     if (!current.document) { if (session) session.saved(saved.id); else { model.setSelectedId(saved.id); model.setCreating(false); } }
+    current.model.setDirty(stillDirty);
     return !stillDirty;
   }
   function discard() {

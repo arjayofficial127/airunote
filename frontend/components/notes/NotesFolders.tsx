@@ -2,7 +2,7 @@
 import { readSpaceLinks } from '@/lib/spaceLinks';
 import { collectionLabels } from '@/lib/collections';
 import { FolderFilter } from './FolderFilter';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { BookItemRow } from '@/components/book/BookItemRow';
 import { DropZone } from '@/components/book/BookDrag';
@@ -13,6 +13,7 @@ import { NotesIcon, collectionIcon } from './NotesIcon';
 import { RenameFolderForm } from './RenameFolderForm';
 import { PaneGroup } from './PaneGroup';
 import { addFolderPane, removeFolderPane, type FolderPane } from './panes';
+import { FolderActionsContext } from './NotesItemActions';
 import { useFolderDraft } from './useFolderDraft';
 
 type FolderContext = {
@@ -51,7 +52,8 @@ function DraftRows({ parentId, context }: { parentId: string; context: FolderCon
   </>;
 }
 function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; context: FolderContext; depth: number; ancestors: Set<string> }) {
-  const [renaming, setRenaming] = useState(false); const titleButton = useRef<HTMLButtonElement>(null);
+  const [renaming, setRenaming] = useState(false); const folderActions = useContext(FolderActionsContext);
+  const titleButton = useRef<HTMLButtonElement>(null);
   const { notes, pane } = context; const { model } = notes;
   const open = !pane.collapsedFolders.includes(folder.id);
   const draggable = useDraggable({ id: `${pane.id}:folder:${folder.id}`, data: { folderId: folder.id }, disabled: renaming || model.actions.busy || !!context.draft.draft });
@@ -68,7 +70,7 @@ function FolderRow({ folder, context, depth, ancestors }: { folder: AiruFolder; 
           <button ref={titleButton} className="an-folder-select" onPointerDown={event => { if (event.pointerType !== 'touch') draggable.listeners?.onPointerDown?.(event); }} onClick={() => context.select(folder.id)} title={folderLabel(folder.humanId)}><NotesIcon name="folder"/><span>{folderLabel(folder.humanId)}</span>{items.length > 0 && <small>{items.length}</small>}</button>
           {pane.folderId === folder.id && <QuickAdd id={folder.id} context={context}/>}
           <button className="an-rename-folder" title="Rename folder" aria-label={`Rename ${folderLabel(folder.humanId)}`} onClick={() => setRenaming(true)}><NotesIcon name="edit" width="16" height="16"/></button>
-          <button className="an-item-actions" aria-label={`Actions for folder ${folderLabel(folder.humanId)}`} title="Archive or delete folder" disabled={model.actions.busy} onClick={() => notes.lifecycle.choose({ kind: 'folder', item: folder })}>⋯</button>
+          <button className="an-item-actions" aria-label={`Actions for folder ${folderLabel(folder.humanId)}`} title="Folder actions" aria-haspopup="dialog" disabled={model.actions.busy} onClick={event => folderActions?.(folder, event.currentTarget)}>⋯</button>
           <button className="an-focus-folder" title="Focus on this folder" aria-label={`Focus on ${folderLabel(folder.humanId)}`} onClick={() => context.focus(folder.id)}>↗</button>
         </>}
       </div>

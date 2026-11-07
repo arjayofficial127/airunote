@@ -2,7 +2,7 @@
 import { activeFolders } from '@/lib/airunoteLifecycle';
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
-import { readBookConfig, type CalendarPlan, type WorkspaceView } from '@/lib/book';
+import { readBookConfig, type CalendarPlan, type PlanningFields, type WorkspaceView } from '@/lib/book';
 import { subtree, bookItems, today, panels, type Panel, type Period, type Plot, type BookItem } from './domain';
 import { useBookActions } from './useBookActions';
 
@@ -31,6 +31,7 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
   const [plot, setPlot] = useState<Plot>('items'); const [hours, setHours] = useState<'24' | '12' | '8'>('12');
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(null); const [localCreating, setLocalCreating] = useState(false);
   const [localCaptureFolderId, setLocalCaptureFolderId] = useState(rootFolderId);
+  const [captureKind, setCaptureKind] = useState<PlanningFields['kind']>('note');
   const [localCapturePlan, setLocalCapturePlan] = useState<CalendarPlan>({ kind: 'unplanned' });
   const [localDraftPreview, setLocalDraftPreview] = useState<{ name: string; folderId: string } | null>(null);
   const [draftKey, setDraftKey] = useState(0);
@@ -50,9 +51,9 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
     if (dirty) { actions.setError('Save or discard your note draft before opening another item.'); return; }
     setSelectedId(item.id); setCreating(false); reveal();
   }
-  function add(plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId) {
+  function add(plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, kind: PlanningFields['kind'] = 'note') {
     if (dirty) { actions.setError('Save or discard your note draft before starting another item.'); return; }
-    setDraftKey(value => value + 1); setDraftPreview({ name: '', folderId }); setSelectedId(null); setCreating(true); setLocalCapturePlan(plan); setLocalCaptureFolderId(folderId); reveal();
+    setDraftKey(value => value + 1); setDraftPreview({ name: '', folderId }); setSelectedId(null); setCreating(true); setCaptureKind(kind); setLocalCapturePlan(plan); setLocalCaptureFolderId(folderId); reveal();
   }
   function applyView(view: WorkspaceView) { setExpandedPanel(null); setVisible(panels.filter(panel => view.panels.includes(panel))); setFolderFilter(view.folders); setPeriod(view.period); setDate(view.date); setPlot(view.plot); setHours(view.hours); setLayout(view.layout); setClosed(view.closed); }
   function view(name: string): WorkspaceView { return { id: crypto.randomUUID(), name, panels: visible, folders: selectedFolders, period, date, plot, hours, layout, closed }; }
@@ -69,6 +70,6 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
     window.addEventListener('airunote:before-leave', leave);
     return () => { window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigate, true); window.removeEventListener('airunote:before-leave', leave); };
   }, [dirty, draftFlags.length]);
-  return { natural, root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, draftPreview, setDraftPreview, draftKey, reveal, dirty, setDirty, hasDrafts: draftFlags.length > 0, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
+  return { natural, root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, captureKind, draftPreview, setDraftPreview, draftKey, reveal, dirty, setDirty, hasDrafts: draftFlags.length > 0, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
 }
 export type BookWorkspaceModel = ReturnType<typeof useBookWorkspace>;

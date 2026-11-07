@@ -1,16 +1,16 @@
 import { z } from 'zod';
-import { planSchema, type CalendarPlan } from '@/lib/book';
+import { planningFieldsSchema, planSchema, type CalendarPlan, type PlanningFields } from '@/lib/book';
 
 export type EditorTab = {
   key: string; noteId: string | null; folderId: string; name: string;
-  plan: CalendarPlan; dirty: boolean;
+  plan: CalendarPlan; kind?: PlanningFields['kind']; dirty: boolean;
 };
 export type EditorLayout = 'single' | 'row' | 'grid';
 export type EditorTabs = { tabs: EditorTab[]; active: string | null; visible: string[]; layout: EditorLayout };
 export const editorPreferencesSchema = z.object({
   noteIds: z.array(z.string()).max(100), active: z.string().nullable(),
   visible: z.array(z.string()).max(4), layout: z.enum(['single', 'row', 'grid']),
-  drafts: z.array(z.object({ key: z.string().min(1).max(200), folderId: z.string().min(1).max(200), plan: planSchema })).max(100).default([]),
+  drafts: z.array(z.object({ key: z.string().min(1).max(200), folderId: z.string().min(1).max(200), plan: planSchema, kind: planningFieldsSchema.shape.kind.optional() })).max(100).default([]),
   activeDraft: z.string().min(1).max(200).nullable().default(null), visibleDrafts: z.array(z.string().min(1).max(200)).max(4).default([]),
 });
 export const initialEditorTabs = (): EditorTabs => ({ tabs: [], active: null, visible: [], layout: 'single' });
@@ -47,7 +47,7 @@ export function editorPreferences(state: EditorTabs): z.infer<typeof editorPrefe
   const noteFor = (key: string | null) => state.tabs.find(tab => tab.key === key)?.noteId ?? null;
   return { noteIds: state.tabs.flatMap(tab => tab.noteId ? [tab.noteId] : []), active: noteFor(state.active),
     visible: state.visible.flatMap(key => { const id = noteFor(key); return id ? [id] : []; }), layout: state.layout,
-    drafts: state.tabs.filter(tab => !tab.noteId && tab.dirty).map(({ key, folderId, plan }) => ({ key, folderId, plan })),
+    drafts: state.tabs.filter(tab => !tab.noteId && tab.dirty).map(({ key, folderId, plan, kind }) => ({ key, folderId, plan, kind })),
     activeDraft: state.tabs.find(tab => tab.key === state.active && !tab.noteId && tab.dirty)?.key ?? null,
     visibleDrafts: state.visible.filter(key => state.tabs.some(tab => tab.key === key && !tab.noteId && tab.dirty)),
   };

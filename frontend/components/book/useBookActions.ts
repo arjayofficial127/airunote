@@ -34,10 +34,17 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
       commit(document); if (announce) setNotice('Saved'); return document;
     });
   }
-  async function capture(name: string, kind: PlanningFields['kind'], plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, content = '', fields?: PlanningFields, kindFields?: KindFields) {
+  async function capture(name: string, kind: PlanningFields['kind'], plan: CalendarPlan = { kind: 'unplanned' }, folderId = rootFolderId, content = '', fields?: PlanningFields, kindFields?: KindFields, announce = true) {
     return run(async () => {
       const planning = { ...defaultPlanning(kind, folderId !== rootFolderId), ...fields, plan, processed: fields?.processed ?? folderId !== rootFolderId };
-      const document = await services.capture(orgId, userId, folderId, name, planning, content, rootFolderId, kindFields); commit(document); setNotice('Captured'); return document;
+      const document = await services.capture(orgId, userId, folderId, name, planning, content, rootFolderId, kindFields); commit(document); if (announce) setNotice('Captured'); return document;
+    });
+  }
+  async function copy(item: BookItem, folderId: string) {
+    return run(async () => {
+      const document = await services.copy(orgId, item.id, rootFolderId, folderId, new Date(item.updatedAt).toISOString());
+      commit(document);
+      return document;
     });
   }
   async function daily(date: string) {
@@ -78,6 +85,6 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
   async function batch(items: BookItem[], change: BookBatch['change']) {
     return run(async () => { const documents = await services.batch(orgId, { rootFolderId, entries: items.map(item => ({ id: item.id, expectedUpdatedAt: new Date(item.updatedAt).toISOString() })), change }); documents.forEach(commit); setNotice(`Updated ${documents.length} items`); return documents; });
   }
-  return { update, capture, daily, readyDocument, configure, createFolder, cycle, batch, fields, busy, error, setError, notice };
+  return { update, capture, copy, daily, readyDocument, configure, createFolder, cycle, batch, fields, busy, error, setError, notice, setNotice };
 }
 export type BookActions = ReturnType<typeof useBookActions>;

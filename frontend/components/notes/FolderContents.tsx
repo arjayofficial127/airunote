@@ -1,4 +1,5 @@
 'use client';
+import { ItemActionsButton } from '@/components/book/ItemActionsContext';
 import { collectionLabels } from '@/lib/collections';
 import { folderLabel, planLabel } from '@/components/book/domain';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
@@ -20,9 +21,14 @@ export function FolderContents({ workspace, notes, mode, paneId }: { workspace: 
   ].sort((a, b) => notes.viewModel.sort === 'updated' ? +(new Date(b.updated ?? 0)) - +(new Date(a.updated ?? 0)) || a.name.localeCompare(b.name) : notes.viewModel.sort === 'type' ? a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
   const date = (value: Date | string | null) => value && Number.isFinite(+new Date(value)) ? new Date(value).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Singapore' }) : '—';
   const name = (entry: typeof entries[number]) => <><NotesIcon name={entry.icon}/><span>{entry.name}</span>{entry.link && <small title="Link to original" aria-label="Link">↗</small>}</>;
+  const items = new Map(notes.viewModel.filtered.map(item => [item.id, item]));
+  const actions = (key: string) => {
+    const item = items.get(key);
+    return item && <ItemActionsButton item={item} disabled={workspace.model.actions.busy || workspace.model.dirty}/>;
+  };
   return <><small className="an-contents-count">{entries.length} {entries.length === 1 ? 'item' : 'items'}{notes.descendants ? ' · Including descendants' : ''}</small>
-    {mode === 'details' ? <table className="an-details-table" aria-label="Folder contents"><thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Updated</th></tr></thead><tbody>{entries.map(entry => <tr key={entry.key}><td><button className="an-content-item" title={entry.name} onClick={entry.open}>{name(entry)}</button></td><td>{entry.kind}</td><td><time dateTime={entry.updated ? new Date(entry.updated).toISOString() : undefined}>{date(entry.updated)}</time></td></tr>)}</tbody></table> :
-      <div className={`an-folder-contents an-folder-${mode}`} aria-label="Folder contents">{entries.map(entry => <button key={entry.key} className="an-content-item" title={entry.name} onClick={entry.open}>{name(entry)}{mode === 'cards' && <><p>{entry.summary}</p>{entry.updated && <small>Updated {date(entry.updated)}</small>}</>}</button>)}</div>}
+    {mode === 'details' ? <table className="an-details-table" aria-label="Folder contents"><thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Updated</th></tr></thead><tbody>{entries.map(entry => <tr key={entry.key}><td><div className="an-content-entry"><button className="an-content-item" title={entry.name} onClick={entry.open}>{name(entry)}</button>{actions(entry.key)}</div></td><td>{entry.kind}</td><td><time dateTime={entry.updated ? new Date(entry.updated).toISOString() : undefined}>{date(entry.updated)}</time></td></tr>)}</tbody></table> :
+      <div className={`an-folder-contents an-folder-${mode}`} aria-label="Folder contents">{entries.map(entry => <div key={entry.key} className="an-content-entry"><button className="an-content-item" title={entry.name} onClick={entry.open}>{name(entry)}{mode === 'cards' && <><p>{entry.summary}</p>{entry.updated && <small>Updated {date(entry.updated)}</small>}</>}</button>{actions(entry.key)}</div>)}</div>}
     {!entries.length && <p className="ab-empty">No items here. Create a note, folder or collection from the menu.</p>}
     {workspace.collections.error && <p role="alert">Collections could not load. <button onClick={() => void workspace.collections.refetch()}>Retry</button></p>}</>;
 }

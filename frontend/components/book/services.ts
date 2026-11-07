@@ -12,9 +12,15 @@ function documentBoundary(value: unknown): AiruDocument {
   return parsed.data.document;
 }
 export const bookApi = {
-  async capabilities(orgId: string): Promise<boolean> {
-    try { const response = await apiClient.get<unknown>(`/orgs/${orgId}/airunote/book/capabilities`); return z.object({ success: z.literal(true), data: z.object({ kinds: z.literal(1) }) }).safeParse(response.data).success; }
-    catch { return false; }
+  async capabilities(orgId: string) {
+    try {
+      const response = await apiClient.get<unknown>(`/orgs/${orgId}/airunote/book/capabilities`);
+      const parsed = z.object({ success: z.literal(true), data: z.object({ kinds: z.literal(1), taskDueDates: z.boolean().optional(), itemCopies: z.boolean().optional() }) }).safeParse(response.data);
+      return parsed.success ? parsed.data.data : null;
+    } catch { return null; }
+  },
+  async copy(orgId: string, id: string, rootFolderId: string, folderId: string, expectedUpdatedAt: string): Promise<AiruDocument> {
+    return documentBoundary((await apiClient.post<unknown>(`/orgs/${orgId}/airunote/book/documents/${id}/copy`, { rootFolderId, folderId, expectedUpdatedAt })).data);
   },
   async ready(orgId: string, id: string, rootFolderId: string, expectedUpdatedAt: string): Promise<AiruDocument> {
     return documentBoundary((await apiClient.post<unknown>(`/orgs/${orgId}/airunote/book/documents/${id}/ready`, { rootFolderId, expectedUpdatedAt })).data);

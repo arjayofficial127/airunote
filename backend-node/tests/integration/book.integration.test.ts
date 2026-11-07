@@ -68,6 +68,20 @@ integration('Book isolated PostgreSQL integration', () => {
     expect((await client`SELECT canonical_content FROM airu_documents WHERE id=${id}`)[0]?.canonical_content).toBe(content);
     await expect(service.update(scope, second, { rootFolderId: root, expectedUpdatedAt: at, content, contentType: 'RTF' })).rejects.toMatchObject({ code: 'DOCUMENT_FORMAT_CHANGED' });
   });
+  test('copies rich text and independent task dates without inheriting sharing or history', async () => {
+    await client`UPDATE airu_documents SET type='RTF', visibility='public' WHERE id=${id}`;
+    const planning = editablePlanning(defaultPlanning('task'));
+    planning.checklist = [{ id: second, text: 'Review first', done: false, dueDate: '2026-11-10' }];
+    const source = await service.update(scope, id, { rootFolderId: root, expectedUpdatedAt: at, planning, kindFields: { ...defaultKindFields(), reminderAt: '2026-11-10T02:00:00.000Z' } });
+    const target = { rootFolderId: root, folderId: root, expectedUpdatedAt: source.updatedAt.toISOString() };
+    const [first, secondCopy] = await Promise.all([service.copy(scope, id, target), service.copy(scope, id, target)]);
+    expect(new Set([first.name, secondCopy.name])).toEqual(new Set([id + ' (copy)', id + ' (copy 2)']));
+    expect(first).toMatchObject({ type: 'RTF', visibility: 'private', sharedContent: null, canonicalContent: 'Original canonical', folderId: root });
+    expect(first.attributes).toMatchObject({ airunoteBook: { checklist: planning.checklist, history: [expect.any(Object)] }, airunoteKinds: { reminderAt: null, releases: [] } });
+    await expect(service.copy(scope, id, { ...target, expectedUpdatedAt: at })).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.copy(scope, id, { ...target, folderId: outsider })).rejects.toMatchObject({ statusCode: 404 });
+    await expect(service.copy({ ...scope, userId: otherUser }, id, target)).rejects.toMatchObject({ statusCode: 404 });
+  });
   test('configuration merges and uses a revision guard', async () => {
     await service.configure(scope, root, { expectedRevision: 0, config: { sprints: [], views: [], templates: [] } });
     expect((await client`SELECT metadata FROM airu_folders WHERE id=${root}`)[0]?.metadata).toMatchObject({ unrelated: { keep: true }, airunoteBook: { revision: 1 } });

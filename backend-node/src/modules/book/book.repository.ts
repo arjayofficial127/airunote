@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '../../infrastructure/db/drizzle/client';
 import { airuDocumentsTable, airuFoldersTable, airuDocumentRevisionsTable, orgsTable } from '../../infrastructure/db/drizzle/schema';
-import { NotFoundError } from '../../core/errors/AppError';
+import { ConflictError, NotFoundError } from '../../core/errors/AppError';
 import { readBookConfig } from './contract';
 
 export type BookScope = { orgId: string; userId: string };
@@ -31,15 +31,18 @@ export class BookRepository {
     return folder;
   }
 
-  async withinRoot(tx: BookTransaction, scope: BookScope, folderId: string, rootFolderId: string) {
+  async withinRoot(tx: BookTransaction, scope: BookScope, folderId: string, rootFolderId: string, activeOnly = false) {
     // Resolve ancestors in one query. UNION also terminates corrupt cyclic ancestry.
+    const active = (column: ReturnType<typeof sql.raw>) => activeOnly
+      ? sql`AND COALESCE(${column}->'airunoteLifecycle'->>'state', 'active') NOT IN ('archived', 'trashed')`
+      : sql``;
     const rows = await tx.execute<{ id: string }>(sql`
       WITH RECURSIVE ancestors AS (
         SELECT id, parent_folder_id FROM airu_folders
-        WHERE id = ${folderId}::uuid AND org_id = ${scope.orgId}::uuid AND owner_user_id = ${scope.userId}::uuid
+        WHERE id = ${folderId}::uuid AND org_id = ${scope.orgId}::uuid AND owner_user_id = ${scope.userId}::uuid ${active(sql.raw('metadata'))}
         UNION
         SELECT p.id, p.parent_folder_id FROM airu_folders p JOIN ancestors a ON p.id = a.parent_folder_id
-        WHERE p.org_id = ${scope.orgId}::uuid AND p.owner_user_id = ${scope.userId}::uuid
+        WHERE p.org_id = ${scope.orgId}::uuid AND p.owner_user_id = ${scope.userId}::uuid ${active(sql.raw('p.metadata'))}
       ) SELECT id FROM ancestors WHERE id = ${rootFolderId}::uuid`);
     if (!rows.length) throw new NotFoundError('Folder in this Book');
   }
@@ -107,8 +110,19 @@ export class BookRepository {
     return { plan: org.plan, count: row?.count ?? 0 };
   }
 
-  async create(tx: BookTransaction, scope: BookScope, folderId: string, name: string, content: string, attributes: Record<string, unknown>) {
-    const [document] = await tx.insert(airuDocumentsTable).values({ folderId, ownerUserId: scope.userId, type: 'MD', name, content, canonicalContent: content, visibility: 'private', state: 'active', attributes: sql`${JSON.stringify(attributes)}::text::jsonb` }).returning();
+  async create(tx: BookTransaction, scope: BookScope, folderId: string, name: string, content: string, attributes: Record<string, unknown>, type: 'MD' | 'TXT' | 'RTF' = 'MD', copy = false) {
+    const values = { folderId, ownerUserId: scope.userId, type, content, canonicalContent: content, visibility: 'private' as const, state: 'active' as const, attributes: sql`${JSON.stringify(attributes)}::text::jsonb` };
+    if (copy) {
+      const base = name.replace(/ \(copy(?: \d+)?\)$/, '');
+      for (let attempt = 1; attempt <= 1000; attempt++) {
+        const suffix = attempt === 1 ? ' (copy)' : ` (copy ${attempt})`;
+        const [document] = await tx.insert(airuDocumentsTable).values({ ...values, name: Array.from(base).slice(0, 255 - suffix.length).join('') + suffix })
+          .onConflictDoNothing({ target: [airuDocumentsTable.folderId, airuDocumentsTable.name] }).returning();
+        if (document) return document;
+      }
+      throw new ConflictError('Rename an existing copy before creating another.');
+    }
+    const [document] = await tx.insert(airuDocumentsTable).values({ ...values, name }).returning();
     if (!document) throw new Error('Capture did not return an item');
     return document;
   }
