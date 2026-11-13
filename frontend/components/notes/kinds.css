@@ -150,7 +150,9 @@
   box-shadow: 0 8px 28px #0003;
 }
 .airunote-notes .an-item-menu > strong { padding: 6px 8px; overflow-wrap: anywhere; }
+.airunote-notes .an-item-menu-status { padding: 0 8px 4px; }
 .airunote-notes .an-item-menu button { text-align: left; min-height: 36px; border-color: transparent; }
+.airunote-notes[data-phone=true] .an-item-menu button { min-height: 44px; }
 .airunote-notes .an-item-menu button small { display: block; color: var(--ab-muted); overflow-wrap: anywhere; }
 .airunote-notes .an-item-menu hr { border-color: var(--ab-border); }
 .airunote-notes .an-item-menu label { display: grid; gap: 4px; padding: 5px; }

@@ -296,9 +296,11 @@
 .airunote-notes .an-recovery-list small { display:block; color:var(--ab-muted); }
 
 /* Daily notes keep the checklist in the writing surface. */
-.airunote-notes .an-daily { margin-top:20px; }
+.airunote-notes .an-daily-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 8px; align-items:start; }
+.airunote-notes .an-daily-heading h1 { margin:4px 0 0; }
+.airunote-notes .an-daily-heading .an-item-actions { min-width:40px; min-height:44px; font-size:19px; }
 .airunote-notes .an-daily fieldset { min-width:0; border:0; margin:0; padding:0; }
-.airunote-notes .an-daily-status { display:flex; justify-content:space-between; gap:12px; margin-bottom:12px; color:var(--ab-muted); font-size:12px; }
-.airunote-notes .an-daily-notes { margin-top:20px; }
-.airunote-notes .an-daily-notes summary { font-size:13px; }
-.airunote-notes .an-daily-notes textarea { width:100%; margin-top:10px; min-height:90px; font-size:14px; }
+.airunote-notes .an-daily-status { grid-column:1 / -1; display:flex; align-items:center; gap:12px; margin:0 0 12px; color:var(--ab-muted); font-size:12px; }
+.airunote-notes .an-daily-status small { margin-left:auto; }
+.airunote-notes .an-daily-notes { display:grid; gap:6px; margin-top:20px; font-size:14px; color:var(--ab-muted); }
+.airunote-notes .an-daily-notes textarea { width:100%; min-height:90px; font-size:14px; color:var(--ab-text); }

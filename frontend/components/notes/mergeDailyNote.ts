@@ -2,6 +2,15 @@ import type { DailyTask } from './dailyBody';
 
 export type DailySnapshot = { checklist: DailyTask[]; content: string; reflection: string };
 
+function sameTask(left: DailyTask | undefined, right: DailyTask | undefined) {
+  return left === right || (!!left && !!right && left.id === right.id && left.text === right.text
+    && left.done === right.done && left.dueDate === right.dueDate);
+}
+
+export function sameDailyChecklist(left: DailyTask[], right: DailyTask[]) {
+  return left.length === right.length && left.every((task, index) => sameTask(task, right[index]));
+}
+
 function changedRange(base: string, changed: string) {
   let from = 0;
   while (from < base.length && from < changed.length && base[from] === changed[from]) from++;
@@ -34,9 +43,9 @@ function mergeChecklist(base: DailyTask[], saved: DailyTask[], draft: DailyTask[
     const before = original.get(id);
     const savedTask = remote.get(id);
     const draftTask = local.get(id);
-    const left = JSON.stringify(savedTask), right = JSON.stringify(draftTask);
-    const baseTask = JSON.stringify(before);
-    if (left !== right && left !== baseTask && right !== baseTask) {
+    const remoteChanged = !sameTask(savedTask, before);
+    const localChanged = !sameTask(draftTask, before);
+    if (remoteChanged && localChanged && !sameTask(savedTask, draftTask)) {
       if (!before || !savedTask || !draftTask) return null;
       const text = mergeText(before.text, savedTask.text, draftTask.text);
       if (text === null || (savedTask.dueDate !== before.dueDate && draftTask.dueDate !== before.dueDate && savedTask.dueDate !== draftTask.dueDate)) return null;
@@ -45,7 +54,7 @@ function mergeChecklist(base: DailyTask[], saved: DailyTask[], draft: DailyTask[
       merged.push({ id, text, done, ...(dueDate ? { dueDate } : {}) });
       continue;
     }
-    const task = left === baseTask ? draftTask : savedTask;
+    const task = remoteChanged ? savedTask : draftTask;
     if (task) merged.push(task);
   }
   return merged.length <= 200 ? merged : null;

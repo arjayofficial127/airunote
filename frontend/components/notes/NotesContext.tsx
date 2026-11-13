@@ -6,6 +6,7 @@ import type { EditorTab } from './editorTabs';
 import { NotesContent } from './NotesContent';
 import { NotesFolderDetails } from './NotesFolderDetails';
 import { PaneMenu } from './PaneMenu';
+import { dailyNoteDate } from '@/lib/book';
 
 function title(notes: NotesModel, tab: EditorTab) {
   return notes.model.items.find(item => item.id === tab.noteId)?.name || tab.name.trim() || 'Untitled note';
@@ -26,6 +27,8 @@ export function NotesContext({ notes, phone = false }: { notes: NotesModel; phon
   const tablist = useRef<HTMLDivElement>(null);
   const folder = notes.model.folders.find(value => value.id === notes.folderContextId);
   const showingFolder = !!folder && (notes.contextTab === 'folder' || !state.tabs.length);
+  const soleItem = state.tabs.length === 1 && notes.model.items.find(item => item.id === state.tabs[0]?.noteId);
+  const showPhoneTabs = !!folder || !soleItem || !dailyNoteDate(soleItem) || soleItem.invalidPlanning;
   useEffect(() => {
     const list = tablist.current;
     if (!list) return;
@@ -55,8 +58,8 @@ export function NotesContext({ notes, phone = false }: { notes: NotesModel; phon
   }, [state.tabs, visibleKey]);
   function activate(key: string) { editors.focus(key); notes.setContextTab('note'); }
   return <section className="an-context-workspace" aria-label="Notes and Properties">
-    <header className="an-context-tabs an-editor-tabs">
-      {phone && <div className="an-phone-open-notes">
+    <header className="an-context-tabs an-editor-tabs" hidden={phone && !showPhoneTabs}>
+      {phone && showPhoneTabs && <div className="an-phone-open-notes">
         <select aria-label="Switch open note" value={showingFolder ? 'properties' : state.active ?? ''} onChange={event => {
           if (event.target.value === 'properties') notes.setContextTab('folder');
           else activate(event.target.value);

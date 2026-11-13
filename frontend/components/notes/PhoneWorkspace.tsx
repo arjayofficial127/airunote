@@ -66,7 +66,7 @@ export function PhoneToday({ notes, resume, resumeView }: { notes: NotesModel; r
       <h2>{daily?.name ?? 'Your daily note'}</h2>
       <button type="button" disabled={model.loading || model.actions.busy} onClick={() => void notes.openToday(true)}>{daily ? 'Keep writing' : 'Open today’s note'} <span aria-hidden="true">↗</span></button>
     </section>
-    {active && <button className="an-phone-resume" type="button" onClick={resume}>
+    {active && active.noteId !== daily?.id && <button className="an-phone-resume" type="button" onClick={resume}>
       <NotesIcon name="edit"/><span><strong>Resume writing</strong><small>{active.name.trim() || 'Untitled note'}{active.dirty ? ' · Draft' : ''}</small></span><span aria-hidden="true">›</span>
     </button>}
     {notes.workspace.folderChosen && !notes.panes.destinationsClosed && currentView && <button className="an-phone-resume" type="button" onClick={resumeView}>
@@ -89,12 +89,13 @@ export function PhoneSearch({ notes }: { notes: NotesModel }) {
   const items = terms.length ? model.items.filter(item => matches(`${item.name} ${location(item.folderId)} ${content.get(item.id)?.content ?? ''}`)).sort((a, b) => a.name.localeCompare(b.name)) : [];
   const folders = terms.length ? model.folders.filter(folder => folder.id !== model.rootFolderId && matches(location(folder.id))).sort((a,b) => a.humanId.localeCompare(b.humanId)) : [];
   const collections = terms.length ? (notes.collections.data ?? []).filter(item => matches(`${item.name} ${collectionLabels[item.config.kind]}`)) : [];
+  const count = items.length + folders.length + collections.length;
 
   return <section className="an-phone-page" aria-label="Search">
     <header><h1>Search</h1></header>
     <label className="an-phone-search"><NotesIcon name="search"/><input type="search" aria-label="Search notes, folders and collections" placeholder="Find a note, folder or collection…" value={query} onChange={event => setQuery(event.target.value)} /></label>
-    <p className="an-phone-search-status" role="status">{terms.length ? `${items.length + folders.length + collections.length} results` : 'Search your workspace'}</p>
-    {!!(items.length || folders.length || collections.length) && <ul className="an-phone-results">
+    <p className="an-phone-search-status" role="status">{terms.length ? `${count} ${count === 1 ? 'result' : 'results'}` : 'Search your workspace'}</p>
+    {count > 0 && <ul className="an-phone-results">
       {items.map(item => <li key={`note:${item.id}`}><button type="button" onClick={() => model.open(item)}><NotesIcon name="note"/><span><strong>{item.name}</strong><small>{location(item.folderId)}</small></span></button></li>)}
       {folders.map(folder => <li key={`folder:${folder.id}`}><button type="button" onClick={() => notes.selectFolder(notes.panes.activeFolder, folder.id)}><NotesIcon name="folder"/><span><strong>{folderLabel(folder.humanId)}</strong><small>{location(folder.parentFolderId)}</small></span></button></li>)}
       {collections.map(item => <li key={`collection:${item.id}`}><button type="button" onClick={() => notes.openCollection(notes.panes.activeLens ?? notes.panes.lenses[0]!.id, item.id, item.homeFolderId)}><NotesIcon name="book"/><span><strong>{item.name}</strong><small>{collectionLabels[item.config.kind]} · {location(item.homeFolderId)}</small></span></button></li>)}

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Slice } from '@tiptap/pm/model';
-import { TextSelection } from '@tiptap/pm/state';
+import { TextSelection, type Transaction } from '@tiptap/pm/state';
 import { PaneMenu } from './PaneMenu';
 import { readDailyPhoto } from './readDailyPhoto';
 import { safeDailyUrl, youtubeId, type DailyBlock, type DailyMedia } from './dailyBody';
@@ -25,11 +26,12 @@ const textDocument = (value: string) => value.replace(/\r\n?/g, '\n').split('\n'
   type: 'paragraph', content: line ? [{ type: 'text', text: line }] : [],
 }));
 
-export function DailyBody({ initialBlocks, disabled, onChange, saveAction }: {
-  initialBlocks: DailyBlock[];
+export function DailyBody({ blocks, disabled, onChange, writingTools, children }: {
+  blocks: DailyBlock[];
   disabled: boolean;
   onChange: (body: ReturnType<typeof writeDailyDocument>) => void;
-  saveAction: ReactNode;
+  writingTools: HTMLDivElement | null;
+  children: ReactNode;
 }) {
   const mediaDialog = useRef<HTMLDialogElement>(null);
   const mediaType = useRef<DailyMedia>('link');
@@ -44,7 +46,7 @@ export function DailyBody({ initialBlocks, disabled, onChange, saveAction }: {
   const mediaForm = useRef<HTMLFormElement>(null);
   const editor = useEditor({
     extensions,
-    content: dailyDocument(initialBlocks),
+    content: dailyDocument(blocks),
     editable: !disabled,
     immediatelyRender: false,
     shouldRerenderOnTransaction: false,
@@ -88,13 +90,30 @@ export function DailyBody({ initialBlocks, disabled, onChange, saveAction }: {
   useEffect(() => { editor?.setEditable(!disabled, false); }, [editor, disabled]);
   useEffect(() => {
     if (!editor) return;
+    const next = editor.schema.nodeFromJSON(dailyDocument(blocks));
+    const { doc, tr } = editor.state;
+    const start = doc.content.findDiffStart(next.content);
+    const end = doc.content.findDiffEnd(next.content);
+    if (start === null || !end) return;
+    // Keep the editable DOM and let ProseMirror map the selection through the changed range.
+    const overlap = Math.max(0, start - Math.min(end.a, end.b));
+    tr.replaceRange(start, end.a + overlap, next.slice(start, end.b + overlap));
+    if (!tr.doc.eq(next)) tr.replaceWith(0, tr.doc.content.size, next.content);
+    editor.view.dispatch(tr.setMeta('preventUpdate', true).setMeta('addToHistory', false));
+    setBoxCount(countCheckboxes(next));
+  }, [editor, blocks]);
+  useEffect(() => {
+    if (!editor) return;
     const update = () => {
       const parent = editor.state.selection.$head;
       if (!parent.depth || !canvas.current || !editor.isFocused) return;
       placeRemove(editor.view.nodeDOM(parent.before()));
     };
-    editor.on('selectionUpdate', update).on('update', update).on('focus', update);
-    return () => { editor.off('selectionUpdate', update).off('update', update).off('focus', update); };
+    const transaction = ({ transaction }: { transaction: Transaction }) => {
+      if (transaction.docChanged || transaction.selectionSet) update();
+    };
+    editor.on('transaction', transaction).on('focus', update);
+    return () => { editor.off('transaction', transaction).off('focus', update); };
     // Only the mounted editor owns this geometry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
@@ -194,17 +213,17 @@ export function DailyBody({ initialBlocks, disabled, onChange, saveAction }: {
           setLine(null);
         }}>×</button>}
     </div>
-    <div className="an-daily-insert" aria-label="Insert in daily note">
+    {children}
+    {writingTools && createPortal(<div className="an-daily-insert" role="group" aria-label="Writing tools">
       <button type="button" disabled={disabled || !editor || !selectedLines && boxCount >= 200} onMouseDown={event => event.preventDefault()} onClick={checkbox}>☑ Checklist</button>
-      <PaneMenu label="List formatting" trigger={<span>List style</span>}>
+      <PaneMenu label="List formatting" trigger={<span>List style</span>} above keepFocus>
         {([['number', '1. 2. 3.'], ['lower', 'a. b. c.'], ['upper', 'A. B. C.'], ['plain', 'Remove numbering']] as const).map(([format, label]) =>
           <button key={format} type="button" data-menu-action disabled={disabled || !editor} onClick={() => { if (editor) formatDailySelection(editor, format); }}>{label}</button>)}
       </PaneMenu>
-      <PaneMenu label="Insert in daily note" trigger={<span>Insert +</span>}>
+      <PaneMenu label="Insert in daily note" trigger={<span>＋ Insert</span>} above keepFocus>
         {Object.entries(mediaNames).map(([kind, label]) => <button key={kind} type="button" data-menu-action disabled={disabled || !editor} onClick={() => addMedia(kind as DailyMedia)}>{label}</button>)}
       </PaneMenu>
-      {saveAction}
-    </div>
+    </div>, writingTools)}
     <dialog ref={mediaDialog} className="an-kind-dialog" aria-label={`Insert ${mediaNames[media]}`} onCancel={event => { if (readingPhoto) event.preventDefault(); }}>
       <form ref={mediaForm} className="an-daily-media-form" onSubmit={event => void saveMedia(event)}>
         <h2>{mediaNames[media]}</h2>
