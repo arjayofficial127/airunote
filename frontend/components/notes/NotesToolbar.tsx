@@ -13,13 +13,13 @@ import { NotesIcon } from './NotesIcon';
 const labels = { inbox: 'Inbox', organizer: 'Folders', navigation: 'Folders | Inbox', calendar: 'Folder view', context: 'Note / Properties' };
 
 /** Workspace controls live in the app rail; portals preserve the same editor/model. */
-export function NotesToolbar({ notes }: { notes: NotesModel }) {
+export function NotesToolbar({ notes, phone, narrow, onPhone }: { notes: NotesModel; phone: boolean; narrow: boolean; onPhone: () => void }) {
   const { model, workspace } = notes;
   const [targets, setTargets] = useState<{ actions: HTMLElement; settings: HTMLElement } | null>(null);
   useEffect(() => { const actions = document.getElementById('notes-rail-actions'), settings = document.getElementById('notes-rail-settings'); if (actions && settings) setTargets({ actions, settings }); }, []);
   const choices = workspace.preset === 'cards' ? ['navigation', 'calendar', 'context'] as const : panels;
   if (!targets) return null;
-  return <>{createPortal(<div className="an-rail-direct">
+  return <>{createPortal(<div className="an-rail-direct" hidden={phone}>
     <RailPopover label="Search notes" trigger={<><NotesIcon name="search"/><span>Search</span>{model.query && <i className="an-rail-dot"/>}</>}>{close => <><label className="an-rail-search">Search notes<input aria-label="Search notes" placeholder="Search your notes…" value={model.query} onChange={event => model.setQuery(event.target.value)} /></label><small>Filters Inbox, folder notes and views.</small><button disabled={!model.query} onClick={() => model.setQuery('')}>Clear search</button><button onClick={close}>Done</button></>}</RailPopover>
     <button className="an-rail-trigger" aria-label="Open today's note" title="Today's note" disabled={model.loading || model.actions.busy} onClick={() => void notes.openToday()}><NotesIcon name="calendar"/><span>Today</span></button>
     <RailPopover label="New item" trigger={<><span className="an-rail-plus" aria-hidden="true">+</span><span>New</span></>}>
@@ -27,6 +27,7 @@ export function NotesToolbar({ notes }: { notes: NotesModel }) {
     </RailPopover>
   </div>, targets.actions)}{createPortal(<RailPopover label="Workspace settings" trigger={<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m10 3-1 3-3 1-2-1-2 4 2 2v3l-1 2 3 3 3-1 3 1 2 2 4-2v-3l2-2 2-1-1-4-3-1-2-2V3Z"/><circle cx="12" cy="12" r="3"/></svg>}>{close => <>
     <strong>Workspace settings</strong>
+    {narrow && !phone && <button onClick={() => { close(); onPhone(); }}>Use phone layout</button>}
     <label>Layout<select aria-label="Workspace layout" value={workspace.preset} onChange={event => notes.setPreset(event.target.value === 'cards' ? 'cards' : 'panels')}>{Object.entries(presetNames).map(([value, name]) => <option value={value} key={value}>{name}</option>)}</select></label>
     <fieldset><legend>Visible panels</legend>{choices.map(panel => <label className="an-rail-check" key={panel}><input type="checkbox" checked={panel === 'navigation' ? model.visible.some(value => value === 'inbox' || value === 'organizer') : model.visible.includes(panel)} onChange={() => notes.togglePanel(panel)} />{labels[panel]}</label>)}<button onClick={notes.showAllPanels}>Show all panels</button></fieldset>
     <label>Pane sizing<select aria-label="Pane sizing" value={workspace.sizing} onChange={event => notes.setWorkspace(previous => ({ ...previous, sizing: event.target.value === 'auto' ? 'auto' : 'stable' }))}><option value="stable">Keep my widths</option><option value="auto">Auto fit</option></select></label>

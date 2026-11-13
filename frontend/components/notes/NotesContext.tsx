@@ -21,7 +21,7 @@ function CloseEditorDialog({ notes }: { notes: NotesModel }) {
     <div className="an-dialog-actions"><button disabled={busy} onClick={editors.cancelClose}>Cancel</button><button disabled={busy} onClick={() => void editors.confirmClose(false)}>Discard</button><button className="ab-primary" disabled={busy} onClick={() => void editors.confirmClose(true)}>{editors.saving ? 'Saving…' : 'Save and close'}</button></div>
   </dialog>;
 }
-export function NotesContext({ notes }: { notes: NotesModel }) {
+export function NotesContext({ notes, phone = false }: { notes: NotesModel; phone?: boolean }) {
   const id = useId(); const { editors } = notes; const { state } = editors;
   const tablist = useRef<HTMLDivElement>(null);
   const folder = notes.model.folders.find(value => value.id === notes.folderContextId);
@@ -41,7 +41,8 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
     return () => observer.disconnect();
   }, [state.active, state.tabs, showingFolder]);
   useEffect(() => { if (notes.folderContextId && !folder && !notes.folderDirty) notes.closeFolderDetails(); });
-  const visible = state.layout === 'single' ? state.active ? [state.active] : [] : state.visible;
+  const layout = phone ? 'single' : state.layout;
+  const visible = layout === 'single' ? state.active ? [state.active] : [] : state.visible;
   const [visited, setVisited] = useState<string[]>([]);
   const visibleKey = visible.join(',');
   useEffect(() => {
@@ -55,7 +56,18 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
   function activate(key: string) { editors.focus(key); notes.setContextTab('note'); }
   return <section className="an-context-workspace" aria-label="Notes and Properties">
     <header className="an-context-tabs an-editor-tabs">
-      <div ref={tablist} role="tablist" aria-label="Open notes" onKeyDown={event => {
+      {phone && <div className="an-phone-open-notes">
+        <select aria-label="Switch open note" value={showingFolder ? 'properties' : state.active ?? ''} onChange={event => {
+          if (event.target.value === 'properties') notes.setContextTab('folder');
+          else activate(event.target.value);
+        }}>
+          {!state.tabs.length && !folder && <option value="">No open notes</option>}
+          {state.tabs.map(tab => <option key={tab.key} value={tab.key}>{title(notes, tab)}{!tab.noteId || tab.dirty ? ' · Draft' : ''}</option>)}
+          {folder && <option value="properties">Folder properties</option>}
+        </select>
+        {showingFolder ? <button aria-label="Close folder properties" onClick={notes.closeFolderDetails}>×</button> : state.active && <button aria-label="Close active note" onClick={() => editors.requestClose(state.active!)}>×</button>}
+      </div>}
+      <div ref={tablist} hidden={phone} role="tablist" aria-label="Open notes" onKeyDown={event => {
         const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role=tab]'));
         const index = tabs.findIndex(tab => tab === event.target);
         if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -68,7 +80,7 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
         </span>)}
         {folder && <span><button role="tab" id={id + '-folder'} aria-controls={id + '-folder-panel'} aria-selected={showingFolder} tabIndex={showingFolder ? 0 : -1} onClick={() => notes.setContextTab('folder')}>Properties</button><button aria-label="Close Properties tab" onClick={notes.closeFolderDetails}>×</button></span>}
       </div>
-      <div className="an-context-tools">
+      <div className="an-context-tools" hidden={phone}>
         {state.tabs.length > 1 && <PaneMenu label="All open notes">{state.tabs.map(tab => <button data-menu-action key={tab.key} aria-current={state.active === tab.key ? 'page' : undefined} onClick={() => activate(tab.key)}>{title(notes, tab)}{tab.dirty ? ' •' : ''}</button>)}</PaneMenu>}
         <button aria-label="New note tab" title="New note" onClick={() => notes.model.add()}>+</button>
         <select aria-label="Note layout" value={state.layout} onChange={event => { const value = event.target.value; if (value === 'single' || value === 'row' || value === 'grid') { editors.layout(value); notes.setContextTab('note'); } }}><option value="single">Single</option><option value="row">1 × 4</option><option value="grid">2 × 2</option></select>
@@ -80,18 +92,18 @@ export function NotesContext({ notes }: { notes: NotesModel }) {
       </div>
     </header>
     <div className="an-editor-viewport" hidden={showingFolder || !state.tabs.length}>
-      <div className="an-editor-grid" data-layout={state.layout} data-count={visible.length}>
+      <div className="an-editor-grid" data-layout={layout} data-count={visible.length}>
         {state.tabs.filter(tab => visible.includes(tab.key) || visited.includes(tab.key)).map(tab => {
           const scoped = notes.scopedModel(notes.model.items.find(item => item.id === tab.noteId)?.folderId ?? tab.folderId);
           const model = editors.modelFor(tab, { ...scoped, shownPanels: notes.model.shownPanels });
-          return <div key={tab.key} className="an-editor-cell" data-active={state.active === tab.key} data-scroll-scope={`editor:${tab.key}`} role="tabpanel" id={`${id}-${tab.key}-panel`} aria-labelledby={`${id}-${tab.key}`} hidden={!visible.includes(tab.key)} onFocusCapture={() => { if (state.active !== tab.key) editors.focus(tab.key); }} onPointerDown={() => { if (state.active !== tab.key) editors.focus(tab.key); }}>
-            {state.layout !== 'single' && <header className="an-editor-cell-heading"><button onClick={() => activate(tab.key)}>{title(notes, tab)}</button><button aria-label={`Show only ${title(notes, tab)}`} title="Show only this note" onClick={() => { activate(tab.key); editors.layout('single'); }}>↗</button></header>}
+          return <div key={tab.key} className="an-editor-cell" data-active={state.active === tab.key} data-scroll-scope={`editor:${tab.key}`} role="tabpanel" id={`${id}-${tab.key}-panel`} aria-label={phone ? title(notes, tab) : undefined} aria-labelledby={!phone ? `${id}-${tab.key}` : undefined} hidden={!visible.includes(tab.key)} onFocusCapture={() => { if (state.active !== tab.key) editors.focus(tab.key); }} onPointerDown={() => { if (state.active !== tab.key) editors.focus(tab.key); }}>
+            {layout !== 'single' && <header className="an-editor-cell-heading"><button onClick={() => activate(tab.key)}>{title(notes, tab)}</button><button aria-label={`Show only ${title(notes, tab)}`} title="Show only this note" onClick={() => { activate(tab.key); editors.layout('single'); }}>↗</button></header>}
             <div className="an-context-body"><EditorSessionContext.Provider value={editors.forTab(tab.key).session}><NotesContent editorKey={tab.key} model={model} pinned={notes.pinned} onPin={() => notes.setPinned(value => !value)} onClose={() => editors.requestClose(tab.key)}/></EditorSessionContext.Provider></div>
           </div>;
         })}
       </div>
     </div>
-    {!state.tabs.length && !folder && <div className="an-view-empty"><h2>Choose a note</h2><p>Open notes here, then choose a layout to work side by side.</p><button onClick={() => notes.model.add()}>Create a note</button></div>}
+    {!state.tabs.length && !folder && <div className="an-view-empty"><h2>Choose a note</h2><p>{phone ? 'Open a note from Today, Browse or Search.' : 'Open notes here, then choose a layout to work side by side.'}</p><button onClick={() => notes.model.add()}>Create a note</button></div>}
     <div className="an-context-body" role="tabpanel" id={id + '-folder-panel'} aria-labelledby={id + '-folder'} hidden={!showingFolder}>{folder && <NotesFolderDetails key={folder.id} notes={notes} folder={folder}/>}</div>
     <CloseEditorDialog notes={notes}/>
   </section>;

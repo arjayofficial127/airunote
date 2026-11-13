@@ -58,7 +58,7 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     if (!base.visible.includes('context')) setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
     setContextTab('note'); editors.add(plan, folderId, kind); base.reveal();
   }
-  async function openToday() {
+  async function openToday(phone = false) {
     if (!allowContextChange() || base.loading || base.actions.busy) return;
     const date = today();
     const matches = base.items.filter(item => dailyNoteDate(item) === date);
@@ -69,9 +69,11 @@ export function useNotesWorkspace(rootFolderId: string, orgId: string, userId: s
     setWorkspace(previous => ({ ...previous, contextWidthMode: 'note' }));
     setContextTab('note');
     editors.open(document);
-    editors.layout('single');
     base.reveal();
-    base.setVisible(previous => previous.filter(panel => panel !== 'calendar'));
+    if (!phone) {
+      editors.layout('single');
+      base.setVisible(previous => previous.filter(panel => panel !== 'calendar'));
+    }
   }
   const allSprints = base.folders.flatMap(folder => readBookConfig(folder.metadata)?.sprints ?? []);
   const model = { ...base, open, add, reveal: revealNote, actions: { ...base.actions, busy: base.actions.busy || lifecycle.busy }, planningConfig: { ...base.config, sprints: [...new Map(allSprints.map(sprint => [sprint.id, sprint])).values()] } };

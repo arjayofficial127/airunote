@@ -11,7 +11,7 @@ import { PaneGroup } from './PaneGroup';
 import { addLensPane, freezeLens, removeLensPane, type LensPane } from './panes';
 import { useNotesLens, type NotesLensModel } from './useNotesLens';
 import { folderLabel } from '@/components/book/domain';
-import { folderPath, viewLabel, type NotesModel } from './useNotesWorkspace';
+import { folderPath, viewLabel, viewOptionLabel, type NotesModel } from './useNotesWorkspace';
 import { PaneMenu } from './PaneMenu';
 import { NotesIcon } from './NotesIcon';
 import { NotesAgenda } from './NotesAgenda';
@@ -50,7 +50,7 @@ function AddViewPane({ notes }: { notes: NotesModel }) {
   }}>+ Pane</button>;
 }
 
-function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: LensPane; index: number }) {
+function LensBrowser({ workspace, pane, index, phone, phoneHidden }: { workspace: NotesModel; pane: LensPane; index: number; phone: boolean; phoneHidden: boolean }) {
   const notes = useNotesLens(workspace, pane);
   const section = useRef<HTMLElement>(null);
   const [newKind, setNewKind] = useState<CollectionKind | 'folder' | null>(null);
@@ -59,16 +59,18 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
     if (section.current?.querySelector('.ab-inline-rename')) { workspace.model.actions.setError('Save or cancel the inline edit before closing this pane.'); return; }
     workspace.setPanes(previous => removeLensPane(previous, pane.id));
   }
-  if (pane.viewId.startsWith('collection:')) return <CollectionPane key={pane.viewId} notes={workspace} pane={pane} id={pane.viewId.slice(11)} closePane={close}/>;
+  if (pane.viewId.startsWith('collection:')) return <CollectionPane hidden={phoneHidden} key={pane.viewId} notes={workspace} pane={pane} id={pane.viewId.slice(11)} closePane={close}/>;
   const { model, selectedView } = notes;
+  const savedViews = workspace.availableViews.filter(view => view.folderId === pane.folderId);
+  const workspaceCollections = (workspace.collections.data ?? []).filter(collection => collection.homeFolderId === pane.folderId);
   const agenda = !notes.asList && notes.viewId === 'agenda';
   const calendar = !notes.asList && (notes.viewId === 'calendar' || selectedView?.type === 'book');
-  return <section ref={section} data-destination-pane={pane.id} data-resource-active={workspace.panes.activeLens === pane.id} onFocusCapture={() => { if (workspace.panes.activeLens !== pane.id) workspace.setPanes(previous => ({ ...previous, activeLens: pane.id })); }} className="an-browser-pane an-view" aria-label={`Folder view ${index + 1}`} data-frozen={pane.frozen} data-scroll-scope={`lens:${pane.id}:${pane.folderId}:${pane.viewId}`}>
+  return <section hidden={phoneHidden} ref={section} data-destination-pane={pane.id} data-resource-active={workspace.panes.activeLens === pane.id} onFocusCapture={() => { if (workspace.panes.activeLens !== pane.id) workspace.setPanes(previous => ({ ...previous, activeLens: pane.id })); }} className="an-browser-pane an-view" aria-label={`Folder view ${index + 1}`} data-frozen={pane.frozen} data-scroll-scope={`lens:${pane.id}:${pane.folderId}:${pane.viewId}`}>
     <div className="an-folder-heading" data-planning={agenda || calendar} data-plan={agenda}>
       {agenda ? null : calendar ? <small className="an-eyebrow">Workspace</small> : <nav className="an-breadcrumb an-eyebrow" aria-label="Current Folder path"><button onClick={notes.root}>Workspace</button>{notes.path.filter(folder => folder.id !== model.rootFolderId && folder.id !== pane.folderId).map(folder => <span key={folder.id}> / <button onClick={() => notes.selectFolder(folder.id)}>{folderLabel(folder.humanId)}</button></span>)}</nav>}
       <header><h2 title={agenda ? undefined : folderLabel(model.folders.find(folder => folder.id === pane.folderId)?.humanId)}>{agenda ? 'Plan' : calendar ? 'Calendar' : folderLabel(model.folders.find(folder => folder.id === pane.folderId)?.humanId)}</h2>
         {agenda && <div className="an-plan-scope"><FolderChoice notes={workspace} value={notes.planningFolderId ?? ''} onChange={id => workspace.updateLens(pane.id, { planningFolderId: id || null })} all label="Scope" hideLabel/></div>}
-        {!agenda && !calendar && <div className="an-folder-view-icons" role="group" aria-label="Folder presentation">{(['box', 'list', 'details', 'cards'] as const).map(view => <button key={view} aria-label={`${view[0]!.toUpperCase()}${view.slice(1)} view`} title={view[0]!.toUpperCase() + view.slice(1)} aria-pressed={pane.viewId === view} onClick={() => { if (workspace.allowDestinationChange()) workspace.updateLens(pane.id, { viewId: view, asList: false }); }}><NotesIcon name={view}/></button>)}</div>}
+        {!agenda && !calendar && <div hidden={phone} className="an-folder-view-icons" role="group" aria-label="Folder presentation">{(['box', 'list', 'details', 'cards'] as const).map(view => <button key={view} aria-label={`${view[0]!.toUpperCase()}${view.slice(1)} view`} title={view[0]!.toUpperCase() + view.slice(1)} aria-pressed={pane.viewId === view} onClick={() => { if (workspace.allowDestinationChange()) workspace.updateLens(pane.id, { viewId: view, asList: false }); }}><NotesIcon name={view}/></button>)}</div>}
         <PaneMenu label={agenda ? 'Plan actions' : calendar ? 'Calendar actions' : 'Folder view actions'} active={!!pane.query || pane.closed || !!pane.descendants || !!pane.planningFolderId}>
           <small>New</small><button data-menu-action onClick={() => model.add(undefined, agenda || calendar ? notes.planningFolderId ?? model.rootFolderId : pane.folderId)}>Note</button>
           {!agenda && !calendar && <><button data-menu-action onClick={() => { if (workspace.allowDestinationChange()) setNewKind('folder'); }}>Folder</button>{(Object.keys(collectionLabels) as CollectionKind[]).map(kind => <button data-menu-action key={kind} onClick={() => { if (workspace.allowDestinationChange()) setNewKind(kind); }}>{collectionLabels[kind]}</button>)}<button data-menu-action onClick={() => workspace.links.open(pane.folderId)}>Add link…</button></>}
@@ -79,7 +81,18 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
           <AddViewPane notes={workspace}/><button data-menu-action onClick={() => model.setExpandedPanel(value => value === 'calendar' ? null : 'calendar')}>{model.expandedPanel === 'calendar' ? 'Restore pane' : 'Expand pane'}</button>
           {workspace.panes.lenses.length > 1 && <button data-menu-action onClick={close}>Close pane</button>}
         </PaneMenu>
-      </header>{pane.frozen && <small className="an-frozen-label">Frozen</small>}
+      </header>
+      {phone && !agenda && !calendar && <label className="an-phone-view-choice">View<select aria-label="Folder presentation" value={pane.viewId} onChange={event => {
+        const value = event.target.value;
+        const savedView = savedViews.find(view => view.id === value);
+        if (savedView) notes.openView(savedView);
+        else if (value.startsWith('collection:')) workspace.openCollection(pane.id, value.slice(11), pane.folderId);
+        else if (workspace.allowDestinationChange()) workspace.updateLens(pane.id, { viewId: value, asList: false });
+      }}>
+        <optgroup label="Folder views"><option value="box">Box</option><option value="list">List</option><option value="details">Details</option><option value="cards">Cards</option>{savedViews.map(view => <option key={view.id} value={view.id}>{viewOptionLabel(view, savedViews)}</option>)}</optgroup>
+        {!!workspaceCollections.length && <optgroup label="Collections">{workspaceCollections.map(collection => <option key={collection.id} value={`collection:${collection.id}`}>{collection.name} · {collectionLabels[collection.config.kind]}</option>)}</optgroup>}
+      </select></label>}
+      {pane.frozen && <small className="an-frozen-label">Frozen</small>}
     </div>
     {calendar && <div className="an-planning-scope"><FolderChoice notes={workspace} value={notes.planningFolderId ?? ''} onChange={id => workspace.updateLens(pane.id, { planningFolderId: id || null })} all label="Scope"/></div>}
     {notes.browse && <div className="an-view-browser"><label>Views in all Folders<input autoFocus placeholder="Find a view or folder…" value={notes.viewQuery} onChange={event => notes.setViewQuery(event.target.value)} /></label><div className="an-view-results">{notes.viewResults.map(view => <button key={view.id} onClick={() => notes.openView(view)}><strong>{viewLabel(view, notes.availableViews)}</strong><span>{view.type === 'book' ? 'Calendar' : view.type} · {folderPath(model.folders, view.folderId).map(folder => folder.id === model.rootFolderId ? 'Root' : folderLabel(folder.humanId)).join(' / ')}</span></button>)}{!notes.viewResults.length && <p>No saved views found. Add one to any folder from its view menu.</p>}</div></div>}
@@ -99,8 +112,13 @@ function LensBrowser({ workspace, pane, index }: { workspace: NotesModel; pane: 
   </section>;
 }
 
-export function NotesViews({ notes }: { notes: NotesModel }) {
+export function NotesViews({ notes, phone = false }: { notes: NotesModel; phone?: boolean }) {
+  const active = notes.panes.lenses.find(pane => pane.id === notes.panes.activeLens) ?? notes.panes.lenses[0];
+  const count = notes.panes.lenses.length;
   return <div id="notes-destination-content" role="tabpanel" aria-label="Destination content" className="an-space-view-group" data-single={notes.panes.lenses.length === 1}><PaneGroup title="Folder views" panel="calendar" model={notes.model} count={notes.panes.lenses.length} layout={notes.panes.lensLayout} onLayout={value => notes.layout('lens', value)} compact={notes.workspace.preset === 'cards' && notes.panes.lenses.length === 1} actions={notes.panes.lenses.length > 1 ? <AddViewPane notes={notes} /> : null}>
-    {notes.panes.lenses.map((pane, index) => <LensBrowser key={pane.id} workspace={notes} pane={pane} index={index}/>)}
+    {phone && count > 1 && <label className="an-view-tabs-select">Pane<select aria-label="Switch view pane" value={active?.id} onChange={event => notes.setPanes(previous => ({ ...previous, activeLens: event.target.value }))}>
+      {notes.panes.lenses.map((pane, index) => <option key={pane.id} value={pane.id}>{index + 1}. {folderLabel(notes.model.folders.find(folder => folder.id === pane.folderId)?.humanId)}</option>)}
+    </select></label>}
+    {notes.panes.lenses.map((pane, index) => <LensBrowser key={pane.id} workspace={notes} pane={pane} index={index} phone={phone} phoneHidden={phone && active?.id !== pane.id}/>)}
   </PaneGroup></div>;
 }
