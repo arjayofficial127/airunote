@@ -1,12 +1,12 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { z } from 'zod';
 import { useEditorSession } from '@/components/book/EditorSession';
 import { useBookContent } from '@/providers/hydratedContent/BookContentProvider';
 import { checklistSchema, readPlanning } from '@/lib/book';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { mergeDailyNote, sameDailyChecklist, type DailySnapshot } from './mergeDailyNote';
+import { dailyDraftStorage, dailySnapshotKey, dailySnapshotSchema as snapshotSchema } from './dailyDraft';
 import { DailyBody } from './DailyBody';
 import { ItemActionsButton, type DailyItemActions } from '@/components/book/ItemActionsContext';
 import { readDailyBody, writeDailyBody, type DailyBlock } from './dailyBody';
@@ -14,16 +14,7 @@ import type { writeDailyDocument } from './dailyDocument';
 import type { AiruDocument } from '@/components/airunote/types';
 import type { BookWorkspaceModel } from '@/components/book/useBookWorkspace';
 
-const snapshotSchema = z.object({
-  checklist: checklistSchema, content: z.string().max(1000000),
-  reflection: z.string().max(19986).default(''),
-});
-const draftSchema = snapshotSchema.extend({ step: z.string().max(2000), base: z.string(), expected: z.string().datetime() });
 export const reflectionPrefix = 'Close the day\n';
-
-function dailySnapshotKey({ content, checklist, reflection }: DailySnapshot) {
-  return JSON.stringify({ checklist: checklist.map(({ id, text, done, dueDate }) => ({ id, text, done, dueDate })), content, reflection });
-}
 
 function savedSnapshot(document: AiruDocument): DailySnapshot | null {
   const planning = readPlanning(document.attributes);
@@ -58,10 +49,12 @@ export function DailyNote({ model, document, heading, details, close, writingToo
   const [paused, setPaused] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [compare, setCompare] = useState(false);
+  const [onDevice, setOnDevice] = useState(false);
   const expected = useRef(new Date(document.updatedAt).toISOString());
   const pending = useRef(false);
   const alive = useRef(true);
   const key = `airunote:daily-draft:${model.orgId}:${model.userId}:${document.id}`;
+  const [draftStorage] = useState(() => dailyDraftStorage(key));
   const value = dailySnapshotKey({ checklist, content, reflection });
   const dirty = value !== base;
   const latest = useRef({ model, checklist, content, reflection, base });
@@ -72,26 +65,26 @@ export function DailyNote({ model, document, heading, details, close, writingToo
   useEffect(() => {
     alive.current = true;
     try {
-      const draft = draftSchema.safeParse(JSON.parse(sessionStorage.getItem(key) ?? 'null'));
-      if (draft.success) {
-        const restored = readDailyBody(draft.data.content, draft.data.checklist);
-        if (draft.data.step.trim()) {
+      const checkpoint = draftStorage.restore();
+      if (checkpoint) {
+        const { draft, reopened } = checkpoint;
+        const restored = readDailyBody(draft.content, draft.checklist);
+        if (draft.step.trim()) {
           const id = crypto.randomUUID();
-          restored.push(draft.data.checklist.length < 200
-            ? { kind: 'task', key: id, task: { id, text: draft.data.step.trim(), done: false } }
-            : { kind: 'text', key: id, text: draft.data.step });
+          restored.push(draft.checklist.length < 200
+            ? { kind: 'task', key: id, task: { id, text: draft.step.trim(), done: false } }
+            : { kind: 'text', key: id, text: draft.step });
         }
-        loadEditor(restored);
-        setBody(draft.data.step.trim() ? writeDailyBody(restored) : { content: draft.data.content, checklist: draft.data.checklist });
-        setReflection(draft.data.reflection);
-        let restoredBase = draft.data.base;
-        try {
-          const draftBase = snapshotSchema.safeParse(JSON.parse(restoredBase));
-          if (draftBase.success) restoredBase = dailySnapshotKey(draftBase.data);
-        } catch { /* The draft can still be copied or reviewed. */ }
-        setBase(restoredBase);
-        setPaused(restoredBase !== originalBase || draft.data.expected !== expected.current);
-        expected.current = draft.data.expected;
+        const body = draft.step.trim() ? writeDailyBody(restored) : { content: draft.content, checklist: draft.checklist };
+        if (dailySnapshotKey({ ...body, reflection: draft.reflection }) === originalBase) draftStorage.clear();
+        else {
+          loadEditor(restored);
+          setBody(body);
+          setReflection(draft.reflection);
+          setBase(draft.base);
+          setPaused(reopened || draft.base !== originalBase || draft.expected !== expected.current);
+          expected.current = draft.expected;
+        }
       }
     } catch { /* In-memory drafts and close guards remain available. */ }
     setReady(true);
@@ -100,14 +93,24 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  const checkpoint = useCallback((draft: DailySnapshot, savedBase: string) => {
+    if (dailySnapshotKey(draft) !== savedBase || pending.current) {
+      setOnDevice(draftStorage.write({ ...draft, base: savedBase, expected: expected.current, step: '' }));
+    } else draftStorage.clear();
+  }, [draftStorage]);
   useEffect(() => {
     if (!ready) return;
     setDirty(dirty || saving);
-    try {
-      if (dirty) sessionStorage.setItem(key, JSON.stringify({ checklist, content, reflection, step: '', base, expected: expected.current }));
-      else sessionStorage.removeItem(key);
-    } catch { /* The mounted editor still protects this draft. */ }
-  }, [ready, dirty, saving, checklist, content, reflection, base, key, setDirty]);
+    checkpoint({ checklist, content, reflection }, base);
+  }, [ready, dirty, saving, checklist, content, reflection, base, setDirty, checkpoint]);
+
+  function changeDraft(change: Partial<DailySnapshot>) {
+    const next = { ...latest.current, ...change };
+    latest.current = next;
+    checkpoint({ checklist: next.checklist, content: next.content, reflection: next.reflection }, next.base);
+    if (change.reflection !== undefined) setReflection(next.reflection);
+    else setBody({ content: next.content, checklist: next.checklist });
+  }
 
   const documentRevision = new Date(document.updatedAt).toISOString();
   useEffect(() => {
@@ -116,6 +119,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     const cached = useAirunoteStore.getState().getDocumentContentById(document.id);
     if (cached && new Date(cached.updatedAt).toISOString() !== documentRevision) return;
     if (dirty) {
+      if (paused) return;
       setPaused(true);
       void saveRef.current();
       return;
@@ -127,7 +131,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     setBody({ content: original.content, checklist: original.checklist });
     setReflection(original.reflection);
     setBase(originalBase);
-  }, [ready, dirty, documentRevision, originalBase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, dirty, paused, documentRevision, originalBase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function reflectionNotes(currentModel: BookWorkspaceModel, text: string) {
     const notes = currentModel.selected!.planning.notes;
@@ -238,7 +242,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     setConflict(false);
     setCompare(false);
     model.setDirty(false);
-    try { sessionStorage.removeItem(key); } catch { /* Storage is optional. */ }
+    draftStorage.clear();
   }
   async function saveCopy() {
     if (pending.current || model.actions.busy || !model.selected) return;
@@ -267,7 +271,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
       }}/>}
       <div className="an-daily-status">
         {checklist.length > 0 && <span>{checklist.filter(item => item.done).length}/{checklist.length} done</span>}
-        <small role="status">{saving ? 'Saving…' : paused ? 'Draft kept on this device' : dirty ? 'Unsaved changes' : 'Saved'}</small>
+        <small role="status">{saving ? 'Saving…' : paused && onDevice ? 'Draft kept on this device' : dirty ? 'Unsaved changes' : 'Saved'}</small>
       </div>
     </header>
     {paused && <div className="an-draft-recovery" role="alert">
@@ -278,17 +282,17 @@ export function DailyNote({ model, document, heading, details, close, writingToo
           <pre>{original.content.replace(/^\[\/\/\]: # \(airunote-daily[^\n]*\)\n?/gm, '').replace(/!\[([^\]]*)\]\(<data:image[^>]*>\)/g, '[$1]')}</pre>
           <button disabled={disabled} onClick={() => void save(true)}>Replace saved note with draft</button>
         </div>}
-      </> : <><p>Your changes are still here. Retry to save or bring in any new changes.</p>
+      </> : <><p>{onDevice ? 'Your edits are on this device. Retry to save them to Airunote.' : 'Your edits are in this editor. Keep it open and retry to save them.'}</p>
         <button disabled={disabled} onClick={() => void save()}>Retry save</button></>}
       <button disabled={disabled} onClick={() => void saveCopy()}>Save a copy</button>
       <button disabled={disabled} onClick={discard}>Use saved version</button>
     </div>}
     <fieldset disabled={editingDisabled}>
       <legend className="ab-sr-only">Daily note content</legend>
-      <DailyBody blocks={editorBlocks} disabled={editingDisabled} onChange={(next: ReturnType<typeof writeDailyDocument>) => setBody(next)} writingTools={writingTools}>
+      <DailyBody blocks={editorBlocks} disabled={editingDisabled} onChange={(next: ReturnType<typeof writeDailyDocument>) => changeDraft(next)} writingTools={writingTools}>
         {(reflectionOpen || !!reflection) && <label className="an-daily-notes">
           <span>Daily reflection</span>
-          <textarea ref={reflectionField} rows={3} value={reflection} maxLength={19986} placeholder="What got done? What’s next?" onChange={event => { setReflection(event.target.value); model.setDirty(true); }}/>
+          <textarea ref={reflectionField} rows={3} value={reflection} maxLength={19986} placeholder="What got done? What’s next?" onChange={event => changeDraft({ reflection: event.target.value })}/>
         </label>}
       </DailyBody>
     </fieldset>
