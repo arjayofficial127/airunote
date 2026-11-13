@@ -5,8 +5,12 @@ navigation controls, a small pin grid, and a searchable app drawer. It runs
 alongside the stock launcher and does not need root.
 
 - Swipe right on the first Home page to open the left panel. The default is
-  Airunote, which opens inside the launcher. Sign in there once; its session is
-  separate from Chrome. The panel displays the existing workspace.
+  Airunote, which fills the area between the phone's system bars. The Home
+  button returns to the launcher. Airunote reopens the last workspace while
+  the session is valid. Sign in again if the session expires.
+- System bars match the Airunote page by default. Long-press the wallpaper
+  and choose **Airunote system bars → Hide in Airunote** to hide both bars
+  inside the workspace. Swipe in from the top or bottom edge to reveal them.
 - Swipe up from Home for all apps. Long-press an app in the drawer to pin it.
   Long-press the wallpaper and select **Left page** to choose an installed app
   or turn the swipe off.

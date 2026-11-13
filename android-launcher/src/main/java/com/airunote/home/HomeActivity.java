@@ -9,7 +9,9 @@ import android.content.SharedPreferences;
 import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
 import android.content.res.Configuration;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -60,7 +62,21 @@ public final class HomeActivity extends Activity {
     private static final int SET_HOME = 1;
     private static final String PIN_KEY = "home_pins";
     private static final String LEFT_KEY = "left_app";
+    private static final String WORKSPACE_KEY = "airunote_workspace";
+    private static final String HIDE_BARS_KEY = "hide_airunote_bars";
     private static final String NO_LEFT = "-";
+    private static final String READ_BAR_COLORS = """
+            (() => {
+              const color = (y) => {
+                for (const el of document.elementsFromPoint(innerWidth / 2, y)) {
+                  const value = getComputedStyle(el).backgroundColor;
+                  if (value.startsWith("rgb(")) return value;
+                }
+                return '';
+              };
+              return [color(2), color(innerHeight - 3)];
+            })()
+            """;
     private enum Screen { HOME, APPS, AIRUNOTE }
 
     private SharedPreferences prefs;
@@ -78,6 +94,31 @@ public final class HomeActivity extends Activity {
     private boolean dark, moved, listening;
     private float downX, downY;
     private int bg, fg, muted, panel, accent;
+    private int airunoteTop, airunoteBottom;
+    private final Paint barPaint = new Paint();
+    private final Runnable updateAirunoteBars = new Runnable() {
+        @Override public void run() {
+            if (screen != Screen.AIRUNOTE || web == null || !hasWindowFocus()) return;
+            WebView current = web;
+            current.evaluateJavascript(READ_BAR_COLORS, result -> {
+                if (screen != Screen.AIRUNOTE || web != current) return;
+                try {
+                    JSONArray colors = new JSONArray(result);
+                    int top = parseWebColor(colors.optString(0), airunoteTop);
+                    int bottom = parseWebColor(colors.optString(1), airunoteBottom);
+                    if (top == airunoteTop && bottom == airunoteBottom) return;
+                    airunoteTop = top;
+                    airunoteBottom = bottom;
+                    root.invalidate();
+                    WindowInsetsController bars = root.getWindowInsetsController();
+                    if (bars != null) updateBarIconColors(bars);
+                } catch (JSONException ignored) {
+                    // The first frame may not have a document yet.
+                }
+            });
+            root.postDelayed(this, 1200);
+        }
+    };
     private final LauncherApps.Callback appChanges = new LauncherApps.Callback() {
         @Override public void onPackageAdded(String p, UserHandle u) { refresh(); }
         @Override public void onPackageRemoved(String p, UserHandle u) { refresh(); }
@@ -97,10 +138,25 @@ public final class HomeActivity extends Activity {
         muted = dark ? 0xffb0b6c8 : 0xff545d72;
         panel = dark ? 0xff222633 : 0xffe9edf8;
         accent = dark ? 0xffbdc9ff : 0xff324ea6;
+        airunoteTop = airunoteBottom = bg;
 
         getWindow().setDecorFitsSystemWindows(false);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarColor(Color.TRANSPARENT);
+        getWindow().setNavigationBarDividerColor(Color.TRANSPARENT);
+        getWindow().setStatusBarContrastEnforced(false);
         getWindow().setNavigationBarContrastEnforced(false);
-        root = new FrameLayout(this);
+        root = new FrameLayout(this) {
+            @Override protected void onDraw(Canvas canvas) {
+                super.onDraw(canvas);
+                if (screen != Screen.AIRUNOTE || webFailed) return;
+                barPaint.setColor(airunoteTop);
+                canvas.drawRect(0, 0, getWidth(), insetT, barPaint);
+                barPaint.setColor(airunoteBottom);
+                canvas.drawRect(0, getHeight() - insetB, getWidth(), getHeight(), barPaint);
+            }
+        };
+        root.setWillNotDraw(false);
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             var bars = insets.getInsets(WindowInsets.Type.systemBars()
                     | WindowInsets.Type.displayCutout());
@@ -130,11 +186,20 @@ public final class HomeActivity extends Activity {
     }
 
     @Override protected void onPause() {
+        root.removeCallbacks(updateAirunoteBars);
         if (web != null) {
+            rememberWorkspace(web.getUrl());
             web.onPause();
             CookieManager.getInstance().flush();
         }
         super.onPause();
+    }
+
+    @Override public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (root == null) return;
+        if (hasFocus) updateBarIcons();
+        refreshAirunoteBars();
     }
 
     @Override protected void onStop() {
@@ -146,6 +211,7 @@ public final class HomeActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        root.removeCallbacks(updateAirunoteBars);
         if (web != null) {
             detach(web);
             web.destroy();
@@ -162,7 +228,13 @@ public final class HomeActivity extends Activity {
     @Override public void onBackPressed() {
         if (screen == Screen.AIRUNOTE && web != null && web.canGoBack()
                 && webError.getVisibility() != View.VISIBLE) {
-            web.goBack();
+            var history = web.copyBackForwardList();
+            var previous = history.getItemAtIndex(history.getCurrentIndex() - 1);
+            if (previous == null || (workspaceUrl(web.getUrl()) != null && isLoginUrl(previous.getUrl()))) {
+                showHome(0);
+            } else {
+                web.goBack();
+            }
         } else if (screen != Screen.HOME || page != 0) {
             showHome(0);
         }
@@ -220,17 +292,59 @@ public final class HomeActivity extends Activity {
             search = null;
         }
         if (web != null && next != Screen.AIRUNOTE) {
+            rememberWorkspace(web.getUrl());
             web.onPause();
             detach(web);
         }
         screen = next;
         root.removeAllViews();
         root.setBackgroundColor(wallpaper ? Color.TRANSPARENT : bg);
+        updateBarIcons();
+        refreshAirunoteBars();
+    }
+
+    private void updateBarIcons() {
         WindowInsetsController bars = root.getWindowInsetsController();
-        if (bars != null) {
-            int light = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            bars.setSystemBarsAppearance(wallpaper || dark ? 0 : light, light);
+        if (bars == null) return;
+        int systemBars = WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars();
+        if (screen == Screen.AIRUNOTE && prefs.getBoolean(HIDE_BARS_KEY, false)) {
+            bars.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            bars.hide(systemBars);
+        } else {
+            bars.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_DEFAULT);
+            bars.show(systemBars);
+        }
+        updateBarIconColors(bars);
+    }
+
+    private void updateBarIconColors(WindowInsetsController bars) {
+        int status = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS;
+        int nav = WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        int appearance = 0;
+        if (screen != Screen.HOME) {
+            boolean webColors = screen == Screen.AIRUNOTE && !webFailed;
+            if (Color.luminance(webColors ? airunoteTop : bg) > 0.18f) appearance |= status;
+            if (Color.luminance(webColors ? airunoteBottom : bg) > 0.18f) appearance |= nav;
+        }
+        bars.setSystemBarsAppearance(appearance, status | nav);
+    }
+
+    private void refreshAirunoteBars() {
+        root.removeCallbacks(updateAirunoteBars);
+        if (screen == Screen.AIRUNOTE && hasWindowFocus()) root.post(updateAirunoteBars);
+    }
+
+    private static int parseWebColor(String css, int fallback) {
+        if (!css.startsWith("rgb(") || !css.endsWith(")")) return fallback;
+        String[] channels = css.substring(4, css.length() - 1).split(",");
+        if (channels.length != 3) return fallback;
+        try {
+            return Color.rgb(
+                    Integer.parseInt(channels[0].trim()),
+                    Integer.parseInt(channels[1].trim()),
+                    Integer.parseInt(channels[2].trim()));
+        } catch (NumberFormatException ignored) {
+            return fallback;
         }
     }
 
@@ -330,7 +444,7 @@ public final class HomeActivity extends Activity {
         LinearLayout body = vertical();
         body.setFocusableInTouchMode(true);
         root.addView(body, match());
-        body.addView(header("All apps", this::showFirstPage, null));
+        body.addView(header("All apps", this::showFirstPage));
         search = new EditText(this);
         search.setTextSize(16);
         search.setSingleLine();
@@ -452,13 +566,25 @@ public final class HomeActivity extends Activity {
 
     private void homeMenu() {
         new AlertDialog.Builder(this).setTitle("Home settings")
-                .setItems(new String[]{"Open Airunote", "Left page", "Default Home app", "All apps"},
+                .setItems(new String[]{"Open Airunote", "Left page", "Default Home app", "All apps",
+                                "Airunote system bars"},
                         (dialog, i) -> {
                             if (i == 0) showAirunote();
                             else if (i == 1) leftMenu();
                             else if (i == 2) chooseHome();
-                            else showApps();
+                            else if (i == 3) showApps();
+                            else chooseAirunoteBars();
                         }).show();
+    }
+
+    private void chooseAirunoteBars() {
+        new AlertDialog.Builder(this).setTitle("Airunote system bars")
+                .setSingleChoiceItems(new String[]{"Match Airunote", "Hide in Airunote"},
+                        prefs.getBoolean(HIDE_BARS_KEY, false) ? 1 : 0, (dialog, choice) -> {
+                            prefs.edit().putBoolean(HIDE_BARS_KEY, choice == 1).apply();
+                            dialog.dismiss();
+                        })
+                .setNegativeButton("Cancel", null).show();
     }
 
     private void leftMenu() {
@@ -498,13 +624,8 @@ public final class HomeActivity extends Activity {
 
     private void showAirunote() {
         stage(Screen.AIRUNOTE, false);
-        LinearLayout body = vertical();
-        root.addView(body, match());
-        body.addView(header("Airunote", this::showFirstPage, () -> {
-            if (web != null) web.reload();
-        }));
         webHost = new FrameLayout(this);
-        body.addView(webHost, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(webHost, match());
         webError = vertical();
         webError.setGravity(Gravity.CENTER);
         webError.setPadding(dp(24), dp(24), dp(24), dp(24));
@@ -524,7 +645,11 @@ public final class HomeActivity extends Activity {
         webHost.addView(webError, match());
         webError.setVisibility(webFailed ? View.VISIBLE : View.GONE);
         web.onResume();
-        if (web.getUrl() == null) web.loadUrl(AIRUNOTE);
+        if (web.getUrl() == null) {
+            String workspace = workspaceUrl(prefs.getString(WORKSPACE_KEY, null));
+            web.loadUrl(workspace != null ? workspace : AIRUNOTE);
+        }
+        refreshAirunoteBars();
     }
 
     private boolean webFailed;
@@ -555,6 +680,13 @@ public final class HomeActivity extends Activity {
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
                 setWebFailed(false);
             }
+            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean reload) {
+                rememberWorkspace(url);
+                refreshAirunoteBars();
+            }
+            @Override public void onPageCommitVisible(WebView view, String url) {
+                refreshAirunoteBars();
+            }
             @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError error) {
                 if (req.isForMainFrame()) setWebFailed(true);
             }
@@ -565,9 +697,41 @@ public final class HomeActivity extends Activity {
         });
     }
 
+    private void rememberWorkspace(String url) {
+        String workspace = workspaceUrl(url);
+        String previous = prefs.getString(WORKSPACE_KEY, null);
+        if (workspace != null && !workspace.equals(previous)) {
+            prefs.edit().putString(WORKSPACE_KEY, workspace).apply();
+        } else if (previous != null && isLoginUrl(url)) {
+            prefs.edit().remove(WORKSPACE_KEY).apply();
+        }
+    }
+
+    private static boolean isLoginUrl(String url) {
+        if (url == null) return false;
+        Uri uri = Uri.parse(url);
+        return inAirunote(uri) && "/login".equals(uri.getPath());
+    }
+
+    private static String workspaceUrl(String url) {
+        if (url == null) return null;
+        Uri uri = Uri.parse(url);
+        if (!inAirunote(uri)) return null;
+        List<String> path = uri.getPathSegments();
+        if (path.size() < 3 || !"orgs".equals(path.get(0)) || !"airunote".equals(path.get(2))) {
+            return null;
+        }
+        String org = path.get(1);
+        if (!org.matches("[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")) return null;
+        return uri.buildUpon().encodedPath("/orgs/" + org + "/airunote")
+                .clearQuery().fragment(null).build().toString();
+    }
+
     private void setWebFailed(boolean failed) {
         webFailed = failed;
         if (webError != null) webError.setVisibility(failed ? View.VISIBLE : View.GONE);
+        root.invalidate();
+        updateBarIcons();
     }
 
     private static boolean inAirunote(Uri uri) {
@@ -577,7 +741,7 @@ public final class HomeActivity extends Activity {
                     || "airunote.com".equalsIgnoreCase(uri.getHost()));
     }
 
-    private LinearLayout header(String title, Runnable back, Runnable refresh) {
+    private LinearLayout header(String title, Runnable back) {
         LinearLayout header = horizontal();
         header.setPadding(dp(8), 0, dp(12), 0);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -589,13 +753,7 @@ public final class HomeActivity extends Activity {
         text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         text.setGravity(Gravity.CENTER);
         header.addView(text, new LinearLayout.LayoutParams(0, -1, 1));
-        if (refresh != null) {
-            TextView reload = action("↻", refresh);
-            reload.setContentDescription("Reload Airunote");
-            header.addView(reload, new LinearLayout.LayoutParams(dp(52), dp(48)));
-        } else {
-            header.addView(new View(this), new LinearLayout.LayoutParams(dp(52), 1));
-        }
+        header.addView(new View(this), new LinearLayout.LayoutParams(dp(52), 1));
         return header;
     }
 
