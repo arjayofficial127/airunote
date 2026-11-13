@@ -1,83 +1,141 @@
 'use client';
 
-import { useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { GrowingField } from './GrowingField';
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Slice } from '@tiptap/pm/model';
+import { TextSelection } from '@tiptap/pm/state';
 import { PaneMenu } from './PaneMenu';
 import { readDailyPhoto } from './readDailyPhoto';
 import { safeDailyUrl, youtubeId, type DailyBlock, type DailyMedia } from './dailyBody';
+import { countCheckboxes, dailyExtensions, formatDailySelection, mediaNames } from './dailyEditor';
+import { dailyDocument, dailyLimit, writeDailyDocument } from './dailyDocument';
 
-const mediaNames: Record<DailyMedia, string> = { image: 'Image', link: 'Link', video: 'YouTube video', divider: 'Divider' };
 type MediaBlock = Extract<DailyBlock, { kind: DailyMedia }>;
 
-function DailyMediaPreview({ block }: { block: MediaBlock }) {
-  const [playing, setPlaying] = useState(false);
-  const id = block.kind === 'video' ? youtubeId(block.url) : null;
-  if (block.kind === 'divider') return <hr aria-label="Divider"/>;
-  // User-supplied and embedded photos are rendered directly, without a remote image proxy.
-  // eslint-disable-next-line @next/next/no-img-element
-  if (block.kind === 'image') return <div className="an-daily-photo"><img src={block.url} alt={block.label} loading="lazy" referrerPolicy="no-referrer" /></div>;
-  if (id && playing) return <iframe title={block.label || 'YouTube video'} src={`https://www.youtube-nocookie.com/embed/${id}`}
-    referrerPolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture; fullscreen" allowFullScreen />;
-  return <div>{id && <button type="button" onClick={() => setPlaying(true)}>Play video</button>} <a href={block.url} target="_blank" rel="noopener noreferrer">{block.label || block.url}</a></div>;
-}
+const extensions = [
+  StarterKit.configure({
+    blockquote: false, bulletList: false, codeBlock: false, heading: false,
+    horizontalRule: false, listItem: false, orderedList: false,
+    bold: false, code: false, italic: false, strike: false,
+  }),
+  ...dailyExtensions,
+];
+const textDocument = (value: string) => value.replace(/\r\n?/g, '\n').split('\n').map(line => ({
+  type: 'paragraph', content: line ? [{ type: 'text', text: line }] : [],
+}));
 
-const paragraph = (text = ''): DailyBlock => ({ kind: 'text', key: crypto.randomUUID(), text });
-function task(text = ''): DailyBlock {
-  const id = crypto.randomUUID();
-  return { kind: 'task', key: id, task: { id, text, done: false } };
-}
-
-export function DailyBody({ blocks, disabled, onChange, saveAction }: {
-  blocks: DailyBlock[];
+export function DailyBody({ initialBlocks, disabled, onChange, saveAction }: {
+  initialBlocks: DailyBlock[];
   disabled: boolean;
-  onChange: (blocks: DailyBlock[]) => void;
+  onChange: (body: ReturnType<typeof writeDailyDocument>) => void;
   saveAction: ReactNode;
 }) {
-  const surface = useRef<HTMLDivElement>(null);
   const mediaDialog = useRef<HTMLDialogElement>(null);
   const mediaType = useRef<DailyMedia>('link');
   const [media, setMedia] = useState<DailyMedia>('link');
   const [mediaError, setMediaError] = useState('');
   const [readingPhoto, setReadingPhoto] = useState(false);
+  const [boxCount, setBoxCount] = useState(0);
+  const [selectedLines, setSelectedLines] = useState(false);
+  const [line, setLine] = useState<{ top: number; from: number; to: number } | null>(null);
+  const [lineFocused, setLineFocused] = useState(false);
+  const canvas = useRef<HTMLDivElement>(null);
   const mediaForm = useRef<HTMLFormElement>(null);
-  const selection = useRef<{ key: string; start: number; end: number } | null>(null);
-  const hasRoom = blocks.filter(block => block.kind === 'task').length < 200;
-  const limit = 1_000_000;
+  const editor = useEditor({
+    extensions,
+    content: dailyDocument(initialBlocks),
+    editable: !disabled,
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: false,
+    onSelectionUpdate: ({ editor }) => setSelectedLines(!editor.state.selection.empty),
+    onCreate: ({ editor }) => setBoxCount(countCheckboxes(editor.state.doc)),
+    onUpdate: ({ editor }) => {
+      setBoxCount(countCheckboxes(editor.state.doc));
+      onChange(writeDailyDocument(editor.getJSON()));
+    },
+    editorProps: {
+      handlePaste(view, event, slice) {
+        const text = event.clipboardData?.getData('text/plain');
+        if (!text?.includes('\n') || event.clipboardData?.getData('text/html')) return false;
+        const { $from } = view.state.selection;
+        const boxes: number[] = [];
+        $from.parent.forEach((node, offset) => { if (node.type.name === 'dailyCheckbox') boxes.push(offset); });
+        if (boxes.length === 0 && !$from.parent.attrs.listStyle) return false;
+        const lines = text.replace(/\r\n?/g, '\n').split('\n');
+        if (countCheckboxes(view.state.doc) + (lines.length - 1) * boxes.length > 200 || slice.size > dailyLimit) return false;
+        const { schema, tr } = view.state;
+        tr.deleteSelection();
+        if (lines[0]) tr.insertText(lines[0], tr.selection.from);
+        for (const line of lines.slice(1)) {
+          const position = tr.selection.from;
+          tr.split(position, 1, [{ type: schema.nodes.paragraph!, attrs: $from.parent.attrs }]);
+          const children = boxes.map(() => schema.nodes.dailyCheckbox!.create({ id: crypto.randomUUID() }));
+          if (line) children.push(schema.text(line));
+          tr.insert(position + 2, children);
+          tr.setSelection(TextSelection.create(tr.doc, position + 2 + boxes.length + line.length));
+        }
+        view.dispatch(tr.scrollIntoView());
+        return true;
+      },
+      clipboardTextParser(text, _context, _plain, view) {
+        const content = view.state.schema.nodeFromJSON({ type: 'doc', content: textDocument(text) }).content;
+        return new Slice(content, 1, 1);
+      },
+    },
+  });
 
-  function focus(key: string) {
-    requestAnimationFrame(() => {
-      const input = surface.current?.querySelector<HTMLTextAreaElement>(`[data-daily-block="${key}"]`);
-      input?.focus();
-      input?.setSelectionRange(input.value.length, input.value.length);
-    });
+  useEffect(() => { editor?.setEditable(!disabled, false); }, [editor, disabled]);
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => {
+      const parent = editor.state.selection.$head;
+      if (!parent.depth || !canvas.current || !editor.isFocused) return;
+      placeRemove(editor.view.nodeDOM(parent.before()));
+    };
+    editor.on('selectionUpdate', update).on('update', update).on('focus', update);
+    return () => { editor.off('selectionUpdate', update).off('update', update).off('focus', update); };
+    // Only the mounted editor owns this geometry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
+
+  function placeRemove(target: EventTarget | null) {
+    const paragraph = target instanceof Element ? target.closest('.tiptap > p.an-daily-marked-line') : null;
+    if (!paragraph || !editor || !canvas.current || !canvas.current.contains(paragraph)) { setLine(null); return; }
+    const from = editor.view.posAtDOM(paragraph, 0) - 1;
+    const node = editor.state.doc.nodeAt(from);
+    if (!node || node.type.name !== 'paragraph') { setLine(null); return; }
+    setLine({ top: paragraph.getBoundingClientRect().top - canvas.current.getBoundingClientRect().top, from, to: from + node.nodeSize });
   }
 
-  function replace(index: number, replacements: DailyBlock[], next: DailyBlock) {
-    onChange([...blocks.slice(0, index), ...replacements, ...blocks.slice(index + 1)]);
-    focus(next.key);
+  function hoverLine(event: MouseEvent<HTMLDivElement>) {
+    if (matchMedia('(hover: hover)').matches && !(event.target instanceof Element && event.target.closest('.an-daily-remove-line'))) placeRemove(event.target);
   }
 
-  function insert(next: DailyBlock) {
-    const picked = selection.current;
-    const index = blocks.findIndex(block => block.key === picked?.key);
-    const block = blocks[index];
-    const focusable = next.kind === 'task' || next.kind === 'text';
-    const writeAfter = focusable ? next : paragraph();
-    const insertion = focusable ? [next] : [next, writeAfter];
-    if (!block || block.kind !== 'text') {
-      const position = index < 0 ? blocks.length : index + 1;
-      onChange([...blocks.slice(0, position), ...insertion, ...blocks.slice(position)]);
-      focus(writeAfter.key);
-      return;
-    }
-    const start = picked?.start ?? block.text.length;
-    const end = picked?.end ?? start;
-    const at = next.kind === 'text' ? end : block.text.indexOf('\n', end);
-    const split = at < 0 ? block.text.length : at;
-    const before = block.text.slice(0, split);
-    const after = block.text.slice(at < 0 || next.kind === 'text' ? split : split + 1);
-    const following = after ? [paragraph(after)] : [];
-    replace(index, [...(before ? [{ ...block, text: before }] : []), ...insertion, ...following], writeAfter);
+  function insert(block: MediaBlock) {
+    if (!editor) return;
+    editor.chain().focus().command(({ tr, state }) => {
+      const { $to } = tr.selection;
+      const media = state.schema.nodes.dailyMedia!.create(block);
+      const paragraph = state.schema.nodes.paragraph!.create();
+      const insertAt = $to.depth ? $to.after() : $to.pos;
+      tr.insert(insertAt, [media, paragraph]);
+      tr.setSelection(TextSelection.create(tr.doc, insertAt + media.nodeSize + 1)).scrollIntoView();
+      return true;
+    }).run();
+  }
+
+  function checkbox() {
+    if (!editor) return;
+    if (!editor.state.selection.empty) { formatDailySelection(editor, 'checkbox'); return; }
+    if (boxCount >= 200) return;
+    editor.chain().focus().command(({ tr, state }) => {
+      const position = tr.selection.from;
+      if (!tr.selection.$from.parent.isTextblock) return false;
+      tr.insert(position, state.schema.nodes.dailyCheckbox!.create({ id: crypto.randomUUID() }));
+      tr.setSelection(TextSelection.create(tr.doc, position + 1)).scrollIntoView();
+      return true;
+    }).run();
   }
 
   function addMedia(kind: DailyMedia) {
@@ -98,11 +156,11 @@ export function DailyBody({ blocks, disabled, onChange, saveAction }: {
     const fields = new FormData(event.currentTarget);
     const file = fields.get('photo');
     let value = String(fields.get('url') ?? '');
-    const occupied = blocks.reduce((size, block) => size + (block.kind === 'text' ? block.text.length : block.kind === 'task' ? block.task.text.length + 100 : block.url.length + block.label.length + 100), 0);
+    const occupied = editor ? writeDailyDocument(editor.getJSON()).content.length : 0;
     if (kind === 'image' && file instanceof File && file.size) {
       setReadingPhoto(true);
       try {
-        value = await readDailyPhoto(file, limit - occupied - 350);
+        value = await readDailyPhoto(file, dailyLimit - occupied - 350);
       } catch (error) {
         setMediaError(error instanceof Error ? error.message : 'Could not read the photo.');
         return;
@@ -115,7 +173,7 @@ export function DailyBody({ blocks, disabled, onChange, saveAction }: {
     }
     const label = String(fields.get('label') ?? '').trim() || (kind === 'link' ? url : mediaNames[kind]);
     const next = { kind, key: crypto.randomUUID(), url, label };
-    if (occupied + url.length + label.length + 100 > limit) {
+    if (occupied + url.length + label.length + 100 > dailyLimit) {
       setMediaError('This note is too large for that attachment. Try a smaller image or a link.');
       return;
     }
@@ -123,68 +181,27 @@ export function DailyBody({ blocks, disabled, onChange, saveAction }: {
     insert(next);
   }
 
-  function handleTask(event: KeyboardEvent<HTMLTextAreaElement>, block: Extract<DailyBlock, { kind: 'task' }>, index: number) {
-    if (event.nativeEvent.isComposing || event.shiftKey) return;
-    if ((event.key === 'Backspace' && !block.task.text) || (event.key === 'Enter' && !block.task.text.trim())) {
-      event.preventDefault();
-      const next = paragraph();
-      replace(index, [next], next);
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      if (!hasRoom) return;
-      const before = block.task.text.slice(0, event.currentTarget.selectionStart);
-      const after = block.task.text.slice(event.currentTarget.selectionEnd);
-      const next = task(after);
-      replace(index, [{ ...block, task: { ...block.task, text: before } }, next], next);
-    }
-  }
-
-  return <div className="an-daily-body" ref={surface}>
-    <div className="an-daily-blocks">
-      {blocks.map((block, index) => block.kind !== 'task' && block.kind !== 'text' ? <div className="an-daily-media" key={block.key}>
-        <DailyMediaPreview block={block}/>
-        <button type="button" aria-label={`Remove ${mediaNames[block.kind]}`} disabled={disabled} onClick={() => {
-          const remaining = blocks.filter(value => value !== block);
-          onChange(remaining.length ? remaining : [paragraph()]);
-        }}>×</button>
-      </div> : <div key={block.key} className={block.kind === 'task' ? 'an-daily-inline-task' : 'an-daily-paragraph'} data-done={block.kind === 'task' && block.task.done}>
-        {block.kind === 'task' && <input type="checkbox" aria-label={block.task.text ? `Complete ${block.task.text}` : 'Complete task'} checked={block.task.done} disabled={disabled} onChange={event => {
-          const done = event.currentTarget.checked;
-          onChange(blocks.map(value => value === block ? { ...block, task: { ...block.task, done } } : value));
-        }}/>}
-        <GrowingField data-daily-block={block.key} aria-label={block.kind === 'task' ? 'Checklist task' : 'Daily notes'}
-          placeholder={block.kind === 'task' ? 'To-do' : 'Start writing…'} disabled={disabled} maxLength={block.kind === 'task' ? 2000 : limit}
-          value={block.kind === 'task' ? block.task.text : block.text}
-          onFocus={event => { selection.current = { key: block.key, start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd }; }}
-          onSelect={event => { selection.current = { key: block.key, start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd }; }}
-          onChange={event => {
-            const input = event.currentTarget;
-            const text = input.value;
-            selection.current = { key: block.key, start: input.selectionStart, end: input.selectionEnd };
-            if (block.kind === 'task' && text.includes('\n')) {
-              const [first, ...following] = text.split('\n');
-              const remaining = 200 - blocks.filter(value => value.kind === 'task').length;
-              const additions = following.map((line, offset) => offset < remaining ? task(line) : paragraph(line));
-              const initial = first?.trim() ? { ...block, task: { ...block.task, text: first } } : paragraph();
-              replace(index, [initial, ...additions], additions.at(-1) ?? initial);
-              return;
-            }
-            onChange(blocks.map(value => value !== block ? value : block.kind === 'task' ? { ...block, task: { ...block.task, text } } : { ...block, text }));
-          }}
-          onKeyDown={event => {
-            if (block.kind === 'task') handleTask(event, block, index);
-          }}/>
-        {block.kind === 'task' && <button type="button" aria-label={block.task.text ? `Remove ${block.task.text}` : 'Remove task'} disabled={disabled} onClick={() => {
-          const next = blocks.filter(value => value !== block);
-          onChange(next.length ? next : [paragraph()]);
+  return <div className="an-daily-body">
+    <div ref={canvas} className="an-daily-editor-frame" onMouseOver={hoverLine}
+      onMouseLeave={() => { if (!lineFocused) setLine(null); }}
+      onFocus={() => setLineFocused(true)} onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget)) { setLineFocused(false); setLine(null); }
+      }}>
+      <EditorContent className="an-daily-editable" editor={editor}/>
+      {line && !disabled && <button type="button" className="an-daily-remove-line" aria-label="Remove checklist line" style={{ top: line.top }}
+        onMouseDown={event => event.preventDefault()} onClick={() => {
+          editor?.chain().focus().deleteRange({ from: line.from, to: line.to }).run();
+          setLine(null);
         }}>×</button>}
-      </div>)}
     </div>
     <div className="an-daily-insert" aria-label="Insert in daily note">
-      <button type="button" disabled={disabled || !hasRoom} onClick={() => insert(task())}>☑ Checklist</button>
-      {blocks.some(block => block.kind !== 'text') && <button type="button" disabled={disabled} onClick={() => insert(paragraph())}>Continue writing</button>}
+      <button type="button" disabled={disabled || !editor || !selectedLines && boxCount >= 200} onMouseDown={event => event.preventDefault()} onClick={checkbox}>☑ Checklist</button>
+      <PaneMenu label="List formatting" trigger={<span>List style</span>}>
+        {([['number', '1. 2. 3.'], ['lower', 'a. b. c.'], ['upper', 'A. B. C.'], ['plain', 'Remove numbering']] as const).map(([format, label]) =>
+          <button key={format} type="button" data-menu-action disabled={disabled || !editor} onClick={() => { if (editor) formatDailySelection(editor, format); }}>{label}</button>)}
+      </PaneMenu>
       <PaneMenu label="Insert in daily note" trigger={<span>Insert +</span>}>
-        {Object.entries(mediaNames).map(([kind, label]) => <button key={kind} type="button" data-menu-action disabled={disabled} onClick={() => addMedia(kind as DailyMedia)}>{label}</button>)}
+        {Object.entries(mediaNames).map(([kind, label]) => <button key={kind} type="button" data-menu-action disabled={disabled || !editor} onClick={() => addMedia(kind as DailyMedia)}>{label}</button>)}
       </PaneMenu>
       {saveAction}
     </div>
