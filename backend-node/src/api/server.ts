@@ -223,6 +223,8 @@ export function createApp(): Express {
   );
   app.use(rateLimitIdentity(token => container.resolve<ITokenService>(TYPES.ITokenService).verifyAccessToken(token)));
   app.use(apiRateLimit);
+  // Book notes can contain up to a million characters, including embedded photos.
+  app.use(/^\/api\/orgs\/[^/]+\/airunote\/book\/documents(?:\/|$)/, express.json({ limit: '8mb' }));
   app.use(express.json());
 
   // Root route

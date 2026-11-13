@@ -4,24 +4,33 @@ import { useOrgSession } from '@/providers/OrgSessionProvider';
 import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { airunoteApi } from '@/components/airunote/services/airunoteApi';
+import type { AiruDocument } from '@/components/airunote/types';
 import { errorMessage } from '@/components/book/services';
 
-type Loader = { load: (id: string, force?: boolean) => Promise<void>; loading: string | null; error: string | null };
+type Loader = { load: (id: string, force?: boolean) => Promise<AiruDocument | undefined>; loading: string | null; error: string | null };
 export const BookContentContext = createContext<Loader | null>(null);
 function ContentSession({ orgId, userId, children }: { orgId: string; userId: string; children: ReactNode }) {
-  const requests = useRef(new Map<string, Promise<void>>()); const alive = useRef(true);
+  const requests = useRef(new Map<string, Promise<AiruDocument | undefined>>()); const alive = useRef(true);
   const [loading, setLoading] = useState<string | null>(null); const [error, setError] = useState<string | null>(null);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const load = useCallback(async (id: string, force = false) => {
     const store = useAirunoteStore.getState();
-    if (!force && store.getDocumentContentById(id)) return;
+    const cached = store.getDocumentContentById(id);
+    if (!force && cached) return cached;
     const pending = requests.current.get(id); if (pending) return pending;
     const request = (async () => {
       setLoading(id); setError(null);
       try {
         const response = await airunoteApi.getDocument(id, orgId, userId);
         if (!response.success) throw new Error(response.error?.message ?? 'Could not load this item');
-        if (alive.current) { const current = useAirunoteStore.getState(); current.setDocumentContent(response.data.document); current.updateDocumentMetadata(response.data.document); }
+        if (!alive.current) return;
+        const current = useAirunoteStore.getState();
+        const fetched = response.data.document;
+        const newer = current.getDocumentContentById(id);
+        if (newer && new Date(newer.updatedAt) > new Date(fetched.updatedAt)) return newer;
+        current.setDocumentContent(fetched);
+        current.updateDocumentMetadata(fetched);
+        return fetched;
       } catch (failure) { if (alive.current) setError(errorMessage(failure)); }
       finally { requests.current.delete(id); if (alive.current) setLoading(value => value === id ? null : value); }
     })(); requests.current.set(id, request); return request;

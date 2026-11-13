@@ -3,28 +3,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useEditorSession } from '@/components/book/EditorSession';
 import { useBookContent } from '@/providers/hydratedContent/BookContentProvider';
-import { checklistSchema, readPlanning } from '@/lib/book';
+import { readPlanning, record } from '@/lib/book';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
-import { mergeDailyNote, sameDailyChecklist, type DailySnapshot } from './mergeDailyNote';
+import { sameDailyChecklist, type DailySnapshot } from './mergeDailyNote';
 import { dailyDraftStorage, dailySnapshotKey, dailySnapshotSchema as snapshotSchema } from './dailyDraft';
+import { reflectionPrefix, savedSnapshot } from './dailySnapshot';
+import { DailyMergeView } from './DailyMergeView';
 import { DailyBody } from './DailyBody';
 import { ItemActionsButton, type DailyItemActions } from '@/components/book/ItemActionsContext';
 import { readDailyBody, writeDailyBody, type DailyBlock } from './dailyBody';
 import type { writeDailyDocument } from './dailyDocument';
 import type { AiruDocument } from '@/components/airunote/types';
 import type { BookWorkspaceModel } from '@/components/book/useBookWorkspace';
-
-export const reflectionPrefix = 'Close the day\n';
-
-function savedSnapshot(document: AiruDocument): DailySnapshot | null {
-  const planning = readPlanning(document.attributes);
-  if (!planning) return null;
-  return {
-    checklist: planning.checklist,
-    content: document.canonicalContent ?? document.content,
-    reflection: planning.notes.find(note => note.text.startsWith(reflectionPrefix))?.text.slice(reflectionPrefix.length) ?? '',
-  };
-}
 
 export function DailyNote({ model, document, heading, details, close, writingTools }: {
   model: BookWorkspaceModel; document: AiruDocument; heading: string;
@@ -47,8 +37,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [conflict, setConflict] = useState(false);
-  const [compare, setCompare] = useState(false);
+  const [review, setReview] = useState(false);
   const [onDevice, setOnDevice] = useState(false);
   const expected = useRef(new Date(document.updatedAt).toISOString());
   const pending = useRef(false);
@@ -67,7 +56,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     try {
       const checkpoint = draftStorage.restore();
       if (checkpoint) {
-        const { draft, reopened } = checkpoint;
+        const { draft } = checkpoint;
         const restored = readDailyBody(draft.content, draft.checklist);
         if (draft.step.trim()) {
           const id = crypto.randomUUID();
@@ -82,7 +71,6 @@ export function DailyNote({ model, document, heading, details, close, writingToo
           setBody(body);
           setReflection(draft.reflection);
           setBase(draft.base);
-          setPaused(reopened || draft.base !== originalBase || draft.expected !== expected.current);
           expected.current = draft.expected;
         }
       }
@@ -118,12 +106,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     // A render queued before our write finished must never reapply its older snapshot.
     const cached = useAirunoteStore.getState().getDocumentContentById(document.id);
     if (cached && new Date(cached.updatedAt).toISOString() !== documentRevision) return;
-    if (dirty) {
-      if (paused) return;
-      setPaused(true);
-      void saveRef.current();
-      return;
-    }
+    if (dirty) return;
     expected.current = documentRevision;
     if (content !== original.content || !sameDailyChecklist(checklist, original.checklist)) {
       loadEditor(readDailyBody(original.content, original.checklist));
@@ -131,7 +114,7 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     setBody({ content: original.content, checklist: original.checklist });
     setReflection(original.reflection);
     setBase(originalBase);
-  }, [ready, dirty, paused, documentRevision, originalBase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, dirty, documentRevision, originalBase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function reflectionNotes(currentModel: BookWorkspaceModel, text: string) {
     const notes = currentModel.selected!.planning.notes;
@@ -139,8 +122,22 @@ export function DailyNote({ model, document, heading, details, close, writingToo
     const others = notes.filter(note => note.id !== existing?.id);
     return text.trim() ? [...others, { id: existing?.id ?? crypto.randomUUID(), createdAt: existing?.createdAt ?? new Date().toISOString(), text: reflectionPrefix + text }] : others;
   }
-  async function save(keepDraft = false): Promise<boolean> {
+  function showSnapshot(snapshot: DailySnapshot, revision: string) {
+    const savedBase = dailySnapshotKey(snapshot);
+    expected.current = revision;
+    latest.current = { ...latest.current, ...snapshot, base: savedBase };
+    loadEditor(readDailyBody(snapshot.content, snapshot.checklist));
+    setBody({ content: snapshot.content, checklist: snapshot.checklist });
+    setReflection(snapshot.reflection);
+    setBase(savedBase);
+    setPaused(false);
+    model.setDirty(false);
+    draftStorage.clear();
+  }
+
+  async function save(): Promise<boolean> {
     if (pending.current || latest.current.model.actions.busy) return false;
+    if (!navigator.onLine) { setPaused(true); return false; }
     pending.current = true;
     setSaving(true);
     try {
@@ -150,71 +147,50 @@ export function DailyNote({ model, document, heading, details, close, writingToo
         const revision = new Date(cached.updatedAt).toISOString();
         const fromServer = savedSnapshot(cached);
         if (!fromServer || !current.model.selected || current.model.selected.invalidPlanning) return false;
-        const draft = { checklist: current.checklist, content: current.content, reflection: current.reflection };
-        let original: unknown;
-        try { original = JSON.parse(current.base); } catch { /* An outdated draft is still recoverable. */ }
-        const parsedBase = snapshotSchema.safeParse(original);
-        const changed = revision !== expected.current;
-        const merged = changed && !keepDraft ? parsedBase.success && mergeDailyNote(parsedBase.data, fromServer, draft) : draft;
-        if (!merged) {
-          current.model.actions.setError(null);
-          setConflict(true);
-          setPaused(true);
-          return false;
-        }
-        const validated = snapshotSchema.safeParse(merged);
-        if (!validated.success) {
+        const draft = snapshotSchema.safeParse({ checklist: current.checklist, content: current.content, reflection: current.reflection });
+        if (!draft.success) {
           current.model.actions.setError('This draft exceeds the note or checklist size limit.');
           setPaused(true);
           return false;
         }
-        const snapshot = dailySnapshotKey(validated.data);
-        if (!changed && snapshot === current.base) {
-          setBody({ checklist: validated.data.checklist, content: validated.data.content });
-          setReflection(validated.data.reflection);
-          setPaused(false);
-          setConflict(false);
+        const snapshot = dailySnapshotKey(draft.data);
+        const currentKey = () => dailySnapshotKey(latest.current);
+        if (snapshot === dailySnapshotKey(fromServer)) {
+          if (snapshot !== current.base) showSnapshot(fromServer, revision);
           return true;
+        }
+        if (revision !== expected.current) {
+          const copy = await current.model.actions.saveDailyConflict(document.id, expected.current, draft.data);
+          if (!alive.current) return false;
+          if (!copy) { setPaused(true); return false; }
+          if (currentKey() === snapshot) {
+            showSnapshot(fromServer, revision);
+            return true;
+          }
+          // The copy only acknowledges the snapshot it received.
+          setPaused(false);
+          return false;
         }
 
         const storedPlanning = readPlanning(cached.attributes);
         const item = storedPlanning ? { ...current.model.selected, planning: storedPlanning } : current.model.selected;
         const saved = await current.model.actions.update(item, {
-          content: validated.data.content,
-          planning: { ...current.model.actions.fields(item), checklist: validated.data.checklist, notes: reflectionNotes({ ...current.model, selected: item }, validated.data.reflection) },
+          content: draft.data.content,
+          planning: { ...current.model.actions.fields(item), checklist: draft.data.checklist, notes: reflectionNotes({ ...current.model, selected: item }, draft.data.reflection) },
         }, revision, false);
         if (!alive.current) return false;
         if (saved) {
           expected.current = new Date(saved.updatedAt).toISOString();
-          const latestDraft = { checklist: latest.current.checklist, content: latest.current.content, reflection: latest.current.reflection };
-          // Schema normalization may reorder checklist fields without changing the writing surface.
-          const sentDraft = draft.content === validated.data.content
-            && draft.reflection === validated.data.reflection && sameDailyChecklist(draft.checklist, validated.data.checklist);
-          const next = sentDraft ? latestDraft : mergeDailyNote(draft, validated.data, latestDraft);
-          if (next) {
-            if (next.content !== latestDraft.content || !sameDailyChecklist(next.checklist, latestDraft.checklist)) {
-              loadEditor(readDailyBody(next.content, next.checklist));
-              setBody({ content: next.content, checklist: next.checklist });
-            }
-            if (next.reflection !== latestDraft.reflection) setReflection(next.reflection);
-          }
+          latest.current = { ...latest.current, base: snapshot };
           setBase(snapshot);
-          if (!next) {
-            setConflict(true);
-            setPaused(true);
-            return false;
-          }
           setPaused(false);
-          setConflict(false);
-          setCompare(false);
+          if (currentKey() !== snapshot) checkpoint(latest.current, snapshot);
           return true;
         }
         await load(document.id, true);
         if (!alive.current) return false;
         const fresh = useAirunoteStore.getState().getDocumentContentById(document.id);
         if (!fresh || new Date(fresh.updatedAt).toISOString() === revision) break;
-        // An explicit choice applies to the reviewed revision only.
-        keepDraft = false;
       }
       setPaused(true);
       return false;
@@ -226,33 +202,36 @@ export function DailyNote({ model, document, heading, details, close, writingToo
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
-    if (!ready || value === base || paused || saving || model.actions.busy) return;
+    if (!ready || value === base || paused || saving || model.actions.busy || review) return;
     const timer = setTimeout(() => void saveRef.current(), 600);
     return () => clearTimeout(timer);
-  }, [ready, value, base, paused, saving, model.actions.busy]);
+  }, [ready, value, base, paused, saving, model.actions.busy, review]);
+
+  useEffect(() => {
+    if (!ready) return;
+    function reconnect() {
+      if (!navigator.onLine || pending.current || latest.current.model.actions.busy || review) return;
+      if (dailySnapshotKey(latest.current) !== latest.current.base) void saveRef.current();
+      else void load(document.id, true);
+    }
+    function visible() { if (window.document.visibilityState === 'visible') reconnect(); }
+    window.addEventListener('online', reconnect);
+    window.addEventListener('focus', reconnect);
+    window.document.addEventListener('visibilitychange', visible);
+    const retry = dirty && paused ? window.setInterval(reconnect, 20_000) : undefined;
+    return () => {
+      window.removeEventListener('online', reconnect);
+      window.removeEventListener('focus', reconnect);
+      window.document.removeEventListener('visibilitychange', visible);
+      window.clearInterval(retry);
+    };
+  }, [ready, dirty, paused, review, load, document.id]);
 
   function discard() {
-    if (pending.current) return;
-    expected.current = new Date(document.updatedAt).toISOString();
-    loadEditor(readDailyBody(original.content, original.checklist));
-    setBody({ content: original.content, checklist: original.checklist });
-    setReflection(original.reflection);
-    setBase(originalBase);
-    setPaused(false);
-    setConflict(false);
-    setCompare(false);
-    model.setDirty(false);
-    draftStorage.clear();
+    if (!pending.current) showSnapshot(original, documentRevision);
   }
-  async function saveCopy() {
-    if (pending.current || model.actions.busy || !model.selected) return;
-    const validated = checklistSchema.safeParse(checklist);
-    if (!validated.success) { model.actions.setError('Check the checklist before saving a copy.'); return; }
-    const saved = await model.actions.capture(`${document.name.slice(0, 240)} (draft)`, 'note', model.selected.planning.plan, document.folderId, content, {
-      ...model.actions.fields(model.selected), checklist: validated.data, notes: reflectionNotes(model, reflection),
-    });
-    if (saved) { discard(); model.setSelectedId(saved.id); }
-  }
+  const copies = model.items.filter(item => record(item.attributes.airunoteDailyConflict).originalId === document.id);
+  const unresolved = copies.filter(item => !record(item.attributes.airunoteDailyConflict).mergedAt).length;
   useEditorSession({ save: () => save(), discard });
   const editingDisabled = !ready || !!model.selected?.invalidPlanning;
   const disabled = editingDisabled || saving || model.actions.busy;
@@ -274,19 +253,16 @@ export function DailyNote({ model, document, heading, details, close, writingToo
         <small role="status">{saving ? 'Saving…' : paused && onDevice ? 'Draft kept on this device' : dirty ? 'Unsaved changes' : 'Saved'}</small>
       </div>
     </header>
-    {paused && <div className="an-draft-recovery" role="alert">
-      {conflict ? <>
-        <p>The saved note and your draft changed in the same place. Your draft is still in the editor.</p>
-        <button disabled={disabled} onClick={() => setCompare(value => !value)} aria-expanded={compare}>{compare ? 'Hide saved note' : 'Review saved note'}</button>
-        {compare && <div className="an-daily-compare"><strong>Saved version</strong>
-          <pre>{original.content.replace(/^\[\/\/\]: # \(airunote-daily[^\n]*\)\n?/gm, '').replace(/!\[([^\]]*)\]\(<data:image[^>]*>\)/g, '[$1]')}</pre>
-          <button disabled={disabled} onClick={() => void save(true)}>Replace saved note with draft</button>
-        </div>}
-      </> : <><p>{onDevice ? 'Your edits are on this device. Retry to save them to Airunote.' : 'Your edits are in this editor. Keep it open and retry to save them.'}</p>
-        <button disabled={disabled} onClick={() => void save()}>Retry save</button></>}
-      <button disabled={disabled} onClick={() => void saveCopy()}>Save a copy</button>
-      <button disabled={disabled} onClick={discard}>Use saved version</button>
+    {paused && <div className="an-draft-recovery" role="status">
+      <p>{onDevice ? 'Your draft is saved on this device. Airunote will try again when it can connect.' : 'Your edits are in this editor. Keep it open and retry to save them.'}</p>
+      <button disabled={disabled} onClick={() => void save()}>Retry save</button>
     </div>}
+    {copies.length > 0 && <div className="an-draft-recovery">
+      <p>{unresolved ? `${unresolved} draft ${unresolved === 1 ? 'copy needs' : 'copies need'} review.` : 'Merged copies are available to archive or move to Trash.'}</p>
+      <button disabled={disabled || dirty} onClick={() => setReview(true)}>Review versions</button>
+    </div>}
+    {review && <DailyMergeView model={model} originalId={document.id} heading={heading} copies={copies}
+      onClose={() => setReview(false)} onMerged={showSnapshot}/>}
     <fieldset disabled={editingDisabled}>
       <legend className="ab-sr-only">Daily note content</legend>
       <DailyBody blocks={editorBlocks} disabled={editingDisabled} onChange={(next: ReturnType<typeof writeDailyDocument>) => changeDraft(next)} writingTools={writingTools}>

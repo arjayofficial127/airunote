@@ -215,6 +215,31 @@ integration('Book isolated PostgreSQL integration', () => {
     await expect(service.daily(scope, root, '2026-11-06')).rejects.toMatchObject({ code: 'DAILY_NOTE_AMBIGUOUS' });
     expect((await client`SELECT count(*)::int AS count FROM airu_documents`)[0]?.count).toBe(4);
   });
+  test('daily conflicts preserve a private copy once and merge only the reviewed revisions', async () => {
+    const initial = await service.daily(scope, root, '2026-11-05');
+    const first = await service.update(scope, initial.id, {
+      rootFolderId: root, expectedUpdatedAt: initial.updatedAt.toISOString(), content: 'A\nB\nCDE',
+    });
+    const draft = { rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), content: 'A\nPhone\nCDE', checklist: [], reflection: 'Phone reflection' };
+    await expect(service.saveDailyConflict(scope, first.id, draft)).rejects.toMatchObject({ statusCode: 409 });
+    const original = await service.update(scope, first.id, {
+      rootFolderId: root, expectedUpdatedAt: first.updatedAt.toISOString(), content: 'A\nServer\nCDE',
+    });
+    const copies = await Promise.all([service.saveDailyConflict(scope, original.id, draft), service.saveDailyConflict(scope, original.id, draft)]);
+    const copy = copies[0]!;
+    expect(copy.id).not.toBe(original.id);
+    expect(copies[1]?.id).toBe(copy.id);
+    expect(copy).toMatchObject({ content: draft.content, visibility: 'private' });
+    expect((await service.daily(scope, root, '2026-11-05')).content).toBe(original.content);
+    const input = { ...draft, expectedUpdatedAt: original.updatedAt.toISOString(), copyId: copy.id, copyUpdatedAt: copy.updatedAt.toISOString(), content: 'A\nServer\nPhone\nCDE' };
+    await expect(service.mergeDailyConflict(scope, original.id, { ...input, copyUpdatedAt: initial.updatedAt.toISOString() })).rejects.toMatchObject({ statusCode: 409 });
+    await expect(service.mergeDailyConflict(scope, original.id, { ...input, expectedUpdatedAt: first.updatedAt.toISOString() })).rejects.toMatchObject({ statusCode: 409 });
+    const result = await service.mergeDailyConflict(scope, original.id, input);
+    expect(result.document).toMatchObject({ id: original.id, content: input.content });
+    expect(result.copy).toMatchObject({ id: copy.id, state: 'active', content: draft.content, attributes: { airunoteDailyConflict: { originalId: original.id, mergedAt: expect.any(String) } } });
+    await expect(service.mergeDailyConflict(scope, original.id, input)).rejects.toMatchObject({ statusCode: 409 });
+  });
+
   test('daily notes enforce scope, dates, quotas, and preserve existing notes at the limit', async () => {
     await expect(service.daily({ orgId: otherOrg, userId: user }, root, '2026-11-05')).rejects.toMatchObject({ statusCode: 404 });
     await expect(service.daily({ orgId: org, userId: otherUser }, root, '2026-11-05')).rejects.toMatchObject({ statusCode: 404 });

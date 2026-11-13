@@ -57,6 +57,21 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
   async function readyDocument(item: BookItem, expectedUpdatedAt?: string) {
     return run(async () => { const document = await services.ready(orgId, item.id, rootFolderId, expectedUpdatedAt ?? new Date(item.updatedAt).toISOString()); commit(document); return document; });
   }
+  function saveDailyConflict(id: string, revision: string, draft: Parameters<typeof services.saveDailyConflict>[4]) {
+    return run(async () => {
+      const copy = await services.saveDailyConflict(orgId, id, rootFolderId, revision, draft);
+      commit(copy);
+      return copy;
+    });
+  }
+  function mergeDailyConflict(id: string, revision: string, copyId: string, copyRevision: string, draft: Parameters<typeof services.mergeDailyConflict>[6]) {
+    return run(async () => {
+      const result = await services.mergeDailyConflict(orgId, id, rootFolderId, revision, copyId, copyRevision, draft);
+      commit(result.document);
+      commit(result.copy);
+      return result;
+    });
+  }
   async function configure(fields: BookConfigFields, folderId = rootFolderId) {
     return run(async () => {
       const current = folderId === rootFolderId ? config : readBookConfig(useAirunoteStore.getState().foldersById.get(folderId)?.metadata);
@@ -85,6 +100,6 @@ export function useBookActions(orgId: string, userId: string, rootFolderId: stri
   async function batch(items: BookItem[], change: BookBatch['change']) {
     return run(async () => { const documents = await services.batch(orgId, { rootFolderId, entries: items.map(item => ({ id: item.id, expectedUpdatedAt: new Date(item.updatedAt).toISOString() })), change }); documents.forEach(commit); setNotice(`Updated ${documents.length} items`); return documents; });
   }
-  return { update, capture, copy, daily, readyDocument, configure, createFolder, cycle, batch, fields, busy, error, setError, notice, setNotice };
+  return { update, capture, copy, daily, readyDocument, saveDailyConflict, mergeDailyConflict, configure, createFolder, cycle, batch, fields, busy, error, setError, notice, setNotice };
 }
 export type BookActions = ReturnType<typeof useBookActions>;

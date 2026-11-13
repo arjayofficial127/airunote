@@ -41,6 +41,8 @@ export function LocalBookSandbox() {
       async ready(): Promise<AiruDocument> { throw new Error('Document versions require the Notes workspace.'); },
       async version(): Promise<import('@/lib/book').DocumentRelease & { content: string }> { throw new Error('Document versions require the Notes workspace.'); },
       async daily() { throw new Error('Daily notes are available in the Notes workspace.'); },
+      async saveDailyConflict() { throw new Error('Daily notes are available in the Notes workspace.'); },
+      async mergeDailyConflict() { throw new Error('Daily notes are available in the Notes workspace.'); },
       async batch(scope: string, input: import('@/lib/book').BookBatch) {
         const before = data.current.documents;
         try { const result = []; for (const entry of input.entries) { const item = data.current.documents.find(candidate => candidate.id === entry.id); const planning = item ? readPlanning(item.attributes) : null; if (!item || !planning) throw new Error('Unavailable item'); const fields = editablePlanning(planning); const change = input.change; result.push(await this.update(scope, entry.id, { rootFolderId: input.rootFolderId, expectedUpdatedAt: entry.expectedUpdatedAt, ...(change.kind === 'folder' ? { folderId: change.folderId } : {}), planning: change.kind === 'status' ? { ...fields, status: change.status } : change.kind === 'plan' ? { ...fields, plan: change.plan } : { ...fields, processed: true } })); } return result; } catch (error) { data.current.documents = before; throw error; }
@@ -67,6 +69,6 @@ export function LocalBookSandbox() {
       },
     };
   }, []);
-  const loader = useMemo(() => ({ loading: null, error: null, async load(id: string) { const document = data.current.documents.find(item => item.id === id); if (document) useAirunoteStore.getState().setDocumentContent(document); } }), []);
+  const loader = useMemo(() => ({ loading: null, error: null, async load(id: string) { const document = data.current.documents.find(item => item.id === id); if (document) useAirunoteStore.getState().setDocumentContent(document); return document; } }), []);
   return <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', minHeight: 0 }}><div style={{ padding: '8px 18px', background: '#eef2ff', color: '#334155', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', fontSize: 12 }}><strong>airunote</strong><span>Book review · Isolated sample data · Nothing is sent to your account</span><label><input type="checkbox" checked={failure} onChange={event => setFailure(event.target.checked)} /> Simulate save failure</label><button onClick={() => { data.current = fixtures(); setEpoch(value => value + 1); }}>Reset samples</button><a href="/dev/admin">Examination review</a></div><div style={{ flex: 1, minHeight: 0 }}>{ready && <OrgSessionContext.Provider value={{ status: 'ready', orgs: [], activeOrgId: orgId, activeOrg: null, orgUser: null, roles: ['member'], isRefreshing: false, hasAuthoritativeData: true, error: null, setActiveOrg: () => {}, refetch: async () => {} }}><BookServicesContext.Provider value={services}><BookContentContext.Provider value={loader}><BookWorkspace key={epoch} rootFolderId={rootId} orgId={orgId} userId={userId} /></BookContentContext.Provider></BookServicesContext.Provider></OrgSessionContext.Provider>}</div></div>;
 }

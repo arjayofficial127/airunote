@@ -6,7 +6,10 @@ export const dailySnapshotSchema = z.object({
   checklist: checklistSchema, content: z.string().max(1000000),
   reflection: z.string().max(19986).default(''),
 });
-const draftSchema = dailySnapshotSchema.extend({
+// A local checkpoint must survive even when it temporarily exceeds a server limit.
+const draftSchema = z.object({
+  content: z.string(), reflection: z.string().default(''),
+  checklist: z.array(checklistSchema.element.extend({ text: z.string() })),
   step: z.string().max(2000).default(''), base: z.string(), expected: z.string().datetime(),
   slot: z.string().uuid().optional(), changedAt: z.number().default(0),
 });

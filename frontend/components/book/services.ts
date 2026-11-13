@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { AiruDocument, AiruFolder } from '@/components/airunote/types';
 import { editablePlanning } from '@/lib/book';
 import { planningSchema, readPlanning, record, type BookDocumentUpdate, type BookConfigUpdate, type BookPlanning, type BookBatch } from '@/lib/book';
+import type { DailySnapshot } from '@/components/notes/mergeDailyNote';
 import { releaseSchema, type KindFields } from '@/lib/book';
 
 const documentSchema = z.object({ id: z.string().uuid(), folderId: z.string().uuid(), ownerUserId: z.string().uuid(), name: z.string(), content: z.string(), canonicalContent: z.string().optional(), sharedContent: z.string().nullable().optional(), type: z.enum(['TXT', 'MD', 'RTF']), visibility: z.enum(['private', 'org', 'public']), state: z.enum(['active', 'archived', 'trashed']), attributes: z.record(z.unknown()), createdAt: z.coerce.date(), updatedAt: z.coerce.date() }).passthrough();
@@ -46,6 +47,15 @@ export const bookApi = {
     const parsed = planningSchema.parse(planning);
     const response = await apiClient.post<unknown>(`/orgs/${orgId}/airunote/book/documents`, { rootFolderId, folderId, name, content, planning: editablePlanning(parsed), ...(kindFields ? { kindFields } : {}) });
     return documentBoundary(response.data);
+  },
+  async saveDailyConflict(orgId: string, id: string, rootFolderId: string, expectedUpdatedAt: string, draft: DailySnapshot) {
+    const response = await apiClient.post<unknown>(`/orgs/${orgId}/airunote/book/documents/${id}/daily-conflict`, { ...draft, rootFolderId, expectedUpdatedAt });
+    return documentBoundary(response.data);
+  },
+  async mergeDailyConflict(orgId: string, id: string, rootFolderId: string, expectedUpdatedAt: string, copyId: string, copyUpdatedAt: string, draft: DailySnapshot) {
+    const response = await apiClient.post<unknown>(`/orgs/${orgId}/airunote/book/documents/${id}/daily-merge`, { ...draft, rootFolderId, expectedUpdatedAt, copyId, copyUpdatedAt });
+    const data = z.object({ success: z.literal(true), data: z.object({ document: documentSchema, copy: documentSchema }) }).parse(response.data).data;
+    return data;
   },
   async configure(orgId: string, folderId: string, update: BookConfigUpdate): Promise<AiruFolder> {
     const response = await apiClient.put<{ success: boolean; data: { folder: AiruFolder } }>(`/orgs/${orgId}/airunote/book/folders/${folderId}/config`, update);

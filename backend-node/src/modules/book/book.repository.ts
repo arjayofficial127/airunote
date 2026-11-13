@@ -79,9 +79,20 @@ export class BookRepository {
     return rows.map(row => row.document);
   }
 
-  async saveDocument(tx: BookTransaction, id: string, changes: Partial<Pick<StoredBookDocument, 'name' | 'content' | 'canonicalContent' | 'folderId' | 'attributes'>>) {
+  async dailyConflict(tx: BookTransaction, scope: BookScope, originalId: string, fingerprint: string) {
+    const [row] = await tx.select({ document: airuDocumentsTable }).from(airuDocumentsTable)
+      .innerJoin(airuFoldersTable, eq(airuDocumentsTable.folderId, airuFoldersTable.id))
+      .where(and(eq(airuFoldersTable.orgId, scope.orgId), eq(airuDocumentsTable.ownerUserId, scope.userId),
+        sql`${airuDocumentsTable.attributes}->'airunoteDailyConflict'->>'originalId' = ${originalId}`,
+        sql`${airuDocumentsTable.attributes}->'airunoteDailyConflict'->>'fingerprint' = ${fingerprint}`))
+      .limit(1);
+    return row?.document;
+  }
+
+  async saveDocument(tx: BookTransaction, id: string, changes: Partial<Pick<StoredBookDocument, 'name' | 'content' | 'canonicalContent' | 'folderId' | 'attributes'>>, previousRevision?: Date) {
     // Force text encoding before the JSONB cast. This driver pair otherwise double-encodes JSON parameters.
-    const [document] = await tx.update(airuDocumentsTable).set({ ...changes, ...(changes.attributes !== undefined ? { attributes: sql`${JSON.stringify(changes.attributes)}::text::jsonb` } : {}), updatedAt: new Date() }).where(eq(airuDocumentsTable.id, id)).returning();
+    const updatedAt = new Date(Math.max(Date.now(), previousRevision ? previousRevision.getTime() + 1 : 0));
+    const [document] = await tx.update(airuDocumentsTable).set({ ...changes, ...(changes.attributes !== undefined ? { attributes: sql`${JSON.stringify(changes.attributes)}::text::jsonb` } : {}), updatedAt }).where(eq(airuDocumentsTable.id, id)).returning();
     if (!document) throw new NotFoundError('Document');
     return document;
   }

@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { defaultKindFields, editableKindDetails, kindPlanning, kindValidation, readKindDetails, type KindDetails, type KindFields } from './kinds';
-import { dailyNoteNames } from './daily';
+import { dailyNoteDate, dailyNoteNames } from './daily';
 import { AppError, ConflictError } from '../../core/errors/AppError';
-import type { BookDocumentCreate } from './contract';
+import type { BookDocumentCreate, DailyConflict, DailyMerge } from './contract';
 import { BookRepository, type BookScope, type BookTransaction } from './book.repository';
 import { readPlanning, readBookConfig, record, editablePlanning, defaultPlanning, daySchema, type BookDocumentUpdate, type BookConfigUpdate, type BookPlanning, type BookBatch } from './contract';
 
@@ -92,6 +92,72 @@ export class BookService {
     });
   }
 
+  private dailyFields(planning: BookPlanning, draft: Pick<DailyConflict, 'checklist' | 'reflection'>) {
+    const prefix = 'Close the day\n';
+    const previous = planning.notes.find(note => note.text.startsWith(prefix));
+    const notes = planning.notes.filter(note => note.id !== previous?.id);
+    if (draft.reflection.trim()) notes.push({
+      id: previous?.id ?? randomUUID(), createdAt: previous?.createdAt ?? new Date().toISOString(),
+      text: prefix + draft.reflection,
+    });
+    return { ...editablePlanning(planning), checklist: draft.checklist, notes };
+  }
+
+  private async activeDaily(tx: BookTransaction, scope: BookScope, id: string, rootFolderId: string) {
+    const original = await this.repository.document(tx, scope, id);
+    await this.repository.withinRoot(tx, scope, original.folderId, rootFolderId, true);
+    const planning = readPlanning(original.attributes);
+    if (original.state !== 'active' || !dailyNoteDate(original) || !planning) {
+      throw new AppError('Open an active daily note to reconcile versions.', 409, 'DAILY_NOTE_INACTIVE');
+    }
+    return { original, planning };
+  }
+
+  async saveDailyConflict(scope: BookScope, id: string, draft: DailyConflict) {
+    return this.repository.transaction(async tx => {
+      const { original } = await this.activeDaily(tx, scope, id, draft.rootFolderId);
+      const { expectedUpdatedAt, content, checklist, reflection } = draft;
+      const fingerprint = createHash('sha256').update(JSON.stringify({ expectedUpdatedAt, content, checklist, reflection })).digest('hex');
+      const existing = await this.repository.dailyConflict(tx, scope, id, fingerprint);
+      if (existing) return { ...existing, content: existing.canonicalContent };
+      if (original.updatedAt.toISOString() === draft.expectedUpdatedAt) {
+        throw new ConflictError('The original still matches this draft. Retry saving it.');
+      }
+      const draftPlanning: BookPlanning = {
+        ...defaultPlanning('note', true),
+        ...this.dailyFields(defaultPlanning(), draft),
+        history: [{ id: randomUUID(), at: new Date().toISOString(), actorId: scope.userId, action: 'Preserved daily draft' }],
+      };
+      const copy = await this.repository.create(tx, scope, original.folderId, `${Array.from(original.name).slice(0, 220).join('')} (offline draft)`, draft.content, {
+        airunoteBook: draftPlanning, airunoteDailyConflict: { originalId: id, fingerprint, baseUpdatedAt: draft.expectedUpdatedAt },
+      }, 'MD', true);
+      return { ...copy, content: copy.canonicalContent };
+    });
+  }
+
+  async mergeDailyConflict(scope: BookScope, id: string, input: DailyMerge) {
+    return this.repository.transaction(async tx => {
+      const { original, planning } = await this.activeDaily(tx, scope, id, input.rootFolderId);
+      if (input.copyId === id) throw new AppError('Choose a draft copy.', 400, 'INVALID_DAILY_COPY');
+      const copy = await this.repository.document(tx, scope, input.copyId);
+      const marker = record(record(copy.attributes).airunoteDailyConflict);
+      if (copy.state !== 'active' || marker.originalId !== id || marker.mergedAt) {
+        throw new ConflictError('This draft copy is no longer available for merging.');
+      }
+      if (copy.updatedAt.toISOString() !== input.copyUpdatedAt) {
+        throw new ConflictError('The draft copy changed. Review its latest version before merging.');
+      }
+      const document = await this.updateInTransaction(tx, scope, id, {
+        rootFolderId: input.rootFolderId, expectedUpdatedAt: input.expectedUpdatedAt,
+        content: input.content, planning: this.dailyFields(planning, input),
+      });
+      const resolved = await this.repository.saveDocument(tx, copy.id, {
+        attributes: { ...record(copy.attributes), airunoteDailyConflict: { ...marker, mergedAt: new Date().toISOString() } },
+      }, copy.updatedAt);
+      return { document, copy: resolved };
+    });
+  }
+
   async update(scope: BookScope, id: string, update: BookDocumentUpdate) {
     return this.repository.transaction(tx => this.updateInTransaction(tx, scope, id, update));
   }
@@ -172,7 +238,7 @@ export class BookService {
         ...(update.content !== undefined ? { canonicalContent: update.content, content: update.content } : {}),
         ...(update.folderId ? { folderId: update.folderId } : {}),
         attributes: { ...record(current.attributes), airunoteBook: planning, ...(details ? { airunoteKinds: details } : {}) },
-      });
+      }, current.updatedAt);
       if (update.content !== undefined && update.content !== current.canonicalContent) await this.repository.revision(tx, id, update.content, scope.userId);
       return { ...document, content: document.canonicalContent };
   }

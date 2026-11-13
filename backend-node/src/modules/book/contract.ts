@@ -40,6 +40,17 @@ export const updateBookDocumentSchema = z.object({
 }).strict().refine(value => value.name !== undefined || value.content !== undefined || value.folderId !== undefined || value.planning !== undefined || value.kindFields !== undefined, 'Nothing to save');
 export const createBookDocumentSchema = z.object({ rootFolderId: z.string().uuid(), folderId: z.string().uuid(), name: z.string().trim().min(1).max(255), content: z.string().max(1000000), planning: planningFieldsSchema, kindFields: kindFieldsSchema.optional() }).strict();
 export type BookDocumentCreate = z.infer<typeof createBookDocumentSchema>;
+export const dailyVersionSchema = z.object({
+  content: z.string().max(1000000), checklist: checklistSchema, reflection: z.string().max(19986),
+}).strict();
+export const dailyConflictSchema = dailyVersionSchema.extend({
+  rootFolderId: z.string().uuid(), expectedUpdatedAt: z.string().datetime(),
+});
+export const dailyMergeSchema = dailyConflictSchema.extend({
+  copyId: z.string().uuid(), copyUpdatedAt: z.string().datetime(),
+});
+export type DailyConflict = z.infer<typeof dailyConflictSchema>;
+export type DailyMerge = z.infer<typeof dailyMergeSchema>;
 export const sprintSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120), start: daySchema, end: daySchema, closed: z.boolean() }).strict().refine(value => value.end >= value.start, 'Sprint end must follow its start');
 export const workspaceViewSchema = z.object({
   id: z.string().uuid(), name: z.string().trim().min(1).max(100),

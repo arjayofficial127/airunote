@@ -3,13 +3,13 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { requireOrgMembership } from '../middleware/requireOrgMembership';
 import { BookService } from '../../modules/book/book.service';
-import { updateBookDocumentSchema, updateBookConfigSchema, batchBookSchema, createBookDocumentSchema, daySchema } from '../../modules/book/contract';
+import { updateBookDocumentSchema, updateBookConfigSchema, batchBookSchema, createBookDocumentSchema, daySchema, dailyConflictSchema, dailyMergeSchema } from '../../modules/book/contract';
 import { AppError } from '../../core/errors/AppError';
 
 const router: ReturnType<typeof Router> = Router({ mergeParams: true });
 router.use(authMiddleware, requireOrgMembership);
 const service = new BookService();
-router.get('/capabilities', (_req, res) => { res.json({ success: true, data: { kinds: 1, documentVersions: true, taskDueDates: true, itemCopies: true } }); });
+router.get('/capabilities', (_req, res) => { res.json({ success: true, data: { kinds: 1, documentVersions: true, taskDueDates: true, itemCopies: true, dailyReconciliation: true } }); });
 const versionRequest = z.object({ rootFolderId: z.string().uuid(), expectedUpdatedAt: z.string().datetime() }).strict();
 router.post('/documents/:id/copy', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -35,6 +35,22 @@ router.get('/documents/:id/versions/:revisionId', async (req: Request, res: Resp
     const version = await service.documentVersion({ orgId: z.string().uuid().parse(req.params.orgId), userId: req.user.userId }, z.string().uuid().parse(req.params.id), z.string().uuid().parse(req.query.rootFolderId), z.string().uuid().parse(req.params.revisionId));
     res.json({ success: true, data: { version } });
   } catch (error) { next(error instanceof z.ZodError ? new AppError('Check the document version request.', 400, 'VALIDATION_ERROR') : error); }
+});
+router.post('/documents/:id/daily-conflict', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user?.userId) throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
+    const scope = { orgId: z.string().uuid().parse(req.params.orgId), userId: req.user.userId };
+    const document = await service.saveDailyConflict(scope, z.string().uuid().parse(req.params.id), dailyConflictSchema.parse(req.body));
+    res.json({ success: true, data: { document } });
+  } catch (error) { next(error instanceof z.ZodError ? new AppError('Check the draft size and try again.', 400, 'VALIDATION_ERROR') : error); }
+});
+router.post('/documents/:id/daily-merge', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user?.userId) throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
+    const scope = { orgId: z.string().uuid().parse(req.params.orgId), userId: req.user.userId };
+    const data = await service.mergeDailyConflict(scope, z.string().uuid().parse(req.params.id), dailyMergeSchema.parse(req.body));
+    res.json({ success: true, data });
+  } catch (error) { next(error instanceof z.ZodError ? new AppError('Check the merged note size and try again.', 400, 'VALIDATION_ERROR') : error); }
 });
 router.put('/daily/:date', async (req: Request, res: Response, next: NextFunction) => {
   try {
