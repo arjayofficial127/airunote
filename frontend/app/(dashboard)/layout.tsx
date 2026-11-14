@@ -21,6 +21,7 @@ import { AirunoteLogo } from '@/components/brand/AirunoteLogo';
 import { PlanBadge } from '@/components/payments/PlanBadge';
 import { WorkspaceFocusFrame } from '@/components/layout/WorkspaceFocus';
 import { NotesAppRail } from '@/components/layout/NotesAppRail';
+import { NotesOpening } from '@/components/notes/NotesOpening';
 
 export default function DashboardLayout({
   children,
@@ -126,6 +127,8 @@ export default function DashboardLayout({
 
   // Check if we're in org context
   const isInOrgContext = pathname?.startsWith('/orgs/') && orgId;
+  const notesHome = /^\/orgs\/[^/]+\/airunote\/?$/.test(pathname ?? '');
+  const notesOpening = notesHome ? <NotesOpening /> : undefined;
   
   // ✅ Get permissions from org session
   const roles = orgSession.roles;
@@ -231,6 +234,7 @@ export default function DashboardLayout({
   return (
     <SessionBoundary
       states={providerStates}
+      loadingFallback={notesOpening}
       loadingMessage={
         isInOrgContext
           ? 'Preparing your Base — loading containers for folders, documents, and lenses…'
@@ -276,8 +280,8 @@ export default function DashboardLayout({
       ) : (
         <SessionAppStoreProvider>
       <ErrorBoundary>
-        <OrgAccessChecker>
-        <WorkspaceFocusFrame enabled={Boolean(pathname?.includes('/airunote'))} appRail={Boolean(isInOrgContext)} notesHome={pathname === `/orgs/${orgId}/airunote`}>
+        <OrgAccessChecker loadingFallback={notesOpening}>
+        <WorkspaceFocusFrame enabled={Boolean(pathname?.includes('/airunote'))} appRail={Boolean(isInOrgContext)} notesHome={notesHome}>
           {isInOrgContext && orgId && <NotesAppRail orgId={orgId} isAdmin={isAdmin} initials={getUserInitials()} name={user?.name ?? ''} email={user?.email ?? ''} onProfile={() => setIsProfileModalOpen(true)} onLogout={() => void handleLogout()} />}
           {!isOrgsOnboardingPage && (
           <nav className="fixed left-0 right-0 top-0 z-30 flex-shrink-0 border-b border-slate-200/80 bg-white/88 backdrop-blur-xl">

@@ -33,11 +33,13 @@ export function SessionBoundary({
   states,
   children,
   loadingMessage,
+  loadingFallback,
   onRetry,
 }: {
   states: ProviderState[];
   children: React.ReactNode;
   loadingMessage?: string;
+  loadingFallback?: React.ReactNode;
   onRetry?: () => void;
 }) {
   // Check if any state is loading
@@ -54,7 +56,7 @@ export function SessionBoundary({
   
   // Show loading if any provider is loading
   if (isLoading) {
-    return <LoadingShell message={loadingMessage} />;
+    return loadingFallback ?? <LoadingShell message={loadingMessage} />;
   }
   
   // Show error if any provider has error
@@ -69,5 +71,5 @@ export function SessionBoundary({
   
   // Fallback: if not loading, not error, and not all ready, show loading
   // This handles 'idle' states
-  return <LoadingShell message={loadingMessage} />;
+  return loadingFallback ?? <LoadingShell message={loadingMessage} />;
 }

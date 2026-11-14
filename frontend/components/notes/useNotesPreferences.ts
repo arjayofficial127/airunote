@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { migrateWorkspacePreferences, workspaceLayoutSchema } from './workspaceLayout';
 import { editorPreferencesSchema } from './editorTabs';
@@ -21,7 +21,7 @@ export function useNotesPreferences(key: string, loading: boolean, value: Omit<N
   const [ready, setReady] = useState(false); const restored = useRef(false);
   const restoreRef = useRef(restore); restoreRef.current = restore;
   const serialized = JSON.stringify({ ...value, savedOn: today() });
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (loading || restored.current) return;
     restored.current = true;
     try { const parsed = preferencesSchema.safeParse(JSON.parse(localStorage.getItem(key) ?? 'null')); if (parsed.success) restoreRef.current(parsed.data); } catch { /* Use defaults if storage is unavailable. */ }

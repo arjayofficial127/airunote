@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useState, type RefObject } from 'react';
 
 export type PhoneScreen = 'today' | 'folders' | 'inbox' | 'view' | 'editor' | 'search' | 'more';
 const screens = ['today', 'folders', 'inbox', 'view', 'editor', 'search', 'more'];
@@ -21,7 +21,7 @@ export function usePhoneWorkspace(key: string, container: RefObject<HTMLDivEleme
   const [navigation, setNavigation] = useState(initial);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const media = window.matchMedia('(max-width: 640px)');
     const measure = () => setNarrow(media.matches);
     measure();
@@ -37,7 +37,7 @@ export function usePhoneWorkspace(key: string, container: RefObject<HTMLDivEleme
   }, [key, loaded, navigation]);
 
   const phone = narrow && !navigation.full;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!phone) return;
     const shell = container.current?.closest<HTMLElement>('.workspace-focus-shell');
     const viewport = window.visualViewport;
@@ -62,6 +62,7 @@ export function usePhoneWorkspace(key: string, container: RefObject<HTMLDivEleme
   }
 
   return {
+    loaded,
     phone,
     narrow,
     screen: navigation.screen,

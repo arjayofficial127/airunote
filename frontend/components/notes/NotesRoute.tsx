@@ -5,6 +5,7 @@ import { useAuthSession } from '@/providers/AuthSessionProvider';
 import { useAirunoteStore } from '@/components/airunote/stores/airunoteStore';
 import { airunoteApi } from '@/components/airunote/services/airunoteApi';
 import { NotesWorkspace } from './NotesWorkspace';
+import { NotesOpening } from './NotesOpening';
 
 function useNotesRoot(orgId: string | null, userId: string | undefined) {
   const store = useAirunoteStore();
@@ -31,6 +32,6 @@ export function NotesRoute() {
   const { activeOrgId } = useOrgSession(); const auth = useAuthSession();
   const { root, error } = useNotesRoot(activeOrgId, auth.user?.id);
   if (error) return <div className="p-6" role="alert">{error}<button className="ml-4 underline" onClick={() => window.location.reload()}>Retry</button></div>;
-  if (!activeOrgId || !auth.user || !root) return <p className="p-6" role="status">Opening Notes…</p>;
+  if (!activeOrgId || !auth.user || !root) return <NotesOpening />;
   return <NotesWorkspace key={`${activeOrgId}:${auth.user.id}`} rootFolderId={root.id} orgId={activeOrgId} userId={auth.user.id} />;
 }

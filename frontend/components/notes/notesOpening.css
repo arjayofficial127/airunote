@@ -1,0 +1,16 @@
+.an-notes-opening {
+  min-height:100dvh; padding:24px; background:#f7f8fb; color:#172b45;
+}
+.an-notes-opening-brand {
+  display:flex; align-items:center; gap:7px; font-size:20px; font-weight:700; letter-spacing:-.05em;
+}
+.an-notes-opening p { margin-top:20px; color:#5d6e87; font-size:14px; }
+@media (max-width:640px) {
+  .an-notes-opening { padding:16px 18px; }
+  .workspace-focus-shell[data-notes-home=on]:not(:has(.airunote-notes[data-phone=false])) .workspace-stage > main {
+    margin-left:0; transition:none;
+  }
+  .workspace-focus-shell[data-notes-home=on]:not(:has(.airunote-notes[data-phone=false],[data-phone-screen=more][data-phone=true])) .an-app-rail {
+    display:none;
+  }
+}

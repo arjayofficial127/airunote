@@ -7,9 +7,10 @@ import UnauthorizedError from '@/components/errors/UnauthorizedError';
 
 interface OrgAccessCheckerProps {
   children: React.ReactNode;
+  loadingFallback?: React.ReactNode;
 }
 
-export default function OrgAccessChecker({ children }: OrgAccessCheckerProps) {
+export default function OrgAccessChecker({ children, loadingFallback }: OrgAccessCheckerProps) {
   const params = useParams();
   const pathname = usePathname();
   const orgSession = useOrgSession();
@@ -50,7 +51,7 @@ export default function OrgAccessChecker({ children }: OrgAccessCheckerProps) {
 
   // Show loading while checking
   if (hasAccess === null) {
-    return (
+    return loadingFallback ?? (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
       </div>

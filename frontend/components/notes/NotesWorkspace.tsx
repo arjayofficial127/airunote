@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, type RefObject } from 'react';
 import { NotesItemActions } from './NotesItemActions';
 import { NotesLifecycleDialog } from './NotesLifecycleDialog';
 import { BookDrag } from '@/components/book/BookDrag';
@@ -19,6 +19,7 @@ import { useWorkspaceSizing } from './useWorkspaceSizing';
 import { PaneResize } from './PaneResize';
 import { PhoneDock, PhoneMore, PhoneSearch, PhoneToday } from './PhoneWorkspace';
 import { usePhoneWorkspace, type PhoneScreen } from './usePhoneWorkspace';
+import { NotesOpening } from './NotesOpening';
 import '@/components/book/book.css';
 import './notes.css';
 import './workspace.css';
@@ -33,12 +34,22 @@ import './phoneWorkspace.css';
 import { DestinationTabs, WorkspaceLibrary } from './WorkspaceDestinations';
 
 export function NotesWorkspace({ rootFolderId, orgId, userId }: { rootFolderId: string; orgId: string; userId: string }) {
+  const container = useRef<HTMLDivElement>(null);
+  const mode = usePhoneWorkspace(`airunote:notes:${orgId}:${userId}:phone`, container);
+  if (!mode.loaded) return <NotesOpening />;
+  return <NotesWorkspaceContent rootFolderId={rootFolderId} orgId={orgId} userId={userId} mode={mode} container={container} />;
+}
+
+function NotesWorkspaceContent({ rootFolderId, orgId, userId, mode, container }: {
+  rootFolderId: string; orgId: string; userId: string;
+  mode: ReturnType<typeof usePhoneWorkspace>; container: RefObject<HTMLDivElement>;
+}) {
   const notes = useNotesWorkspace(rootFolderId, orgId, userId);
   const { model, workspace } = notes;
   const moveFolder = useNotesFolderMove(model);
-  const container = useRef<HTMLDivElement>(null); useNotesPopovers(container);
+  useNotesPopovers(container);
   const panes = useRef<HTMLDivElement>(null); const tabId = useId();
-  const { phone, narrow, screen, show, back, previousScreen, setFull } = usePhoneWorkspace(`${notes.preferenceKey}:phone`, container);
+  const { phone, narrow, screen, show, back, previousScreen, setFull } = mode;
   const lastContextReveal = useRef(model.contextReveal);
   const lastSpaceReveal = useRef(notes.spaceReveal);
   const editorOpen = !!(notes.editors.state.active || notes.folderContextId);
