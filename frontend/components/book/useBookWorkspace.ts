@@ -65,10 +65,10 @@ export function useBookWorkspace(rootFolderId: string, orgId: string, userId: st
       const link = event.target.closest('a[href]'); if (!link || link.getAttribute('target') === '_blank') return;
       if (!window.confirm('Leave this page with unsaved changes?')) { event.preventDefault(); event.stopPropagation(); }
     };
-    const leave = (event: Event) => { if (!window.confirm('Leave this page with unsaved changes?')) event.preventDefault(); };
+    const beforeSignOut = (event: Event) => event.preventDefault();
     window.addEventListener('beforeunload', unload); document.addEventListener('click', navigate, true);
-    window.addEventListener('airunote:before-leave', leave);
-    return () => { window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigate, true); window.removeEventListener('airunote:before-leave', leave); };
+    window.addEventListener('airunote:before-sign-out', beforeSignOut);
+    return () => { window.removeEventListener('beforeunload', unload); document.removeEventListener('click', navigate, true); window.removeEventListener('airunote:before-sign-out', beforeSignOut); };
   }, [dirty, draftFlags.length]);
   return { natural, root, folders: scopedFolders, items, filtered, config, planningConfig: config, configFolderId: rootFolderId, configError: !parsedConfig, actions, visible, setVisible, shownPanels, expandedPanel, setExpandedPanel, contextReveal, selectedFolders, setFolderFilter, query, setQuery, closed, setClosed, layout, setLayout, period, setPeriod, date, setDate, plot, setPlot, hours, setHours, selected: items.find(item => item.id === selectedId) ?? null, creating, setCreating, setSelectedId, capturePlan, captureFolderId, captureKind, draftPreview, setDraftPreview, draftKey, reveal, dirty, setDirty, hasDrafts: draftFlags.length > 0, setDraftFlag, open, add, applyView, view, batchMode, setBatchMode, batchIds, setBatchIds, loading: store.isLoading || store.lastFetched === null, error: store.error, orgId, userId, rootFolderId };
 }

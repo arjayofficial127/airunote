@@ -249,14 +249,8 @@ export const authApi = {
   },
 
   logout: async (): Promise<void> => {
-    // Clear token first
+    // Authentication is Bearer-only. The server logout endpoint has no session to clear.
     tokenStorage.clearToken();
-    // Call logout endpoint (non-blocking)
-    try {
-      await apiClient.post('/auth/logout');
-    } catch (err) {
-      // Ignore errors - token is already cleared
-    }
   },
 
   refresh: async (): Promise<{ success: boolean; data: { user: User } }> => {

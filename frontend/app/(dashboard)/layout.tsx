@@ -160,7 +160,7 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     await logoutAuth();
-    router.push('/login');
+    router.replace('/login');
   };
 
   const handleExitOrg = () => {

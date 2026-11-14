@@ -233,6 +233,7 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
         setIsOfflineLimited(false);
 
         const res = await authApi.getMe();
+        if (tokenStorage.getToken() !== token) return;
 
         // Backend /auth/me returns: { success: true, data: { id, email, name } }
         const response = res as { success: boolean; data: User };
@@ -416,7 +417,7 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
   /**
    * Logout - fully resets state
    * 
-   * - Calls logout API
+   * - Clears the local authentication token
    * - Resets all state to initial values
    * - Clears in-flight request
    * - Emits invalidation signal
@@ -425,8 +426,7 @@ export function AuthSessionProvider({ children }: { children: React.ReactNode })
     try {
       await authApi.logout();
     } catch (err) {
-      // Even if logout API fails, clear local state
-      console.error('[AuthSessionProvider] Logout API call failed:', err);
+      console.error('[AuthSessionProvider] Could not clear the local token:', err);
     } finally {
       // FULLY reset state
       setUser(null);

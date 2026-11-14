@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useId, useRef } from 'react';
 import { RailPopover } from './RailPopover';
 import './notes-app-rail.css';
 
@@ -11,6 +12,46 @@ function AppIcon({ kind }: { kind: 'notes' | 'exams' | 'manage' }) {
 
 export function NotesAppRail({ orgId, isAdmin, onProfile, onLogout, initials, name, email }: { orgId: string; isAdmin: boolean; onProfile: () => void; onLogout: () => void; initials: string; name: string; email: string }) {
   const pathname = usePathname();
+  const signOutDialog = useRef<HTMLDialogElement>(null);
+  const dialogId = useId();
   const entries = [{ key: 'notes' as const, title: 'Notes', href: `/orgs/${orgId}/airunote`, active: pathname.includes('/airunote') }, { key: 'exams' as const, title: 'Exams', href: `/orgs/${orgId}/exams`, active: pathname.includes('/exams') }, ...(isAdmin ? [{ key: 'manage' as const, title: 'Manage', href: `/orgs/${orgId}/manage`, active: /\/(manage|settings|members|files)(\/|$)/.test(pathname) }] : [])];
-  return <aside className="an-app-rail" aria-label="Apps"><Link className="an-brand" href={`/orgs/${orgId}/airunote`} aria-label="Airunote Notes"><Image src="/airunote/airunote_logo.png" alt="" width={28} height={28} priority /></Link><nav>{entries.map(entry => <Link key={entry.key} href={entry.href} aria-current={entry.active ? 'page' : undefined}><AppIcon kind={entry.key} /><span>{entry.title}</span></Link>)}</nav><div id="notes-rail-actions"/><div className="an-rail-account"><div id="notes-rail-settings"/><RailPopover label="Your account" className="an-account-control" trigger={initials}>{close => <><div className="an-account-identity"><strong>{name}</strong><span>{email}</span></div><button onClick={() => { close(); onProfile(); }}>Edit profile</button><Link href="/orgs" onClick={close}>Switch workspace</Link><button onClick={() => { if (window.dispatchEvent(new Event('airunote:before-leave', { cancelable: true }))) { close(); onLogout(); } }}>Sign out</button></>}</RailPopover></div></aside>;
+
+  function requestSignOut(closeAccount: () => void) {
+    closeAccount();
+    if (window.dispatchEvent(new Event('airunote:before-sign-out', { cancelable: true }))) {
+      onLogout();
+    } else {
+      signOutDialog.current?.showModal();
+    }
+  }
+
+  return (
+    <aside className="an-app-rail" aria-label="Apps">
+      <Link className="an-brand" href={`/orgs/${orgId}/airunote`} aria-label="Airunote Notes">
+        <Image src="/airunote/airunote_logo.png" alt="" width={28} height={28} priority />
+      </Link>
+      <nav>{entries.map(entry => <Link key={entry.key} href={entry.href} aria-current={entry.active ? 'page' : undefined}><AppIcon kind={entry.key} /><span>{entry.title}</span></Link>)}</nav>
+      <div id="notes-rail-actions" />
+      <div className="an-rail-account">
+        <div id="notes-rail-settings" />
+        <RailPopover label="Your account" className="an-account-control" trigger={initials}>{close => <>
+          <div className="an-account-identity"><strong>{name}</strong><span>{email}</span></div>
+          <button onClick={() => { close(); onProfile(); }}>Edit profile</button>
+          <Link href="/orgs" onClick={close}>Switch workspace</Link>
+          <button onClick={() => requestSignOut(close)}>Sign out</button>
+        </>}</RailPopover>
+      </div>
+      <dialog ref={signOutDialog} className="an-sign-out-dialog" role="alertdialog" aria-labelledby={dialogId} aria-describedby={`${dialogId}-message`}>
+        <h2 id={dialogId}>Sign out with unsaved changes?</h2>
+        <p id={`${dialogId}-message`}>Some changes haven’t been saved and may be lost when you sign out.</p>
+        <div className="an-sign-out-actions">
+          <button type="button" autoFocus onClick={() => signOutDialog.current?.close()}>Keep editing</button>
+          <button type="button" className="an-sign-out-confirm" onClick={() => {
+            signOutDialog.current?.close();
+            onLogout();
+          }}>Sign out</button>
+        </div>
+      </dialog>
+    </aside>
+  );
 }

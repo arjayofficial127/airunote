@@ -44,3 +44,15 @@ body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog { background:#29
 body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog h2,body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog label { color:#e6e6ed; }
 body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog input { background:#202126; border-color:#474954; color:#e6e6ed; }
 body:has(.airunote-notes[data-theme="dark"]) .an-profile-dialog p { color:#afb3c4; }
+
+.an-sign-out-dialog {
+  margin:auto; width:min(360px, calc(100% - 32px)); max-height:calc(100dvh - 32px);
+  padding:20px; border:1px solid var(--rail-border); border-radius:14px;
+  background:var(--rail-surface); color:var(--rail-text); box-shadow:0 16px 48px #18274438;
+}
+.an-sign-out-dialog::backdrop { background:#10162880; }
+.an-sign-out-dialog h2 { font-size:17px; font-weight:650; }
+.an-sign-out-dialog p { margin-block:8px 18px; color:var(--rail-muted); font-size:14px; line-height:1.5; }
+.an-sign-out-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+.an-sign-out-dialog button { min-height:44px; padding:8px 12px; border:1px solid var(--rail-border); border-radius:8px; font-size:14px; font-weight:600; }
+.an-sign-out-dialog .an-sign-out-confirm { background:#2953bc; color:#fff; border-color:#2953bc; }
