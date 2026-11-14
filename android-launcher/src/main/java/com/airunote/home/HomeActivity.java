@@ -2,13 +2,16 @@ package com.airunote.home;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ActivityManager;
 import android.app.role.RoleManager;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
 import android.content.res.Configuration;
+import android.os.StatFs;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -22,6 +25,7 @@ import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -91,7 +95,7 @@ public final class HomeActivity extends Activity {
     private LinearLayout webError;
     private Screen screen = Screen.HOME;
     private int page, insetL, insetT, insetR, insetB;
-    private boolean dark, moved, listening;
+    private boolean dark, moved, appsChanged;
     private float downX, downY;
     private int bg, fg, muted, panel, accent;
     private int airunoteTop, airunoteBottom;
@@ -120,11 +124,11 @@ public final class HomeActivity extends Activity {
         }
     };
     private final LauncherApps.Callback appChanges = new LauncherApps.Callback() {
-        @Override public void onPackageAdded(String p, UserHandle u) { refresh(); }
-        @Override public void onPackageRemoved(String p, UserHandle u) { refresh(); }
-        @Override public void onPackageChanged(String p, UserHandle u) { refresh(); }
-        @Override public void onPackagesAvailable(String[] p, UserHandle u, boolean r) { refresh(); }
-        @Override public void onPackagesUnavailable(String[] p, UserHandle u, boolean r) { refresh(); }
+        @Override public void onPackageAdded(String p, UserHandle u) { markAppsChanged(); }
+        @Override public void onPackageRemoved(String p, UserHandle u) { markAppsChanged(); }
+        @Override public void onPackageChanged(String p, UserHandle u) { markAppsChanged(); }
+        @Override public void onPackagesAvailable(String[] p, UserHandle u, boolean r) { markAppsChanged(); }
+        @Override public void onPackagesUnavailable(String[] p, UserHandle u, boolean r) { markAppsChanged(); }
     };
 
     @Override public void onCreate(Bundle state) {
@@ -167,21 +171,13 @@ public final class HomeActivity extends Activity {
         });
         setContentView(root);
         root.requestApplyInsets();
+        launcherApps.registerCallback(appChanges);
         loadApps();
         showHome(0);
     }
 
-    @Override protected void onStart() {
-        super.onStart();
-        if (!listening) {
-            launcherApps.registerCallback(appChanges);
-            listening = true;
-        }
-    }
-
     @Override protected void onResume() {
         super.onResume();
-        refresh();
         if (web != null && screen == Screen.AIRUNOTE) web.onResume();
     }
 
@@ -198,19 +194,15 @@ public final class HomeActivity extends Activity {
     @Override public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (root == null) return;
-        if (hasFocus) updateBarIcons();
+        if (hasFocus) {
+            updateBarIcons();
+            refreshAppsIfNeeded();
+        }
         refreshAirunoteBars();
     }
 
-    @Override protected void onStop() {
-        if (listening) {
-            launcherApps.unregisterCallback(appChanges);
-            listening = false;
-        }
-        super.onStop();
-    }
-
     @Override protected void onDestroy() {
+        launcherApps.unregisterCallback(appChanges);
         root.removeCallbacks(updateAirunoteBars);
         if (web != null) {
             detach(web);
@@ -240,7 +232,14 @@ public final class HomeActivity extends Activity {
         }
     }
 
-    private void refresh() {
+    private void markAppsChanged() {
+        appsChanged = true;
+        if (hasWindowFocus()) refreshAppsIfNeeded();
+    }
+
+    private void refreshAppsIfNeeded() {
+        if (!appsChanged) return;
+        appsChanged = false;
         loadApps();
         if (screen == Screen.HOME) showHome(page);
         if (screen == Screen.APPS && search != null) fillApps(search.getText().toString());
@@ -507,6 +506,10 @@ public final class HomeActivity extends Activity {
         tile.setPadding(dp(3), dp(7), dp(3), 0);
         tile.setContentDescription(app.getLabel());
         tile.setFocusable(true);
+        var feedback = new TypedValue();
+        if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, feedback, true)) {
+            tile.setBackgroundResource(feedback.resourceId);
+        }
         ImageView icon = new ImageView(this);
         icon.setImageDrawable(app.getIcon(0));
         int size = dp(home ? 65 : 48);
@@ -567,14 +570,59 @@ public final class HomeActivity extends Activity {
     private void homeMenu() {
         new AlertDialog.Builder(this).setTitle("Home settings")
                 .setItems(new String[]{"Open Airunote", "Left page", "Default Home app", "All apps",
-                                "Airunote system bars"},
+                                "Airunote system bars", getString(R.string.clear_all)},
                         (dialog, i) -> {
                             if (i == 0) showAirunote();
                             else if (i == 1) leftMenu();
                             else if (i == 2) chooseHome();
                             else if (i == 3) showApps();
-                            else chooseAirunoteBars();
+                            else if (i == 4) chooseAirunoteBars();
+                            else clearAllMenu();
                         }).show();
+    }
+
+    private void clearAllMenu() {
+        var memory = new ActivityManager.MemoryInfo();
+        getSystemService(ActivityManager.class).getMemoryInfo(memory);
+        long freeBytes = new StatFs(getFilesDir().getAbsolutePath()).getAvailableBytes();
+        String details = getString(R.string.clear_all_summary,
+                android.text.format.Formatter.formatShortFileSize(this, memory.availMem),
+                android.text.format.Formatter.formatShortFileSize(this, freeBytes));
+        new AlertDialog.Builder(this).setTitle(R.string.clear_all)
+                .setMessage(details)
+                .setPositiveButton(R.string.clear_recent_apps, (dialog, button) -> {
+                    if (!RecentsCleanupService.start()) {
+                        new AlertDialog.Builder(this).setTitle(R.string.clear_all_setup)
+                                .setMessage(R.string.clear_all_setup_explanation)
+                                .setPositiveButton(R.string.open_accessibility_settings,
+                                        (d, which) -> openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                                .setNegativeButton(android.R.string.cancel, null).show();
+                    }
+                })
+                .setNeutralButton(R.string.more_cleanup, (dialog, button) -> cleanupTools())
+                .setNegativeButton(android.R.string.cancel, null).show();
+    }
+
+    private void cleanupTools() {
+        new AlertDialog.Builder(this).setTitle(R.string.more_cleanup)
+                .setItems(new String[]{getString(R.string.phone_manager), getString(R.string.review_storage)},
+                        (dialog, which) -> {
+                            if (which == 1) {
+                                openSettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
+                                return;
+                            }
+                            var manager = byPackage.get("com.coloros.phonemanager");
+                            if (manager != null) launch(manager);
+                            else openSettings(Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
+                        }).setNegativeButton(android.R.string.cancel, null).show();
+    }
+
+    private void openSettings(String action) {
+        try {
+            startActivity(new Intent(action));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.settings_unavailable, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void chooseAirunoteBars() {

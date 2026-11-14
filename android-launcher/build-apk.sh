@@ -19,7 +19,7 @@ for tool in aapt2 d8 zipalign apksigner; do test -x "$tools/$tool"; done
 "$tools/aapt2" compile --dir "$here/src/main/res" -o "$work/resources.zip"
 "$tools/aapt2" link -I "$platform" --manifest "$here/src/main/AndroidManifest.xml" \
   --java "$work" --min-sdk-version 30 --target-sdk-version 35 \
-  --version-code 5 --version-name 1.4 -o "$work/unaligned.apk" "$work/resources.zip"
+  --version-code 6 --version-name 1.5 -o "$work/unaligned.apk" "$work/resources.zip"
 mapfile -d '' sources < <(find "$here/src/main/java" "$work/com" -name '*.java' -print0)
 javac --release 17 -classpath "$platform" -d "$work/classes" "${sources[@]}"
 jar cf "$work/classes.jar" -C "$work/classes" .

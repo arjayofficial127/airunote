@@ -14,6 +14,11 @@ alongside the stock launcher and does not need root.
 - Swipe up from Home for all apps. Long-press an app in the drawer to pin it.
   Long-press the wallpaper and select **Left page** to choose an installed app
   or turn the swipe off.
+- Long-press the wallpaper and choose **Clear All** below **Airunote system
+  bars**. The panel shows available RAM and free storage. **Clear recent apps**
+  uses realme's system Recents button after you enable **Airunote Home cleanup**
+  in Accessibility. **More cleanup** opens Phone Manager or Android Storage
+  to review what can be removed. App data stays intact when clearing Recents.
 - The four first-page icons match the C71 layout used to build this prototype.
   The second page starts empty. Stock-only widgets, notification badges and
   Phone Manager shortcuts are outside this launcher.
