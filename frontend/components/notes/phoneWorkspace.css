@@ -38,7 +38,7 @@
 .airunote-notes[data-phone=true] .an-context-tabs { padding:0 12px 6px; background:var(--ab-surface); }
 .airunote-notes[data-phone=true] .an-context-body > .ab-context { padding:12px 0 0; }
 .airunote-notes[data-phone=true] .an-editor-cell .an-reading { padding:0 16px 24px; min-height:0; }
-.airunote-notes[data-phone=true] .an-editor-cell .an-reading[data-daily=true] { padding-bottom:16px; }
+.airunote-notes[data-phone=true] .an-editor-cell .an-reading[data-daily=true] { padding-bottom:0; }
 .airunote-notes[data-phone=true] .an-editor-cell { border:0; }
 .airunote-notes[data-phone=true] .an-folder-heading header > h2 { flex-basis:auto; min-width:0; overflow-wrap:anywhere; }
 .airunote-notes[data-phone=true] .an-folder-heading header { flex-wrap:wrap; }
@@ -142,9 +142,11 @@
 .airunote-notes[data-phone=true] .an-daily-insert summary { display:flex; align-items:center; }
 
 .airunote-notes .an-daily-editable .tiptap {
-  min-height:110px; padding:4px 1px 8px; outline-offset:2px;
+  min-height:110px; padding:4px 1px 16px;
   font-size:16px; line-height:1.55; overflow-wrap:anywhere; white-space:pre-wrap;
 }
+.airunote-notes .an-daily-editable .tiptap[contenteditable=true] { cursor:text; }
+.airunote-notes .an-daily-editable .tiptap:focus { outline:none; }
 .airunote-notes .an-daily-editable .tiptap p { min-height:1.55em; margin:0 0 3px; }
 .airunote-notes .an-daily-editable .tiptap:has(> p:only-child > .ProseMirror-trailingBreak:only-child)::before {
   content:attr(data-placeholder); color:var(--ab-muted); float:left; height:0; pointer-events:none;

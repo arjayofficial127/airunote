@@ -131,6 +131,14 @@ export function DailyBody({ blocks, disabled, onChange, writingTools, children }
     if (matchMedia('(hover: hover)').matches && !(event.target instanceof Element && event.target.closest('.an-daily-remove-line'))) placeRemove(event.target);
   }
 
+  function focusBlankSpace(event: MouseEvent<HTMLDivElement>) {
+    if (!editor?.isEditable || event.target !== editor.view.dom) return;
+    const lastBlock = editor.view.dom.lastElementChild;
+    if (lastBlock && event.clientY >= lastBlock.getBoundingClientRect().bottom) {
+      editor.commands.focus('end', { scrollIntoView: false });
+    }
+  }
+
   function insert(block: MediaBlock) {
     if (!editor) return;
     editor.chain().focus().command(({ tr, state }) => {
@@ -206,7 +214,7 @@ export function DailyBody({ blocks, disabled, onChange, writingTools, children }
       onFocus={() => setLineFocused(true)} onBlur={event => {
         if (!event.currentTarget.contains(event.relatedTarget)) { setLineFocused(false); setLine(null); }
       }}>
-      <EditorContent className="an-daily-editable" editor={editor}/>
+      <EditorContent className="an-daily-editable" editor={editor} onClick={focusBlankSpace}/>
       {line && !disabled && <button type="button" className="an-daily-remove-line" aria-label="Remove checklist line" style={{ top: line.top }}
         onMouseDown={event => event.preventDefault()} onClick={() => {
           editor?.chain().focus().deleteRange({ from: line.from, to: line.to }).run();

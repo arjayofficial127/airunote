@@ -299,6 +299,13 @@
 .airunote-notes .an-daily-heading { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 8px; align-items:start; }
 .airunote-notes .an-daily-heading h1 { margin:4px 0 0; }
 .airunote-notes .an-daily-heading .an-item-actions { min-width:40px; min-height:44px; font-size:19px; }
+.airunote-notes .an-reading[data-daily=true],
+.airunote-notes :is(.an-daily, .an-daily fieldset, .an-daily-body, .an-daily-editor-frame, .an-daily-editable) {
+  display:flex; flex-direction:column;
+}
+.airunote-notes :is(.an-daily, .an-daily fieldset, .an-daily-body, .an-daily-editor-frame, .an-daily-editable, .an-daily-editable > .tiptap) {
+  flex:1 0 auto;
+}
 .airunote-notes .an-daily fieldset { min-width:0; border:0; margin:0; padding:0; }
 .airunote-notes .an-daily-status { grid-column:1 / -1; display:flex; align-items:center; gap:12px; margin:0 0 12px; color:var(--ab-muted); font-size:12px; }
 .airunote-notes .an-daily-status small { margin-left:auto; }
